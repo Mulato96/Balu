@@ -23,6 +23,8 @@ public class  ManagementAffiliationDTO {
     private String stageManagement;
     private String dateInterview;
     private String assignedTo;
+    private String documentReviewAssignedTo;
+    private String regularizationDocumentUploadDate;
     @JsonIgnore
     private Boolean cancelled;
 

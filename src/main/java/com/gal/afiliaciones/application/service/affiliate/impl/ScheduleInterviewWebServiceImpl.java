@@ -95,7 +95,7 @@ public class ScheduleInterviewWebServiceImpl implements ScheduleInterviewWebServ
             throw new AffiliationError("La duracion de la reunion no es la permitida, la reunion debe ser de " + properties.getInterviewWebTimeDuration() + " minutos");
         }
 
-        if(calculateSchedule(dateInterviewWebDTO.getHourStart(), dateInterviewWebDTO.getDay()))
+        if(calculateSchedule(dateInterviewWebDTO.getHourStart(), dateInterviewWebDTO.getDay(), dateInterviewWebDTO.getIdOfficial()))
             throw new AffiliationError("El horario ya se encuentra agendado!!");
 
         if(dateInterviewWebDTO.getName() == null && dateInterviewWebDTO.getSurname() == null){
@@ -307,10 +307,10 @@ public class ScheduleInterviewWebServiceImpl implements ScheduleInterviewWebServ
         return  ((requestSchedule.getHourEnd().toNanoOfDay() - requestSchedule.getHourStart().toNanoOfDay()) != timeMeet);
     }
 
-    private boolean calculateSchedule(LocalTime startRequest, LocalDate day){
+    private boolean calculateSchedule(LocalTime startRequest, LocalDate day, Long idOfficial){
 
-        Specification<DateInterviewWeb> spec = DateInterviewWebSpecification.findByHourStart(startRequest, day);
-        return dateInterviewWebRepository.findAll(spec).stream().count() >= properties.getMaxConcurrentMeetings();
+        Specification<DateInterviewWeb> spec = DateInterviewWebSpecification.findByHourStartAndOfficial(startRequest, day, idOfficial);
+        return dateInterviewWebRepository.count(spec) >= properties.getMaxConcurrentMeetings();
 
     }
 

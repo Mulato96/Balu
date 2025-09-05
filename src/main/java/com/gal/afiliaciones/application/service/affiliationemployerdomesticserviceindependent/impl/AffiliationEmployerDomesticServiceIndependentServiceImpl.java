@@ -146,24 +146,22 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     public VisualizationPendingPerformDTO visualizationPendingPerform() {
 
         VisualizationPendingPerformDTO visualizationPendingPerformDTO =  new VisualizationPendingPerformDTO();
-        Double total = Double.parseDouble(String.valueOf(repositoryAffiliation.count()));
 
         Specification<Affiliation> specAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications.hasFindStageManagement("entrevista web");
-        List<Affiliation> listCertificate = repositoryAffiliation.findAll(specAffiliation);
-        visualizationPendingPerformDTO.setInterviewWeb(String.valueOf(calculatePercentage(total,Double.parseDouble(String.valueOf(listCertificate.size())))));
+        long interviewWebCount = repositoryAffiliation.count(specAffiliation);
+        visualizationPendingPerformDTO.setInterviewWeb(String.valueOf(interviewWebCount));
 
         specAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications.hasFindStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
-        listCertificate = repositoryAffiliation.findAll(specAffiliation);
-        visualizationPendingPerformDTO.setReviewDocumental(String.valueOf(calculatePercentage(total,Double.parseDouble(String.valueOf(listCertificate.size())))));
+        long reviewDocumentalCount = repositoryAffiliation.count(specAffiliation);
+        visualizationPendingPerformDTO.setReviewDocumental(String.valueOf(reviewDocumentalCount));
 
         specAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications.hasFindStageManagement(Constant.REGULARIZATION);
-        listCertificate = repositoryAffiliation.findAll(specAffiliation);
-        visualizationPendingPerformDTO.setRegularization(String.valueOf(calculatePercentage(total,Double.parseDouble(String.valueOf(listCertificate.size())))));
+        long regularizationCount = repositoryAffiliation.count(specAffiliation);
+        visualizationPendingPerformDTO.setRegularization(String.valueOf(regularizationCount));
 
         specAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications.hasFindStageManagement(SING);
-        listCertificate = repositoryAffiliation.findAll(specAffiliation);
-        visualizationPendingPerformDTO.setSing(String.valueOf(calculatePercentage(total,Double.parseDouble(String.valueOf(listCertificate.size())))));
-
+        long singCount = repositoryAffiliation.count(specAffiliation);
+        visualizationPendingPerformDTO.setSing(String.valueOf(singCount));
 
         return visualizationPendingPerformDTO;
     }
@@ -179,10 +177,11 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         Long totalRegularization;
         Long totalScheduling;
 
-        Page<ManagementAffiliationDTO> data = affiliationsViewRepository.findAll(AffiliationsViewSpecification.filter(filter), PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortOrder), sortBy)))
+        String userId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        Page<ManagementAffiliationDTO> data = affiliationsViewRepository.findAll(AffiliationsViewSpecification.filter(filter, userId), PageRequest.of(page, 100, Sort.by(Sort.Direction.fromString(sortOrder), sortBy)))
                 .map(AffiliationAdapter.entityToDto);
 
-        if (filter == null || filter.fieldValue() == null || filter.fieldValue().isBlank()) {
+        if (filter == null || (filter.fieldValue() == null || filter.fieldValue().isBlank()) && filter.requestDate() == null && (filter.assignedTo() == null || filter.assignedTo().isBlank())) {
             totalSignature = affiliationsViewRepository.countByStageManagement(Constant.SING);
             totalInterviewing = affiliationsViewRepository.countByStageManagement(Constant.INTERVIEW_WEB);
             totalDocumentalRevision = affiliationsViewRepository.countByStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
@@ -1040,5 +1039,12 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         return iEconomicActivityRepository.findAllByEconomicActivityCodeIn(ids);
     }
 
-
+    @Override
+    public List<ManagementAffiliationDTO> exportFilteredAffiliations(AffiliationsFilterDTO filter) {
+        String userId = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return affiliationsViewRepository.findAll(AffiliationsViewSpecification.filter(filter, userId))
+                .stream()
+                .map(AffiliationAdapter.entityToDto)
+                .toList();
+    }
 }

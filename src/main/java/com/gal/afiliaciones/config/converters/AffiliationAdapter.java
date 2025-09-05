@@ -23,6 +23,9 @@ public class AffiliationAdapter {
                 .numberDocument(entity.getNumberDocument())
                 .cancelled(entity.getCancelled())
                 .dateInterview(entity.getDateInterview() != null ? entity.getDateInterview().toString() : "")
+                .regularizationDocumentUploadDate(entity.getRegularizationDocumentUploadDate())
+                .interviewAssignedTo(entity.getInterviewAssignedTo())
+                .documentReviewAssignedTo(entity.getDocumentReviewAssignedTo())
                 .build();
     };
 

@@ -57,6 +57,15 @@ public class DateInterviewWebSpecification {
         });
     }
 
+    public static Specification<DateInterviewWeb> findByHourStartAndOfficial(LocalTime hourStart, LocalDate day, Long idOfficial) {
+        return (root, query, criteriaBuilder) -> {
+            Predicate dateStartPredicate = criteriaBuilder.equal(root.get("hourStart"), hourStart);
+            Predicate dayPredicate = criteriaBuilder.equal(root.get("day"), day);
+            Predicate officialPredicate = criteriaBuilder.equal(root.get("idOfficial"), idOfficial);
+            return criteriaBuilder.and(dateStartPredicate, dayPredicate, officialPredicate);
+        };
+    }
+
     public static Specification<DateInterviewWeb> findByDay(LocalDate day){
         return ((root, query, criteriaBuilder) -> {
             Predicate dayPredicate = criteriaBuilder.equal(root.get("day"), day);

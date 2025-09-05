@@ -18,7 +18,7 @@ public class AffiliationsViewSpecification {
     private static final String STAGE_SIGNATURE = "firma";
     private static final String STAGE_MANAGEMENT_LABEL = "stageManagement";
 
-    public static Specification<AffiliationsView> filter(AffiliationsFilterDTO filter) {
+    public static Specification<AffiliationsView> filter(AffiliationsFilterDTO filter, String userId) {
         return (root, query, criteriaBuilder) -> {
             Predicate predicate = criteriaBuilder.in(root.get(STAGE_MANAGEMENT_LABEL))
                     .value(STAGE_WEB_INTERVIEW)
@@ -26,22 +26,41 @@ public class AffiliationsViewSpecification {
                     .value(STAGE_REGULARIZATION)
                     .value(STAGE_SCHEDULING)
                     .value(STAGE_SIGNATURE);
+            predicate = criteriaBuilder.and(predicate, criteriaBuilder.notEqual(root.get(STAGE_MANAGEMENT_LABEL), "Afiliación completa"));
 
-            if (filter != null && filter.fieldValue() != null && filter.criteria() != null) {
-                String value = "%" + filter.fieldValue().toLowerCase() + "%";
-                Predicate filterPredicate;
+            if (filter != null) {
+                if (filter.fieldValue() != null && !filter.fieldValue().isBlank() && filter.criteria() != null) {
+                    String value = "%" + filter.fieldValue().toLowerCase() + "%";
+                    Predicate filterPredicate;
 
-                switch (filter.criteria()) {
-                    case 1 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("filedNumber")), value);
-                    case 2 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("numberDocument")), value);
-                    case 3 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("nameOrSocialReason")), value);
-                    case 4 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("affiliationType")), value);
-                    case 5 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get(STAGE_MANAGEMENT_LABEL)), value);
-                    default -> throw new IllegalStateException("Unexpected value: " + filter.criteria());
+                    switch (filter.criteria()) {
+                        case 1 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("filedNumber")), value);
+                        case 2 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("numberDocument")), value);
+                        case 3 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("nameOrSocialReason")), value);
+                        case 4 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("affiliationType")), value);
+                        case 5 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get(STAGE_MANAGEMENT_LABEL)), value);
+                        default -> throw new IllegalStateException("Unexpected value: " + filter.criteria());
+                    }
+                    predicate = criteriaBuilder.and(predicate, filterPredicate);
                 }
 
-                predicate =  criteriaBuilder.and(predicate, filterPredicate);
+                if (filter.requestDate() != null) {
+                    predicate = criteriaBuilder.and(predicate, criteriaBuilder.equal(root.get("dateRequest").as(java.time.LocalDate.class), filter.requestDate()));
+                }
+
+                if (filter.assignedTo() != null && !filter.assignedTo().isBlank()) {
+                    Predicate assignedToPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("interviewAssignedTo")), "%" + filter.assignedTo().toLowerCase() + "%");
+                    Predicate stagePredicate = criteriaBuilder.equal(root.get(STAGE_MANAGEMENT_LABEL), STAGE_WEB_INTERVIEW);
+                    predicate = criteriaBuilder.and(predicate, assignedToPredicate, stagePredicate);
+                }
             }
+
+            // Exclusive assignment logic
+            Predicate assignedToReviewPredicate = criteriaBuilder.isNotNull(root.get("documentReviewAssignedTo"));
+            Predicate currentUserPredicate = criteriaBuilder.equal(root.get("documentReviewAssignedTo"), userId);
+            Predicate notAssignedPredicate = criteriaBuilder.isNull(root.get("documentReviewAssignedTo"));
+
+            predicate = criteriaBuilder.and(predicate, criteriaBuilder.or(notAssignedPredicate, criteriaBuilder.and(assignedToReviewPredicate, currentUserPredicate)));
 
             return predicate;
         };

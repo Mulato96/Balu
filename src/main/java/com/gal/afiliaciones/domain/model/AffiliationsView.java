@@ -42,4 +42,13 @@ public class AffiliationsView {
     @Column(name = "date_interview")
     private LocalDateTime dateInterview;
 
+    @Column(name = "regularization_document_upload_date")
+    private String regularizationDocumentUploadDate;
+
+    @Column(name = "interview_assigned_to")
+    private String interviewAssignedTo;
+
+    @Column(name = "document_review_assigned_to")
+    private String documentReviewAssignedTo;
+
 }

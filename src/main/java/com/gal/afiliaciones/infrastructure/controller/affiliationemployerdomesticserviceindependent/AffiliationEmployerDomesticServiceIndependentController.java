@@ -113,4 +113,32 @@ public class AffiliationEmployerDomesticServiceIndependentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(alfrescoService.createFolder(idParent, nameFile));
     }
 
+    @PostMapping("/export")
+    public void exportAffiliations(jakarta.servlet.http.HttpServletResponse response, @RequestBody(required = false) AffiliationsFilterDTO filter) throws java.io.IOException {
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; file=affiliations.csv");
+
+        List<ManagementAffiliationDTO> affiliations = affiliationEmployerDomesticServiceIndependentService.exportFilteredAffiliations(filter);
+
+        try (com.opencsv.CSVWriter writer = new com.opencsv.CSVWriter(response.getWriter())) {
+            String[] header = { "Radicado", "Fecha Solicitud", "No. Documento", "Nombre o Razón Social", "Tipo Afiliación", "Etapa", "Fecha Entrevista", "Entrevista Asignada a", "Revisión Doc. Asignada a", "Cargue doc. Regularización" };
+            writer.writeNext(header);
+
+            for (ManagementAffiliationDTO affiliation : affiliations) {
+                String[] data = {
+                    affiliation.getField(),
+                    affiliation.getDateRequest(),
+                    affiliation.getNumberDocument(),
+                    affiliation.getNameOrSocialReason(),
+                    affiliation.getTypeAffiliation(),
+                    affiliation.getStageManagement(),
+                    affiliation.getDateInterview(),
+                    affiliation.getInterviewAssignedTo(),
+                    affiliation.getDocumentReviewAssignedTo(),
+                    affiliation.getRegularizationDocumentUploadDate()
+                };
+                writer.writeNext(data);
+            }
+        }
+    }
 }
