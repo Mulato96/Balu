@@ -1,0 +1,190 @@
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+    .maxWidth {
+      max-width: 600px;
+    }
+
+    .text {
+      color: #595566;
+      font-size: 14px;
+      line-height: 20px;
+      margin: 0;
+      margin-bottom: 12px;
+      margin-top: 12px;
+    }
+
+    .textLeft {
+      text-align: left;
+    }
+
+    .subTitle {
+      color: #595566;
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 22px;
+    }
+
+    .codesInputsContainer {
+      display: inline-block;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(3, 1, 76, 0.2);
+    }
+
+    .codesInputs {
+      display: inline;
+      color: rgba(3, 1, 76, 1);
+      margin: 0;
+      width: 26px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+  </style>
+</head>
+
+<body style="margin: 0 auto; font-family: 'Montserrat', Arial, Helvetica, sans-serif">
+  <!-- HEADER -->
+  <table border="0" style="height: 100vh;" bgcolor="#F9F9F9" width="100%" align="center" cellpadding="0"
+    cellspacing="0">
+    <tr>
+      <td>
+        <table border="0" cellpadding="0" cellspacing="0" class="maxWidth"
+          style="padding-left: 192px; padding-right: 192px;" align="center" style="max-width: 920px;">
+          <tr>
+            <td align="center">
+              <img style="padding-top: 112px;" src="http://albalfresco-2113738468.us-east-1.elb.amazonaws.com/alfresco/api/-default-/public/alfresco/versions/1/shared-links/TSqgkBleROq6C5FjHYbddA/content" alt="Logo Arl">
+            </td>
+          </tr>
+
+
+          <!-- CONTENT -->
+
+          <tr>
+            <td align="center">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth"
+                      style="color: #DF7702; font-size: 24px; line-height: 28px; font-weight: 600; margin-bottom: 32px; margin-top: 44px;">
+                      Proceso de afiliacion
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin: 0;">Señor: {user}</p>
+                    <p class="maxWidth subTitle" style="margin: 0;">Cordial saludo</p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft" style="font-size: 16px !important;">La Administradora de Riesgos Laborales Nombre de la ARL, a la cual {firstName},{secondName}, {surname} {secondSurname} deseas afiliarte para la cobertura en el Sistema General de Riesgos Laborales. te informa que habiendo revisado la documentación adjunta y validando con los
+                        requisitos de afiliación de la compañía, se obtuvo el siguiente concepto.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="font-weight: 700; font-size: 12px; line-height: 15px;"
+                      class="maxWidth">Los documentos evaluados presentan las siguientes anotaciones y deberán ser adjuntados todos nuevamente</p>
+                  </td>
+                </tr>
+                <tr>
+                    <table> 
+                        <thead>
+                          <tr>
+                              <th><p class="codesInputs">Documento de identidad</p></th>
+                              <th><p class="codesInputs">Observacion</p></th>
+                              <th><p class="codesInputs">Fecha</p></th>
+                          </tr>
+                          </thead>
+                          <tbody>
+                            <tr >
+                              <td><p style="padding: 10%;" class="codesInputs" >{numberDocument}</p></td>
+                              <td>
+                                <ol>{observations}</ol>
+                              </td>
+                              <td><p style="padding: 10%;" class="codesInputs" >{date}</p></td>
+                            </tr>
+                          </tbody>
+                    </table>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin-top: 29px; margin-bottom: 0;">Recomendaciones</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft">Podrás ingresar nuevamente a la URL con tu usuario y contraseña y adjuntar la documentación solicitada dentro de las próximas 24 horas, de lo contrario el proceso de Afiliación quedará suspendido y deberás iniciar nuevamente</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft">La documentación que anexes será sometida nuevamente a evaluación y deberá agendar una nueva entrevista.</p>
+                  </td>
+                </tr>
+                <tr>
+                    <td align="center">
+                      <p class="maxWidth text textLeft">La entrevista no es necesaria para los empleadores de servicio doméstico.</p>
+                    </td>
+                  </tr>
+                  <tr style="border: #595566;">
+                    <tr>
+                        <td align="center">
+                          <p class="maxWidth subTitle" style="margin-top: 29px; margin-bottom: 0;">Ten en cuenta</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center">
+                          <p class="maxWidth text textLeft">Si el rechazo se presento por inconsistencias en el formulario, debes esperar 24 horas, para realizar tu afiliación nuevamente.</p>
+                        </td>
+                    </tr>
+                  </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+
+          <tr>
+            <td align="center">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin-bottom: 0; margin-top: 48px;">Cordialmente,</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text" style="color: rgba(89, 85, 102, 0.7);">Equipo Sistema ARL</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="padding-bottom: 112px; margin: 0; color: rgb(89, 85, 102, 0.7); font-size: 10px; line-height: 12px;"
+                      class="maxWidth">Este es un mensaje automático, por favor absténgase de responder este correo.
+                      Para cualquier
+                      inquietud
+                      o información, no dude en solicitarla por cualquiera de nuestros canales disponibles.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+
+</html>

@@ -1,0 +1,78 @@
+trigger:
+- main
+- develop
+- qa
+- dev-k8s
+
+pool:
+  vmImage: ubuntu-latest
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Infraestructura-DevOps/devops_util_pipeline
+      # ref: refs/heads/feature/trivy
+
+stages:
+- stage: SonarQube_Scan
+  jobs:
+  - job: SonarQube_Analysis
+    
+    steps:
+    - template: pipeline-base-maven.yml@templates
+      parameters:
+        COVERAGE: 'true'
+        
+    - template: sonarqube-analysis.yml@templates
+      parameters:
+        SONAR_CONN: 'SONAR_GAL'
+
+
+    - script: |
+        echo "Esperando resultados de SonarQube..."
+        sleep 10
+
+        echo "Consultando estado del Quality Gate..."
+
+        STATUS=$(curl -s -u "$(SONAR_TOKEN):" \
+          "$(SONAR_URL)/api/qualitygates/project_status?projectKey=368_-_GAL_rdt_ms_afiliaciones_gal_AY-b-5oUMyPRr7E_rVIE" \
+        | jq -r '.projectStatus.status')
+
+        echo "Estado del Quality Gate: $STATUS"
+
+        if [ "$STATUS" != "OK" ]; then
+          echo "❌ Quality Gate falló. Abortando pipeline."
+          exit 1
+        fi
+
+        echo "✅ Quality Gate aprobado."
+      displayName: 'Validar Quality Gate en SonarQube'
+      env:
+        SONAR_TOKEN: $(SONAR_TOKEN)
+        SONAR_GAL: $(SONAR_URL)
+      condition: eq(variables['Build.SourceBranchName'], 'develop')
+      failOnStderr: true
+
+- stage: Build_Docker
+  jobs: 
+  - job: Build_Docker 
+    steps:
+    # - task: DownloadPipelineArtifact@2
+    #   inputs:
+    #     artifactName: 'artifact'
+    #     targetPath: $(Build.SourcesDirectory)
+
+    - script: |
+          docker logout
+          aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
+      displayName: 'Login to AWS'
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+
+    - template: steps-docker-ecr.yml@templates
+      parameters:
+        AWS_CREDENTIALS: '368-GAL'
+        REPOSITORY_NAME: $(DOCKER_REPOSITORY_NAME_DEVK8S)
+        AWS_REGION: $(AWS_REGION)

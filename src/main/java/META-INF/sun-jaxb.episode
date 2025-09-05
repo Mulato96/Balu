@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<bindings xmlns="http://java.sun.com/xml/ns/jaxb" if-exists="true" version="2.1">
+      
+    <!--
+
+Este archivo ha sido generado por la arquitectura JavaTM para la implantación de la referencia de enlace (JAXB) XML v2.3.0 
+Visite <a href="https://javaee.github.io/jaxb-v2/">https://javaee.github.io/jaxb-v2/</a> 
+Todas las modificaciones realizadas en este archivo se perderán si se vuelve a compilar el esquema de origen. 
+Generado el: 2024.05.10 a las 11:01:02 AM COT 
+
+  -->
+      
+    <bindings xmlns:tns="http://service.positiva.gov.co/" if-exists="true" scd="x-schema::tns">
+            
+        <schemaBindings map="false">
+                  
+            <package name="com.gal.afiliaciones.wsdl"/>
+                
+        </schemaBindings>
+            
+        <bindings if-exists="true" scd="tns:consultarCedulasRequest">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.ConsultarCedulasRequest"/>
+                
+        </bindings>
+            
+        <bindings if-exists="true" scd="tns:consultarCedulasResponse">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.ConsultarCedulasResponse"/>
+                
+        </bindings>
+            
+        <bindings if-exists="true" scd="~tns:returnType">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.ReturnType"/>
+                
+        </bindings>
+            
+        <bindings if-exists="true" scd="~tns:estadoConsultaType">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.EstadoConsultaType"/>
+                
+        </bindings>
+            
+        <bindings if-exists="true" scd="~tns:datosCedulasType">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.DatosCedulasType"/>
+                
+        </bindings>
+            
+        <bindings if-exists="true" scd="~tns:datosType">
+                  
+            <class ref="com.gal.afiliaciones.wsdl.DatosType"/>
+                
+        </bindings>
+          
+    </bindings>
+    
+</bindings>

@@ -1,0 +1,111 @@
+[33me973fb7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/hu83627[m[33m)[m generete tye afilitea
+[33m173766b[m[33m ([m[1;31morigin/feature/hu83627[m[33m)[m Merge branch 'develop' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/hu83627
+[33m3ee8e9f[m planilla judica y domestica
+[33mae5148b[m[33m ([m[1;31morigin/develop[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merged PR 40844: Corrección en los nombres de la entidad tmp_card
+[33mba864e3[m Correccion en los nombres de la entidad tmp_card
+[33mf6e7459[m Merged PR 40826: Validacion DV
+[33m113a740[m Merged PR 40771: Se corrige la consulta para buscar el carnet generado
+[33md3d3504[m Se corrige la consulta para buscar el carnet generado
+[33m3c178fb[m Merged PR 40757: Arreglo comentario bug 100304
+[33m6b4f194[m Arreglo comentario bug 100304
+[33ma39cad8[m Merged PR 40722: Arreglo Bug 100304
+[33m9113be3[m Arreglo Bug 100304
+[33m66d2a7b[m Merged PR 40702: Arreglo BUG 100304
+[33m0613b1b[m Arreglo Bug 100304
+[33mc485048[m Arreglo Bug 100304
+[33me0472e6[m Merge branch 'develop' into feature/92895_CR
+[33mb0616d6[m Merged PR 40679: Se valida el tiempo de vigencia del código de validación del certificado
+[33m1f8f998[m Arreglo Bug 100304
+[33m8af9dda[m Se valida el tiempo de vigencia del codigo de validacion del certificado
+[33m5283ec8[m Merged PR 40648: Consulta entidades por nombre de ciudad
+[33mf08a3bb[m Merged PR 40640: Cambios bug pre registro
+[33mc51c986[m Cambios bug pe registro
+[33m4b1084b[m Merged PR 40535: se añadio arreglos arreglo de pre registro
+[33m542e80d[m Cambios bug pe registro
+[33mc1c2967[m Merge branch 'develop' into feature/login_DS
+[33mede37ed[m Cambios bug pe registro
+[33mcf017e3[m Merge branch 'feature/login_DS' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/login_DS
+[33mcde44b3[m add custom exception for method argument invalid
+[33m3986abf[m Merged PR 40501: Generación y consulta de carnets
+[33m1746ce9[m Cambios bug pe registro
+[33m0b551a2[m Merge remote-tracking branch 'origin/develop' into feature/84821_MS
+[33m392c498[m Generacion y consulta de carnets
+[33mea15106[m Merged PR 40508: Se incluye id en la consulta
+[33m71e2355[m Se incluye id en la consulta
+[33mcf4708f[m Merged PR 40505: Servicio validate codigo
+[33md86b9f5[m Merge branch 'develop' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/hu83627
+[33m5c0df2a[m Servicios de codigo validacion
+[33mca77be7[m Merge remote-tracking branch 'origin/develop' into feature/84821_MS
+[33m5253215[m[33m ([m[1;31morigin/feature/84821_MS[m[33m)[m Generacion y consulta de carnets
+[33m010a0ea[m[33m ([m[1;32mdevelop[m[33m)[m Merged PR 40452: refactor login code
+[33md24ceec[m Merge remote-tracking branch 'origin/develop' into feature/84821_MS
+[33m3a3963f[m Generacion y consulta de carnets
+[33m8411931[m Merged PR 40418: Consulta con filtro nombre de la entidad
+[33mdbdd1c4[m Merged PR 40347: consulta certificado afiliacion
+[33m922bb0e[m Generic Web
+[33me319d36[m Generic Web
+[33md321c87[m Merge branch 'develop' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/hu83627
+[33m6eec40e[m[33m ([m[1;31morigin/feature/102814_PP[m[33m)[m Consulta con filtro nombre de la entidad
+[33me3dae61[m[33m ([m[1;31morigin/feature/login_DS[m[33m)[m refactor login code
+[33m679657a[m Cambios login
+[33m6cad97a[m Cambios login
+[33m8dcca51[m Cambios login
+[33m701c78f[m Cambios login
+[33mda4a5ed[m Ajuste consumo servicio municipios
+[33m918e241[m Generic Web
+[33me4d7b78[m Merge branch 'develop' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/hu83627
+[33md0f2f48[m SE agrega servicio report plantilla
+[33m52a9f37[m Merged PR 40330: CRUD entidades pre ocupacional
+[33m1d146c5[m Generacion y consulta de carnets
+[33ma6482e7[m Merge remote-tracking branch 'origin/develop' into feature/84821_MS
+[33mcb74db2[m Generacion y consulta de carnets
+[33m182068c[m refactor login code
+[33m4b3f9e7[m Merge branch 'develop' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/hu83627
+[33mf112ff9[m Merged PR 40082: Se cambia el método para buscar la secuencia actual, dejándolo mas preciso al filtrar la búsqueda por año
+[33m5b99ca2[m SE agrega servicio report plantilla
+[33madb4ccd[m Merged PR 40280: Login HU 86537
+[33m9e8a1ee[m[33m ([m[1;31morigin/feature/86537_CR[m[33m)[m Login HU 86537
+[33m176c405[m Merged PR 40182: Creamos servicio de validaciones
+[33mce69144[m[33m ([m[1;31morigin/feature/83488_MS[m[33m)[m Se cambia el metodo para buscar la secuencia actual, dejandolo mas preciso al filtrar la busqueda por año
+[33me3b5009[m Cambio respuesta generacion de codigo de validacion
+[33m3165180[m Merge branch 'feature/84755_MS' into feature/84821_MS actualizacion codigo validacion de certificados
+[33m4380469[m Merge branch 'feature/83488_MS' into feature/84755_MS
+[33m18322dc[m Merged PR 40044: a
+[33maa6ee61[m validacion afiliacion
+[33m087c7ee[m Merge branch 'develop' into feature/84821_MS
+[33m5610f13[m Merge branch 'feature/83488_MS' of https://dev.azure.com/Linktic/368%20-%20GAL/_git/rdt_ms_afiliaciones_gal into feature/83488_MS
+[33m1d6a9d5[m Cambio respuesta generacion de codigo de validacion
+[33mfa8454b[m Servicio de afiliacion y certificado
+[33mbbf424d[m User Story 84821: HU_02_GAL_GENERAR_CARNET_DE_AFILIACIÓN
+[33m28a593f[m Merge remote-tracking branch 'origin/feature/83488_MS' into feature/83488_MS
+[33mb0e31c5[m Se cambia el metodo para buscar la secuencia actual, dejandolo mas preciso al filtrar la busqueda por año
+[33m5cd6382[m Se cambia el metodo para buscar la secuencia actual, dejandolo mas preciso al filtrar la busqueda por año
+[33mbbca646[m[33m ([m[1;31morigin/feature/84755_MS[m[33m)[m Merged PR 40019: Cambio respuesta generacion de codigo de validacion
+[33m5b5163a[m Cambio respuesta generacion de codigo de validacion
+[33m469a1e8[m Merged PR 39982: Servicios certificacion
+[33m1b2d309[m Merge branch 'develop' into feature/hu83627
+[33m61718f5[m Servicio de afiliacion y certificado
+[33m65ebb55[m Merged PR 39930: Corrección consulta de usuario
+[33m9157a6c[m Correccion consulta de usuario
+[33m552dc9b[m Merged PR 39862: Corrección de nombre en las clases e interfaces de consulta de certificados por usuario
+[33m160ea82[m Correccion consulta de usuario
+[33mae03695[m Correccion consulta de usuario
+[33ma16f440[m Correccion de nombre en las clases e interfaces de consulta de certificados por usuario
+[33m984c1fc[m Merged PR 39844: Corrección del nombre del objeto que contiene la información del usuario
+[33mb83db9a[m Correcion del nombre del objeto que contiene la informacion del usuario
+[33m95c97a8[m Merged PR 39817: Se corrige el mensaje de respuesta cuando se encuentra un usuario, se devuelven datos del usuario
+[33mfe6e025[m HU 84862: HU_01_GAL_PARAMETRIZACIÓN_CÓDIGO_DE_VALIDACIÓN_DE_CERTIFICADO
+[33m04e4b85[m Se corrige el mensaje de respuesta cuando se encuentra un usuario, se devuelven datos del usuario
+[33m35c2aa4[m Merged PR 39667: Corrección de los mensajes de respuesta cuando no encuentra un usuario
+[33mf736766[m Correccion de los mensajes de respuesta cuando no encuentra un usuario
+[33m5fe0746[m otp
+[33m4568937[m update
+[33m78a85e0[m Merge remote-tracking branch 'origin/develop' into develop
+[33me5e7df4[m update OTP
+[33m2c9af84[m Merged PR 39611: Pruebas unitarias para el servicio de actualización de contraseña, también se personalizaron excepciones para este servicio
+[33m79b87e4[m Pruebas unitarias para el servicio de actualizacion de contraseña, tambien se personalizaron excepsiones para este servicio
+[33m57491d2[m correciones OTP
+[33m9db2cb6[m cambio properties
+[33m4a4bcf7[m correcion errores otp
+[33m664858e[m Merged PR 39566: Commit HU 93032, y arreglo bug pre registro
+[33m227d896[m[33m ([m[1;31morigin/feature/93032_CR[m[33m)[m Commit HU 93032, y arreg
