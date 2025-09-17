@@ -11,6 +11,8 @@ public class MayoraltyDependenceDTO {
 
     private String name;
     private String nit;
+    private String responsibleDocumentNumber;
+    private String responsibleDocumentType;
     private int dv;
     private Long decentralizedConsecutive;
 

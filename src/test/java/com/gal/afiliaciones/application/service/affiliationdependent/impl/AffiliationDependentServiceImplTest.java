@@ -1,10 +1,10 @@
 package com.gal.afiliaciones.application.service.affiliationdependent.impl;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,7 +47,6 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationD
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-
 
 @ExtendWith(MockitoExtension.class)
 class AffiliationDependentServiceImplTest {
@@ -118,6 +117,7 @@ class AffiliationDependentServiceImplTest {
         affiliationDependentDTO.setIdBondingType(1L);
         affiliationDependentDTO.setIdentificationTypeEmployer("CC");
         affiliationDependentDTO.setIdentificationNumberEmployer("123456789");
+        affiliationDependentDTO.setIdAffiliateEmployer(123L);
         affiliationDependentDTO.setCoverageDate(LocalDate.now());
         affiliationDependentDTO.setFromPila(false);
         
@@ -222,21 +222,26 @@ class AffiliationDependentServiceImplTest {
         // Arrange
         when(properties.getMinimumAge()).thenReturn(18);
         when(properties.getMaximumAge()).thenReturn(65);
-        
+
+        Affiliate affiliateEmployer = new Affiliate();
+        affiliateEmployer.setIdAffiliate(123L);
+        affiliateEmployer.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
+        affiliateEmployer.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
         List<Affiliate> activeAffiliates = new ArrayList<>();
         Affiliate activeAffiliate = new Affiliate();
         activeAffiliate.setDocumentType(affiliationDependentDTO.getWorker().getIdentificationDocumentType());
         activeAffiliate.setDocumentNumber(affiliationDependentDTO.getWorker().getIdentificationDocumentNumber());
         activeAffiliate.setAffiliationCancelled(false);
         activeAffiliates.add(activeAffiliate);
-        
-        when(affiliateRepository.findAll(any(Specification.class))).thenReturn(activeAffiliates);
+
+        when(affiliateRepository.findDependentsByEmployer(affiliationDependentDTO.getIdAffiliateEmployer())).thenReturn(activeAffiliates);
         
         // Act & Assert
         assertThrows(AffiliationAlreadyExistsError.class, () -> 
             affiliationDependentService.createAffiliation(affiliationDependentDTO));
         
-        verify(affiliateRepository).findAll(any(Specification.class));
+        verify(affiliateRepository).findDependentsByEmployer(anyLong());
     }
 
     @Test

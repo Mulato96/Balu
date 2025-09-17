@@ -175,20 +175,32 @@ public class SendEmailImpl implements SendEmails {
 
         List<MultipartFile> attachments = new ArrayList<>();
 
-        // Generar certificado afiliacion
-        FindAffiliateReqDTO requestCertificate = new FindAffiliateReqDTO();
-        requestCertificate.setIdAffiliate(idAffiliate.intValue());
-        requestCertificate.setDocumentType(affiliation.getIdentificationDocumentType());
-        requestCertificate.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
-        requestCertificate.setAffiliationType(affiliation.getTypeAffiliation());
-        String base64certificate = certificateService.createAndGenerateCertificate(requestCertificate);
-        MultipartFile multipartFileCertificate = convertStringToMultipartfile(base64certificate, CERTIFICATE_LABEL+affiliation.getIdentificationDocumentNumber()+".pdf");
-        attachments.add(multipartFileCertificate);
+        try {
+            // Generar certificado afiliacion
+            FindAffiliateReqDTO requestCertificate = new FindAffiliateReqDTO();
+            requestCertificate.setIdAffiliate(idAffiliate.intValue());
+            requestCertificate.setDocumentType(affiliation.getIdentificationDocumentType());
+            requestCertificate.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
+            requestCertificate.setAffiliationType(affiliation.getTypeAffiliation());
+            String base64certificate = certificateService.createAndGenerateCertificate(requestCertificate);
+            MultipartFile multipartFileCertificate = convertStringToMultipartfile(base64certificate, CERTIFICATE_LABEL + affiliation.getIdentificationDocumentNumber() + ".pdf");
+            if (multipartFileCertificate != null) {
+                attachments.add(multipartFileCertificate);
+            }
+        }catch(Exception ex){
+            log.error("Generate certificate error");
+        }
 
-        // Generar formulario
-        String base64Form = generateFormAffiliation(idAffiliate, affiliation, affiliationType, affiliationSubtype);
-        MultipartFile multipartFileForm = convertStringToMultipartfile(base64Form, "Formulario_afiliacion_"+affiliation.getIdentificationDocumentNumber()+".pdf");
-        attachments.add(multipartFileForm);
+        try{
+            // Generar formulario
+            String base64Form = generateFormAffiliation(idAffiliate, affiliation, affiliationType, affiliationSubtype);
+            MultipartFile multipartFileForm = convertStringToMultipartfile(base64Form, "Formulario_afiliacion_" + affiliation.getIdentificationDocumentNumber() + ".pdf");
+            if (multipartFileForm != null) {
+                attachments.add(multipartFileForm);
+            }
+        }catch(Exception ex){
+            log.error("Generate form error");
+        }
 
         sendEmailWithAttachment(data, Constant.TEMPLANTE_EMAIL_WELCOME, affiliation.getEmail(), attachments);
     }
@@ -298,7 +310,9 @@ public class SendEmailImpl implements SendEmails {
             MultipartFile multipartFileCertificate = convertStringToMultipartfile(
                     base64certificate, CERTIFICATE_LABEL + templateSendEmailsDTO.getIdentification() + ".pdf"
             );
-            attachments.add(multipartFileCertificate);
+            if (multipartFileCertificate != null) {
+                attachments.add(multipartFileCertificate);
+            }
 
             // Generar Formulario
             
@@ -306,7 +320,9 @@ public class SendEmailImpl implements SendEmails {
             MultipartFile multipartFileForm = convertStringToMultipartfile(
                     base64Form, "FA-" + templateSendEmailsDTO.getIdentification() + ".pdf"
             );
-            attachments.add(multipartFileForm);
+            if (multipartFileForm != null) {
+                attachments.add(multipartFileForm);
+            }
 
             sendEmailWithAttachment(data, Constant.TEMPLANTE_EMAIL_WELCOME, templateSendEmailsDTO.getEmail(), attachments);
 
@@ -470,8 +486,27 @@ public class SendEmailImpl implements SendEmails {
     }
 
     private MultipartFile convertStringToMultipartfile(String base64String, String fileName){
-        // Decodificar el string base64 a un arreglo de bytes
-        return new Base64ToMultipartFile(base64String,fileName);
+        try {
+            // Validar que la cadena no sea null o vacía
+            if (base64String == null || base64String.trim().isEmpty()) {
+                log.warn("Base64 string is null or empty for file: {}. Skipping file conversion.", fileName);
+                return null; // Retornar null en lugar de lanzar excepción
+            }
+            
+            // Log para depuración (solo los primeros 50 caracteres para evitar logs muy largos)
+            String preview = base64String.length() > 50 ? base64String.substring(0, 50) + "..." : base64String;
+            log.debug("Converting Base64 to MultipartFile for file: {}, preview: {}", fileName, preview);
+            
+            // Decodificar el string base64 a un arreglo de bytes
+            return new Base64ToMultipartFile(base64String, fileName);
+            
+        } catch (IllegalArgumentException e) {
+            log.error("Error converting Base64 to MultipartFile for file {}: {}", fileName, e.getMessage());
+            throw new RuntimeException("Failed to convert Base64 string to file: " + fileName, e);
+        } catch (Exception e) {
+            log.error("Unexpected error converting Base64 to MultipartFile for file {}: {}", fileName, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error processing file: " + fileName, e);
+        }
     }
 
     private ArlInformation getArlInformation(){
@@ -533,8 +568,13 @@ public class SendEmailImpl implements SendEmails {
 
         String nodeId = findNodeIdSignature(affiliation.getIdentificationDocumentNumber());
         String signatureBase64 = "";
-        if(nodeId != null)
-            signatureBase64 = webClient.getFileBase64(nodeId).block();
+        if(nodeId != null) {
+            String retrievedSignature = webClient.getFileBase64(nodeId).block();
+            // Solo asignar la firma si no es null y no está vacía
+            if(retrievedSignature != null && !retrievedSignature.trim().isEmpty()) {
+                signatureBase64 = retrievedSignature;
+            }
+        }
         responseForm.setSignatureIndependent(signatureBase64);
 
         String monthStr = "";
@@ -861,7 +901,9 @@ public class SendEmailImpl implements SendEmails {
         FindAffiliateReqDTO requestCertificate = generateRequestCertificateDependent(affiliation, idAffiliate, idBondingType);
         String base64certificate = certificateService.createAndGenerateCertificate(requestCertificate);
         MultipartFile multipartFileCertificate = convertStringToMultipartfile(base64certificate, CERTIFICATE_LABEL+affiliation.getIdentificationDocumentNumber()+".pdf");
-        attachments.add(multipartFileCertificate);
+        if (multipartFileCertificate != null) {
+            attachments.add(multipartFileCertificate);
+        }
 
         sendEmailWithAttachment(data, Constant.TEMPLANTE_EMAIL_WELCOME, dataEmployerDTO.getEmailEmployer(), attachments);
     }
@@ -1137,6 +1179,21 @@ public class SendEmailImpl implements SendEmails {
     @Override
     public void emailNotRetirementPILA(Map<String, Object> data, String email) {
         sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_RETIREMENT_NOT_APPLY,email);
+    }
+
+    @Override
+    public void emailCertificateMassive(LocalDateTime dateRequest, String email) {
+        log.info("Start method emailCertificateMassive");
+        log.info("send email certificate massive user {}", email);
+        ArlInformation arlInformation =  getArlInformation();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd 'a las' HH 'horas con' mm 'minutos'");
+        String date = dateRequest.format(formatter);
+        String affair = "Generación de Certificados Masivos <<" + arlInformation.getName() + ">>";
+        Map<String, Object> data = new HashMap<>();
+        data.put("date", date);
+        data.put(Constant.EMAIL_SUBJECT_NAME, affair);
+        sendEmail(data, Constant.TEMPLATE_CERTIFICATE_MASSIVE, email);
+        log.info("End method emailCertificateMassive");
     }
 
 }

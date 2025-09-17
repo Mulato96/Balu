@@ -14,5 +14,6 @@ UpdateEmployerService {
     UpdateLegalRepresentativeDataDTO searchLegalRepresentativeData(String documentType, String documentNumber,
                                                                    String affiliationSubType);
     Boolean updateLegalRepresentativeData(RequestUpdateLegalRepresentativeDTO dto);
+    UpdateEmployerDataBasicDTO searchEmployerDataBasicById(Long idAffiliate);
 
 }

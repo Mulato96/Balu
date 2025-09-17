@@ -114,9 +114,6 @@ public class CollectProperties {
     @Value("${kong.balance.transversal.municipalitiesByName-url}")
     private String municipalitiesByNameUrl;
 
-    @Value("${kong.balance.transversal.search.nationalregistry}")
-    private String searchNationalRegistryUrl;
-
     @Value("${folderId.documents.plantillas.masivos.dependientes}")
     private String idTemplateDependent;
 

@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.domain.model.EconomicActivity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,17 +68,11 @@ class RetirementReasonServiceImplTest {
     @Mock
     private AffiliateMercantileRepository affiliateMercantileRepository;
     @Mock
-    private IEconomicActivityRepository economicActivityRepository;
-    @Mock
     private AlfrescoService alfrescoService;
     @Mock
     private CollectProperties properties;
     @Mock
     private IAffiliationEmployerDomesticServiceIndependentRepository affiliationDetailRepository;
-    @Mock
-    private WorkCenterService workCenterService;
-    @Mock
-    private IEconomicActivityService economicActivityService;
     @Mock
     private FiledService filedService;
     @Mock
@@ -336,27 +331,22 @@ class RetirementReasonServiceImplTest {
     @Test
     void findEconomicActivitiesDomestic_Success() {
         // Arrange
-        Affiliation affiliation = new Affiliation();
+        EconomicActivity ae1 = new EconomicActivity();
+        ae1.setEconomicActivityCode("101");
+        ae1.setDescription("Activity 1");
+
+        EconomicActivity ae2 = new EconomicActivity();
+        ae2.setEconomicActivityCode("102");
+        ae2.setDescription("Activity 2");
+
         AffiliateActivityEconomic activity1 = new AffiliateActivityEconomic();
-        activity1.setIdWorkCenter(1L);
+        activity1.setActivityEconomic(ae1);
+
         AffiliateActivityEconomic activity2 = new AffiliateActivityEconomic();
-        activity2.setIdWorkCenter(2L);
+        activity2.setActivityEconomic(ae2);
+
+        Affiliation affiliation = new Affiliation();
         affiliation.setEconomicActivity(Arrays.asList(activity1, activity2));
-
-        WorkCenter workCenter1 = new WorkCenter();
-        workCenter1.setEconomicActivityCode("101");
-        WorkCenter workCenter2 = new WorkCenter();
-        workCenter2.setEconomicActivityCode("102");
-
-        EconomicActivityDTO economicActivityDTO1 = new EconomicActivityDTO();
-        economicActivityDTO1.setDescription("Activity 1");
-        EconomicActivityDTO economicActivityDTO2 = new EconomicActivityDTO();
-        economicActivityDTO2.setDescription("Activity 2");
-
-        when(workCenterService.getWorkCenterById(1L)).thenReturn(workCenter1);
-        when(workCenterService.getWorkCenterById(2L)).thenReturn(workCenter2);
-        when(economicActivityService.getEconomicActivityByCode("101")).thenReturn(economicActivityDTO1);
-        when(economicActivityService.getEconomicActivityByCode("102")).thenReturn(economicActivityDTO2);
 
         // Act
         List<com.gal.afiliaciones.infrastructure.dto.retirementreason.RegisteredAffiliationsDTO> result = retirementReasonService.findEconomicActivitiesDomestic(affiliation);
@@ -369,29 +359,20 @@ class RetirementReasonServiceImplTest {
         assertEquals("102", result.get(1).getEconomicActivityCode());
         assertEquals("Activity 2", result.get(1).getDescription());
         assertEquals(Boolean.TRUE, result.get(1).getTypeActivity());
-
-        verify(workCenterService, times(2)).getWorkCenterById(anyLong());
-        verify(economicActivityService, times(2)).getEconomicActivityByCode(anyString());
     }
 
     @Test
     void findEconomicActivitiesDomestic_WithNullWorkCenterId() {
         // Arrange
-        Affiliation affiliation = new Affiliation();
+        EconomicActivity ae1 = new EconomicActivity();
+        ae1.setEconomicActivityCode("101");
+        ae1.setDescription("Activity 1");
+
         AffiliateActivityEconomic activity1 = new AffiliateActivityEconomic();
-        activity1.setIdWorkCenter(1L);
-        AffiliateActivityEconomic activity2WithNullId = new AffiliateActivityEconomic();
-        activity2WithNullId.setIdWorkCenter(null);
-        affiliation.setEconomicActivity(Arrays.asList(activity1, activity2WithNullId));
+        activity1.setActivityEconomic(ae1);
 
-        WorkCenter workCenter1 = new WorkCenter();
-        workCenter1.setEconomicActivityCode("101");
-
-        EconomicActivityDTO economicActivityDTO1 = new EconomicActivityDTO();
-        economicActivityDTO1.setDescription("Activity 1");
-
-        when(workCenterService.getWorkCenterById(1L)).thenReturn(workCenter1);
-        when(economicActivityService.getEconomicActivityByCode("101")).thenReturn(economicActivityDTO1);
+        Affiliation affiliation = new Affiliation();
+        affiliation.setEconomicActivity(Arrays.asList(activity1));
 
         // Act
         List<com.gal.afiliaciones.infrastructure.dto.retirementreason.RegisteredAffiliationsDTO> result = retirementReasonService.findEconomicActivitiesDomestic(affiliation);
@@ -401,9 +382,6 @@ class RetirementReasonServiceImplTest {
         assertEquals("101", result.get(0).getEconomicActivityCode());
         assertEquals("Activity 1", result.get(0).getDescription());
         assertEquals(Boolean.TRUE, result.get(0).getTypeActivity());
-
-        verify(workCenterService, times(1)).getWorkCenterById(1L);
-        verify(economicActivityService, times(1)).getEconomicActivityByCode("101");
     }
 
     @Test
@@ -417,8 +395,6 @@ class RetirementReasonServiceImplTest {
 
         // Assert
         assertEquals(0, result.size());
-        verify(workCenterService, times(0)).getWorkCenterById(anyLong());
-        verify(economicActivityService, times(0)).getEconomicActivityByCode(anyString());
     }
 
     @Test

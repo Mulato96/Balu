@@ -43,4 +43,8 @@ public class UserPreRegisterDto {
     private Boolean userFromRegistry;
     private Boolean statusPreRegister;
     private String userName;
+    private Long healthPromotingEntity;
+    private Long pensionFundAdministrator;
+    private String idStatus;
+    private int errorCode;
 }

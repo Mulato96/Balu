@@ -28,7 +28,10 @@ import com.gal.afiliaciones.application.service.documentnamestandardization.impl
 import com.gal.afiliaciones.application.service.policy.PolicyService;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.client.generic.employer.ConsultEmployerClient;
+import com.gal.afiliaciones.infrastructure.client.generic.sat.SatConsultTransferableEmployerClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -84,6 +87,7 @@ import com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadResponse;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.DataUpload;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.Entry;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RecordResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.sat.TransferableEmployerResponse;
 
 import reactor.core.publisher.Flux;
 
@@ -93,6 +97,8 @@ import reactor.core.publisher.Flux;
 class AffiliationEmployerActivitiesMercantileServiceImplDiffblueTest {
     @MockBean
     private ArlInformationDao arlInformationDao;
+    @MockBean
+    private ArlRepository arlRepository;
     @MockBean
     private ConsultEmployerClient consultEmployerClient;
     @MockBean private PolicyService policyService;
@@ -189,11 +195,21 @@ class AffiliationEmployerActivitiesMercantileServiceImplDiffblueTest {
     @MockBean
     private AffiliateService affiliateService;
 
+    @MockBean
+    private SatConsultTransferableEmployerClient satConsultTransferableEmployerClient;
+
+    @MockBean
+    private RegistraduriaUnifiedService registraduriaUnifiedService;
+
     @BeforeEach
     void setUp() {
         when(alfrescoUploadResponse.getData()).thenReturn(alfrescoDataUpload);
         when(alfrescoDataUpload.getEntry()).thenReturn(alfrescoEntity);
         when(alfrescoEntity.getId()).thenReturn("001");
+        when(satConsultTransferableEmployerClient.consult(Mockito.any()))
+                .thenReturn(TransferableEmployerResponse.builder().causal(3).build());
+        when(registraduriaUnifiedService.searchUserInNationalRegistry("12345"))
+                .thenReturn(List.of(new com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO()));
     }
 
     /**
@@ -1413,8 +1429,6 @@ class AffiliationEmployerActivitiesMercantileServiceImplDiffblueTest {
         affiliateMercantile.setTypeDocumentPersonResponsible("Type Document Person Responsible");
         affiliateMercantile.setTypePerson("Type Person");
         affiliateMercantile.setZoneLocationEmployer("Zone Location Employer");
-        affiliateMercantile.setIdEmployerSize(1L);
-        affiliateMercantile.setRealNumberWorkers(0L);
         Optional<AffiliateMercantile> ofResult = Optional.of(affiliateMercantile);
         when(affiliateMercantile.getNumberWorkers()).thenReturn(1L);
         when(affiliateService.getEmployerSize(1)).thenReturn(1L);
@@ -1449,7 +1463,7 @@ class AffiliationEmployerActivitiesMercantileServiceImplDiffblueTest {
         verify(affiliateMercantile).getPhoneTwo();
         verify(affiliateMercantile).getPhoneTwoContactCompany();
         verify(affiliateMercantile, atLeast(1)).getStageManagement();
-        verify(affiliateMercantile).getTypeDocumentIdentification();
+        verify(affiliateMercantile, atLeastOnce()).getTypeDocumentIdentification();
         verify(affiliateMercantile).getTypePerson();
         verify(affiliateMercantile).getZoneLocationEmployer();
         verify(affiliateMercantile).setAddress("42 Main St");

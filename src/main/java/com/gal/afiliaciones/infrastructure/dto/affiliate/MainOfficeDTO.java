@@ -34,4 +34,5 @@ public class MainOfficeDTO {
     private String emailResponsibleHeadquarters;
 
     private Long officeManager;
+    private Long idAffiliateEmployer;
 }

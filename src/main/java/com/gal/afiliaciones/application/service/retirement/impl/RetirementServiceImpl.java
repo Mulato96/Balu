@@ -7,6 +7,7 @@ import com.gal.afiliaciones.application.service.novelty.NoveltyRuafService;
 import com.gal.afiliaciones.application.service.retirement.RetirementService;
 import com.gal.afiliaciones.config.BodyResponseConfig;
 import com.gal.afiliaciones.config.ex.Error.Type;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
 import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException;
@@ -26,8 +27,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.A
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonWorkerRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNoveltyRequest;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.DataContributorDTO;
@@ -68,13 +69,14 @@ public class RetirementServiceImpl implements RetirementService {
     private static final String AFFILIATE_NOT_FOUND = "Afiliación no encontrada.";
     private static final String WORKER_RETIRED = "El trabajador ya se encuentra retirado.";
     private static final String WORKER_INACTIVE = "El trabajador se encuentra inactivo.";
+    private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
 
     @Override
     public BodyResponseConfig<DataWorkerRetirementDTO> consultWorker(String documentType, String documentNumber,
-            Long idUser, String subType) {
+            Long idAffiliateEmployer) {
 
         BodyResponseConfig<DataWorkerRetirementDTO> response = new BodyResponseConfig<>();
-        Affiliate affiliate = validWorkedCompany(idUser, documentType, documentNumber, subType);
+        Affiliate affiliate = validWorkedCompany(idAffiliateEmployer, documentType, documentNumber);
 
         if (affiliate.getNoveltyType().equals(Constant.NOVELTY_TYPE_RETIREMENT))
             throw new WorkerRetirementException(WORKER_RETIRED);
@@ -99,11 +101,6 @@ public class RetirementServiceImpl implements RetirementService {
                     .orElseThrow(() -> new WorkerRetirementException(AFFILIATE_NOT_FOUND));
 
             BeanUtils.copyProperties(affiliationDependent, dataWorkerRetirementDTO);
-        } else if (affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_INDEPENDENT)) {
-            Affiliation affiliationIndependent = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber())
-                    .orElseThrow(() -> new WorkerRetirementException(AFFILIATE_NOT_FOUND));
-            BeanUtils.copyProperties(affiliationIndependent, dataWorkerRetirementDTO);
-            dataWorkerRetirementDTO.setCoverageDate(affiliationIndependent.getContractStartDate());
         }
 
         dataWorkerRetirementDTO
@@ -117,32 +114,33 @@ public class RetirementServiceImpl implements RetirementService {
         return response;
     }
 
-    private Affiliate validWorkedCompany(Long idUser, String documentType, String documentNumber, String subType) {
+    private Affiliate validWorkedCompany(Long idAffiliateEmployer, String documentType, String documentNumber) {
 
-        UserMain user = userMainRepository.findById(idUser)
-                .orElseThrow(() -> new WorkerRetirementException("El representante no se encuentra registrado."));
-
-        Specification<Affiliate> specAffiliate = AffiliateSpecification
-                .findByEmployerByNumberDocumentAndSubType(user.getIdentification(), subType);
-        Affiliate affiliateLegalRepresentative = affiliateRepository.findOne(specAffiliate)
-                .orElseThrow(() -> new WorkerRetirementException(AFFILIATE_NOT_FOUND));
-
-        Specification<Affiliate> spc = AffiliateSpecification
-                .findByEmployerAndWorker(affiliateLegalRepresentative.getNitCompany(), documentType, documentNumber);
-        List<Affiliate> affiliateWorkerList = affiliateRepository.findAll(spc);
+        Specification<AffiliationDependent> specDependent = AffiliationDependentSpecification
+                .findByTypeDependentAndEmployer(documentType, documentNumber, idAffiliateEmployer);
+        List<AffiliationDependent> affiliateWorkerList = affiliationDependentRepository.findAll(specDependent);
 
         if (affiliateWorkerList.isEmpty()) {
             throw new WorkerRetirementException(Constant.WORKER_UNCONNECTED);
         }
 
-        affiliateWorkerList.sort(Comparator.comparing(Affiliate::getAffiliationDate).reversed());
-        return affiliateWorkerList.get(0);
+        affiliateWorkerList.sort(Comparator.comparing(AffiliationDependent::getId).reversed());
+        AffiliationDependent affiliationDependent = affiliateWorkerList.get(0);
 
+        return affiliateRepository.findByFiledNumber(affiliationDependent.getFiledNumber())
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate worker not found"));
     }
 
     @Override
     @Transactional
     public String retirementWorker(DataWorkerRetirementDTO dto) {
+        Specification<AffiliationDependent> spcWorker = AffiliationDependentSpecification
+                .findByTypeDependentAndEmployer(dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber(), dto.getIdAffiliateEmployer());
+        List<AffiliationDependent> affiliationDependentList = affiliationDependentRepository.findAll(spcWorker);
+
+        if(affiliationDependentList.isEmpty())
+            throw new AffiliationError("El trabajador no esta vinculado al empleador");
+
         Affiliate affiliate = affiliateRepository.findByIdAffiliate(dto.getIdAffiliation())
                 .orElseThrow(() -> new WorkerRetirementException(AFFILIATE_NOT_FOUND));
 
@@ -194,11 +192,11 @@ public class RetirementServiceImpl implements RetirementService {
         Retirement newRetirement = retirementRepository.save(workerRetirement);
 
         if (isRetirementToday)
-            sendEmailRetirement(newRetirement, affiliate.getNitCompany());
+            sendEmailRetirementByPortal(newRetirement, dto.getIdAffiliateEmployer());
 
         // Actualizar cantidad de trabajadores del empleador
         if (dto.getRetirementDate().equals(LocalDate.now())) {
-            updateRealNumberWorkers(affiliate.getNitCompany());
+            updateRealNumberWorkers(dto.getIdAffiliateEmployer());
         }
 
         return newRetirement.getFiledNumber();
@@ -233,7 +231,7 @@ public class RetirementServiceImpl implements RetirementService {
         List<Affiliate> affiliateEmployerList = affiliateRepository.findAll(spcAffiliate);
 
         if (affiliateEmployerList.isEmpty())
-            throw new AffiliateNotFound("Affiliate employer not found");
+            throw new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND);
 
         Affiliate affiliate = affiliateEmployerList.get(0);
         if (affiliate.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)) {
@@ -298,6 +296,35 @@ public class RetirementServiceImpl implements RetirementService {
                         .orElseThrow(() -> new WorkerRetirementException("Empleador domestico no encontrado"));
                 email = affiliation.getEmail();
             }
+        }
+
+        sendEmails.emailWorkerRetirement(workerRetirement, email, nameEmployer);
+    }
+
+    private void sendEmailRetirementByPortal(Retirement workerRetirement, Long idAffiliateEmployer) {
+        String email = "";
+        String nameEmployer = "";
+
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(idAffiliateEmployer)
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+
+        nameEmployer = affiliateEmployer.getCompany();
+        if (affiliateEmployer.getAffiliationSubType()
+                .equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
+            AffiliateMercantile affiliateMercantile = mercantileRepository.findByFiledNumber(affiliateEmployer
+                            .getFiledNumber())
+                    .orElseThrow(() -> new WorkerRetirementException("Empleador mercantil no encontrado"));
+            email = affiliateMercantile.getEmail();
+            String legalRepresentativeName = findNameLegalRepresentative(
+                    affiliateMercantile.getTypeDocumentPersonResponsible(),
+                    affiliateMercantile.getNumberDocumentPersonResponsible());
+            if (!legalRepresentativeName.isBlank())
+                nameEmployer = legalRepresentativeName;
+        } else {
+            Affiliation affiliation = affiliationRepository.findByFiledNumber(affiliateEmployer
+                            .getFiledNumber())
+                    .orElseThrow(() -> new WorkerRetirementException("Empleador domestico no encontrado"));
+            email = affiliation.getEmail();
         }
 
         sendEmails.emailWorkerRetirement(workerRetirement, email, nameEmployer);
@@ -397,10 +424,12 @@ public class RetirementServiceImpl implements RetirementService {
 
     }
 
-    private void updateRealNumberWorkers(String nitEmployer) {
-        Specification<AffiliateMercantile> spc = AffiliateMercantileSpecification
-                .employerAffiliationComplete(nitEmployer, Constant.NI);
-        AffiliateMercantile affiliationMercantile = mercantileRepository.findOne(spc).orElse(null);
+    private void updateRealNumberWorkers(Long idAffiliateEmployer) {
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(idAffiliateEmployer)
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+
+        AffiliateMercantile affiliationMercantile = mercantileRepository
+                .findByFiledNumber(affiliateEmployer.getFiledNumber()).orElse(null);
 
         if (affiliationMercantile != null) {
             Long realNumWorkers = affiliationMercantile.getRealNumberWorkers() != null
@@ -410,11 +439,7 @@ public class RetirementServiceImpl implements RetirementService {
             affiliationMercantile.setIdEmployerSize(affiliateService.getEmployerSize(realNumWorkers.intValue()));
             mercantileRepository.save(affiliationMercantile);
         } else {
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification.findByNitEmployer(nitEmployer);
-            Affiliate affiliate = affiliateRepository.findOne(spcAffiliate)
-                    .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
-
-            Affiliation affiliation = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber())
+            Affiliation affiliation = affiliationRepository.findByFiledNumber(affiliateEmployer.getFiledNumber())
                     .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
 
             Long realNumWorkers = affiliation.getRealNumberWorkers() != null ? affiliation.getRealNumberWorkers() - 1L

@@ -16,6 +16,7 @@ public class AffiliationDependentDTO {
     private Long idAffiliation;
     private String identificationTypeEmployer;
     private String identificationNumberEmployer;
+    private Long idAffiliateEmployer;
     private Long idBondingType;
     private LocalDate coverageDate;
     private LocalDate practiceEndDate;
@@ -28,5 +29,6 @@ public class AffiliationDependentDTO {
     private Integer risk;
     @Builder.Default
     private Boolean fromPila = false;
+    private Long idWorkCenter;
 
 }

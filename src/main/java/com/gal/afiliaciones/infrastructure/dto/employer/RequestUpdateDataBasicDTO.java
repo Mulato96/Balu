@@ -13,6 +13,7 @@ public class RequestUpdateDataBasicDTO {
     private String affiliationSubType;
     private String documentTypeEmployer;
     private String documentNumberEmployer;
+    private Long idAffiliateEmployer;
     private AddressDTO addressEmployer;
     private String phone1Employer;
     private String phone2Employer;

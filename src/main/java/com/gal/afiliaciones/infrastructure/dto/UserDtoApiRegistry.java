@@ -31,4 +31,6 @@ public class UserDtoApiRegistry {
     private Integer verificationDigit;
     private LocalDate dateBirth;
     private String gender;
+    private String idStatus;
+    private int errorCode;
 }

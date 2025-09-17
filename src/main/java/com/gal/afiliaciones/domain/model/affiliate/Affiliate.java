@@ -1,5 +1,6 @@
 package com.gal.afiliaciones.domain.model.affiliate;
 
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Entity
@@ -84,5 +86,12 @@ public class Affiliate {
 
     @Column(name = "request_channel")
     private Long requestChannel;
+
+    @Column(name = "document_type_company")
+    private String documenTypeCompany;
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "filed_number", referencedColumnName = "filed_number", insertable = false, updatable = false)
+    private List<AffiliationDependent> dependents;
 
 }

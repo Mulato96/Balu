@@ -60,10 +60,10 @@ public class MainOfficeSpecification {
                 criteriaBuilder.and(criteriaBuilder.equal(root.get("main"), true), criteriaBuilder.equal(root.get(Constant.FIELD_OFFICE_MANAGER).get("id"), idUser));
     }
 
-    public static Specification<MainOffice> findByIdUserAndDepartmentAndCityAndAddress(Long idUser, AddressDTO addressDTO) {
+    public static Specification<MainOffice> findByIdUserAndDepartmentAndCityAndAddress(Long idAffiliateEmployer, AddressDTO addressDTO) {
         return (root, query, criteriaBuilder) -> {
 
-            Predicate idUserPredicate = criteriaBuilder.equal(root.get(Constant.FIELD_OFFICE_MANAGER).get("id"), idUser);
+            Predicate idUserPredicate = criteriaBuilder.equal(root.get(Constant.FIELD_ID_AFFILIATE), idAffiliateEmployer);
 
             Predicate departmentPredicate = addressDTO!=null && addressDTO.getIdDepartment() != null
                     ? criteriaBuilder.equal(root.get("idDepartment"), addressDTO.getIdDepartment())
@@ -91,9 +91,9 @@ public class MainOfficeSpecification {
         };
     }
 
-    public static Specification<MainOffice> findByIdUserAndName(Long idUser, String name) {
+    public static Specification<MainOffice> findByIdUserAndName(Long idAffiliateEmployer, String name) {
         return (root, query, criteriaBuilder) -> criteriaBuilder.and(
-                criteriaBuilder.equal(root.get(Constant.FIELD_OFFICE_MANAGER).get("id"), idUser),
+                criteriaBuilder.equal(root.get(Constant.FIELD_ID_AFFILIATE), idAffiliateEmployer),
                 criteriaBuilder.equal(root.get("mainOfficeName"), name));
 
     }
@@ -177,4 +177,9 @@ public class MainOfficeSpecification {
         return addressPredicate;
     }
 
+    public static Specification<MainOffice> findAllByIdAffiliate(Long idAffiliate){
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get(Constant.FIELD_ID_AFFILIATE), idAffiliate);
+
+    }
 }

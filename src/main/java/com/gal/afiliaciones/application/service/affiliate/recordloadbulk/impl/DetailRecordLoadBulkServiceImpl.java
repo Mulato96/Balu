@@ -26,7 +26,7 @@ public class DetailRecordLoadBulkServiceImpl implements DetailRecordLoadBulkServ
     }
 
     @Override
-    public void saveDetail(DetailRecordLoadBulk recordLoadBulk) {
-        recordLoadBulkRepository.save(recordLoadBulk);
+    public void saveDetail(List<DetailRecordLoadBulk> recordLoadBulk) {
+        recordLoadBulkRepository.saveAll(recordLoadBulk);
     }
 }

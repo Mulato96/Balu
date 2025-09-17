@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface RecordLoadBulkService {
 
     RecordLoadBulk save (RecordLoadBulk recordLoadBulk);
-    List<RecordLoadBulk> findAllByIdUser(Long idUser);
+    List<RecordLoadBulk> findAllByIdUser(Long idUser, Long idAffiliateEmployer);
     Optional<RecordLoadBulk> findById(Long id);
     ExportDocumentsDTO createDocument(Long id);
 

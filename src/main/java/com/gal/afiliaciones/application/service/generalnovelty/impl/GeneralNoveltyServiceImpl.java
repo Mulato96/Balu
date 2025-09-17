@@ -12,6 +12,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.novelty.PermanentNovel
 import com.gal.afiliaciones.config.ex.generalnovelty.PaymentsContributorsNotFoundException;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.GeneralNoveltyDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.ExportNoveltyDTO;
+import com.gal.afiliaciones.infrastructure.dto.generalNovelty.ExportWorkerNoveltyDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.NoveltyContributorResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.PageableDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.PaymentsContributorsRequestDTO;
@@ -261,5 +262,38 @@ private List<ExportNoveltyDTO> processNoveltiesForExport(List<NoveltyContributor
                     .build())
             .collect(Collectors.toList());
 }
+
+@Override
+public ExportDocumentsDTO exportNoveltiesByWorkerByIdAffiliate(Long idAffiliate, String exportType) {
+    // Obtenemos primero las novedades usando el método existente
+    List<GeneralNoveltyDTO> novelties = getGeneralNoveltiesByAffiliate(idAffiliate);
+
+    // Convertimos al DTO de exportación requerido por la grilla
+    List<ExportWorkerNoveltyDTO> noveltiesForExport = processWorkerNoveltiesForExport(novelties);
+
+    // Exportar usando el servicio de procesamiento de Excel
+    return excelProcessingServiceData.exportDataGrid(RequestExportDTO.builder()
+            .data(noveltiesForExport)
+            .format(exportType)
+            .prefixNameFile("novedades_" + idAffiliate)
+            .build());
+}
+
+private List<ExportWorkerNoveltyDTO> processWorkerNoveltiesForExport(List<GeneralNoveltyDTO> novelties) {
+    DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    return novelties.stream()
+            .map(novelty -> ExportWorkerNoveltyDTO.builder()
+                    .canalRadicacion(novelty.getRequestChannelName())
+                    .radicado(novelty.getFiledNumber())
+                    .fechaRadicacion(novelty.getAffiliationDate() != null
+                            ? novelty.getAffiliationDate().format(dateFormatter)
+                            : "")
+                    .tipoNovedad(novelty.getNoveltyType())
+                    .estado(novelty.getStatus())
+                    .observacion(novelty.getObservation())
+                    .build())
+            .collect(Collectors.toList());
+}
+
 }
 

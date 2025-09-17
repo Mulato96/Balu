@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
@@ -13,6 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,30 +89,14 @@ class RetirementServiceImplTest {
 
 
     @Test
-    void validWorkedCompany_userNotFound_throwsException() {
-        when(userMainRepository.findById(any())).thenReturn(Optional.empty());
+    void validWorkedCompany_dependentNotFound_throwsException() {
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         assertThrows(WorkerRetirementException.class, () -> {
             try {
-            Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class, String.class);
+            Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class);
             method.setAccessible(true);
-            method.invoke(retirementService, 1L, "CC", "123", "subType");
-            } catch (Exception e) {
-            throw new WorkerRetirementException(e.getMessage());
-            }
-        });
-    }
-
-    @Test
-    void validWorkedCompany_affiliateLegalRepresentativeNotFound_throwsException() {
-        when(userMainRepository.findById(any())).thenReturn(Optional.of(userMain));
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-
-        assertThrows(WorkerRetirementException.class, () -> {
-            try {
-                Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class, String.class);
-                method.setAccessible(true);
-                method.invoke(retirementService, 1L, "CC", "123", "subType");
+            method.invoke(retirementService, 1L, "CC", "123");
             } catch (Exception e) {
                 throw new WorkerRetirementException(e.getMessage());
             }
@@ -114,18 +104,28 @@ class RetirementServiceImplTest {
     }
 
     @Test
-    void validWorkedCompany_affiliateWorkerListEmpty_throwsException() {
-        when(userMainRepository.findById(any())).thenReturn(Optional.of(userMain));
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(affiliateRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
+    void validWorkedCompany_affiliateNotFound_throwsException() {
+        // Datos de entrada
+        Long idAffiliateEmployer = 1L;
+        String documentType = "CC";
+        String documentNumber = "123456";
 
-        assertThrows(WorkerRetirementException.class, () -> {
+        // Mock de AffiliationDependent existente
+        AffiliationDependent dependent = new AffiliationDependent();
+        dependent.setId(100L);
+        dependent.setFiledNumber("F123");
+
+        // Simular resultados del repositorio
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(List.of(dependent));
+        lenient().when(affiliateRepository.findByFiledNumber("F123")).thenReturn(Optional.empty());
+
+        assertThrows(AffiliateNotFound.class, () -> {
             try {
-                Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class, String.class);
+                Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class);
                 method.setAccessible(true);
-                method.invoke(retirementService, 1L, "CC", "123", "subType");
+                method.invoke(retirementService, idAffiliateEmployer, documentType, documentNumber);
             } catch (Exception e) {
-                throw new WorkerRetirementException(e.getMessage());
+                throw new AffiliateNotFound(e.getMessage());
             }
         });
     }
@@ -137,17 +137,17 @@ class RetirementServiceImplTest {
         Affiliate affiliate2 = new Affiliate();
         affiliate2.setAffiliationDate(LocalDateTime.now());
 
-        List<Affiliate> affiliateWorkerList = List.of(affiliate1, affiliate2);
+        List<AffiliationDependent> affiliationDependentList = new ArrayList<>();
+        affiliationDependentList.add(affiliationDependent);
 
-        when(userMainRepository.findById(any())).thenReturn(Optional.of(userMain));
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(affiliateRepository.findAll(any(Specification.class))).thenReturn(affiliateWorkerList);
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(affiliationDependentList);
+        when(affiliateRepository.findByFiledNumber(anyString())).thenReturn(Optional.of(affiliate));
 
         Affiliate result = null;
         try {
-            Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class, String.class);
+            Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class);
             method.setAccessible(true);
-            result = (Affiliate) method.invoke(retirementService, 1L, "CC", "123", "subType");
+            result = (Affiliate) method.invoke(retirementService, 1L, "CC", "123");
         } catch (Exception e) {
             
         }
@@ -156,10 +156,10 @@ class RetirementServiceImplTest {
     }
 
     @Test
-    void retirementWorker_affiliateNotFound_throwsException() {
-        when(affiliateRepository.findByIdAffiliate(any())).thenReturn(Optional.empty());
+    void retirementWorker_affiliationError_throwsException() {
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
-        assertThrows(WorkerRetirementException.class, () -> retirementService.retirementWorker(dataWorkerRetirementDTO));
+        assertThrows(AffiliationError.class, () -> retirementService.retirementWorker(dataWorkerRetirementDTO));
     }
 
     @Test
@@ -174,6 +174,10 @@ class RetirementServiceImplTest {
         affiliationDependent.setSecondName("");
         affiliationDependent.setSecondSurname("");
 
+        List<AffiliationDependent> affiliationDependentList = new ArrayList<>();
+        affiliationDependentList.add(affiliationDependent);
+
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(affiliationDependentList);
         when(affiliateRepository.findByIdAffiliate(1L)).thenReturn(Optional.of(affiliate));
         when(filedService.getNextFiledNumberRetirementReason()).thenReturn("FILENUMBER123");
         when(retirementRepository.findByIdAffiliate(1L)).thenReturn(Optional.empty());

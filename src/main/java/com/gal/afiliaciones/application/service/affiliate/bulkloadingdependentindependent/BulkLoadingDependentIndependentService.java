@@ -5,7 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface BulkLoadingDependentIndependentService {
 
-    ResponseServiceDTO dataFile(MultipartFile file, String type, Long idUser);
+    ResponseServiceDTO dataFile(MultipartFile file, String type, Long idUser, Long idAffiliateEmployer);
     ResponseServiceDTO dataFileWithNumber(MultipartFile file, String type, String documentNumber, String typeDocument, Long idOfficial);
     String getTemplateByBondingType(String bondingType);
     String downloadTemplateGuide();

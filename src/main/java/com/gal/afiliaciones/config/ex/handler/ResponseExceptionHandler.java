@@ -2,6 +2,8 @@ package com.gal.afiliaciones.config.ex.handler;
 
 import com.gal.afiliaciones.config.ex.*;
 import com.gal.afiliaciones.config.ex.Error;
+import com.gal.afiliaciones.config.ex.sat.SatUpstreamError;
+import com.gal.afiliaciones.config.ex.sat.SatError;
 import com.gal.afiliaciones.config.ex.addoption.ActivityMaxSizeException;
 import com.gal.afiliaciones.config.ex.affiliation.*;
 import com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco;
@@ -20,6 +22,9 @@ import com.gal.afiliaciones.config.ex.typeemployerdocumentrequested.TypeEmployer
 import com.gal.afiliaciones.config.ex.validationpreregister.*;
 import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException;
 import com.gal.afiliaciones.config.ex.workspaceofficial.WorkspaceOptionOfficialException;
+import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementNotFoundException;
+import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementValidationException;
+import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementConflictException;
 import com.gal.afiliaciones.infrastructure.dto.MessageResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -86,6 +91,43 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("docuemnts not exist from collection: {}", exception.getError().getMessage());
         return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
                 HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(value = {DisplacementNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleWorkerDisplacementNotFound(DisplacementNotFoundException exception) {
+        log.error("Worker displacement not found: {}", exception.getMessage());
+        return new ResponseEntity<>(new ErrorResponse(Error.Type.REGISTER_NOT_FOUND, exception.getMessage()), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(value = {java.lang.reflect.InvocationTargetException.class})
+    public ResponseEntity<ErrorResponse> handleInvocationTarget(java.lang.reflect.InvocationTargetException ex) {
+        Throwable cause = ex.getCause();
+        if (cause instanceof DisplacementNotFoundException dnfe) {
+            log.error("Worker displacement not found (wrapped): {}", dnfe.getMessage());
+            return new ResponseEntity<>(new ErrorResponse(Error.Type.REGISTER_NOT_FOUND, dnfe.getMessage()), HttpStatus.NOT_FOUND);
+        }
+        if (cause instanceof DisplacementConflictException dce) {
+            log.error("Worker displacement conflict (wrapped): {}", dce.getMessage());
+            return new ResponseEntity<>(new ErrorResponse(Error.Type.ERROR_AFFILIATION_ALREADY_EXISTS, dce.getMessage()), HttpStatus.CONFLICT);
+        }
+        if (cause instanceof DisplacementValidationException dve) {
+            log.error("Worker displacement validation (wrapped): {}", dve.getMessage());
+            return new ResponseEntity<>(new ErrorResponse(Error.Type.INVALID_ARGUMENT, dve.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+        log.error("InvocationTargetException: {}", ex.getMessage());
+        return new ResponseEntity<>(new ErrorResponse(Error.Type.UNKNOWN_ERROR, ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(value = {DisplacementValidationException.class})
+    public ResponseEntity<ErrorResponse> handleDisplacementValidation(DisplacementValidationException ex) {
+        log.error("Worker displacement validation: {}", ex.getMessage());
+        return new ResponseEntity<>(new ErrorResponse(Error.Type.INVALID_ARGUMENT, ex.getMessage()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(value = {DisplacementConflictException.class})
+    public ResponseEntity<ErrorResponse> handleDisplacementConflict(DisplacementConflictException ex) {
+        log.error("Worker displacement conflict: {}", ex.getMessage());
+        return new ResponseEntity<>(new ErrorResponse(Error.Type.ERROR_AFFILIATION_ALREADY_EXISTS, ex.getMessage()), HttpStatus.CONFLICT);
     }
 
     @ExceptionHandler(value = {PendingAffiliationError.class})
@@ -480,6 +522,18 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
         log.error("PasswordExpiredException: {}", exception.getError().getMessage());
         return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
                 HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(value = {SatUpstreamError.class})
+    public ResponseEntity<ErrorResponse> handlerSatUpstreamError(SatUpstreamError exception) {
+        return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
+                exception.getHttpStatus());
+    }
+
+    @ExceptionHandler(value = {SatError.class})
+    public ResponseEntity<ErrorResponse> handlerSatError(SatError exception) {
+        return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
+                exception.getHttpStatus());
     }
 
 }

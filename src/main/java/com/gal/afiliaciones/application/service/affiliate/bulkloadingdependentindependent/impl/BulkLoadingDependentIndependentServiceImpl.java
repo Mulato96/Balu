@@ -1,78 +1,5 @@
 package com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.impl;
 
-import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
-import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
-import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
-import com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.BulkLoadingDependentIndependentService;
-import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.RecordLoadBulkService;
-import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
-import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
-import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
-import com.gal.afiliaciones.application.service.filed.FiledService;
-import com.gal.afiliaciones.application.service.policy.PolicyService;
-import com.gal.afiliaciones.application.service.risk.RiskFeeService;
-import com.gal.afiliaciones.application.service.workingday.WorkingDayService;
-import com.gal.afiliaciones.config.ex.Error.Type;
-import com.gal.afiliaciones.config.ex.PolicyException;
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
-import com.gal.afiliaciones.config.ex.economicactivity.CodeCIIUShorterLength;
-import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
-import com.gal.afiliaciones.config.util.CollectProperties;
-import com.gal.afiliaciones.config.util.MessageErrorAge;
-import com.gal.afiliaciones.domain.model.Department;
-import com.gal.afiliaciones.domain.model.EconomicActivity;
-import com.gal.afiliaciones.domain.model.Municipality;
-import com.gal.afiliaciones.domain.model.Occupation;
-import com.gal.afiliaciones.domain.model.Policy;
-import com.gal.afiliaciones.domain.model.UserMain;
-import com.gal.afiliaciones.domain.model.WorkingDay;
-import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
-import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
-import com.gal.afiliaciones.domain.model.affiliate.RecordLoadBulk;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
-import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationDependentDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
-import com.gal.afiliaciones.infrastructure.dto.afpeps.FundAfpDTO;
-import com.gal.afiliaciones.infrastructure.dto.afpeps.FundEpsDTO;
-import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO;
-import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelIndependentDTO;
-import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
-import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ResponseServiceDTO;
-import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
-import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
-import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadDependent;
-import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadIndependent;
-import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
@@ -84,7 +11,63 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
+
+import com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.BulkLoadingHelp;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.MainOfficeSpecification;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.BulkLoadingDependentIndependentService;
+import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.RecordLoadBulkService;
+import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
+import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
+import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.economicactivity.CodeCIIUShorterLength;
+import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.config.util.MessageErrorAge;
+import com.gal.afiliaciones.domain.model.Department;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.Municipality;
+import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
+import com.gal.afiliaciones.domain.model.affiliate.RecordLoadBulk;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
+import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
+import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.afpeps.FundAfpDTO;
+import com.gal.afiliaciones.infrastructure.dto.afpeps.FundEpsDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelIndependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ResponseServiceDTO;
+import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
+import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
+import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadDependent;
+import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadIndependent;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
+
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -92,42 +75,35 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDependentIndependentService {
 
     private final SendEmails sendEmails;
-    private final FiledService filedService;
     private final CollectProperties properties;
-    private final RiskFeeService riskFeeService;
+    private final BulkLoadingHelp bulkLoadingHelp;
     private final MessageErrorAge messageErrorAge;
     private final AlfrescoService alfrescoService;
-    private final AffiliateService affiliateService;
     private final GenericWebClient genericWebClient;
-    private final WorkingDayService workingDayService;
-    private final MainOfficeService mainOfficeService;
+    private final MainOfficeRepository mainOfficeRepository;
     private final AffiliateRepository affiliateRepository;
-    private final OccupationRepository occupationRepository;
-    private final WorkCenterRepository workCenterRepository;
     private final DepartmentRepository departmentRepository;
     private final RecordLoadBulkService recordLoadBulkService;
     private final MunicipalityRepository municipalityRepository;
     private final AffiliationDependentRepository dependentRepository;
-    private final GenerateCardAffiliatedService cardAffiliatedService;
     private final ExcelProcessingServiceData excelProcessingServiceData;
     private final IUserPreRegisterRepository iUserPreRegisterRepository;
     private final IEconomicActivityRepository iEconomicActivityRepository;
     private final AffiliateMercantileRepository affiliateMercantileRepository;
     private final IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
-    private final PolicyRepository policyRepository;
-    private final PolicyService policyService;
 
     List<FundEpsDTO> findEpsDTOS;
     List<FundAfpDTO> findAfpDTOS;
     List<LinkedHashMap<String, Object>> findDataRisk;
     List<Municipality> allMunicipality;
     List<EconomicActivity> allActivities;
+    List<MainOffice> allMainOffice;
 
     private static final String ERROR_NOT_FIND_AFFILIATION = "No se econtro la afiliacion del empleador";
     private static final String DATE_FORMAT_STRING = "dd/MM/yyyy";
 
     @Override
-    public ResponseServiceDTO dataFile(MultipartFile file, String type, Long idUser) {
+    public ResponseServiceDTO dataFile(MultipartFile file, String type, Long idUser, Long idAffiliateEmployer) {
 
         if(!type.equals(Constant.TYPE_AFFILLATE_INDEPENDENT) && !type.equals(Constant.TYPE_AFFILLATE_DEPENDENT)) {
             throw new AffiliationError("Tipo de vinculacion erronea");
@@ -137,11 +113,9 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
             throw new AffiliationError(Constant.USER_NOT_FOUND);
         }
 
+        Affiliate affiliate = validEmployer(idAffiliateEmployer);
         if ((file != null && !file.isEmpty()) && ("application/vnd.ms-excel".equals(file.getContentType()) ||
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".equals(file.getContentType()))) {
-
-            Affiliate affiliate = findAffiliateWithNumberUser(idUser);
-
             return validGeneral(file, type, idUser, affiliate);
         }
 
@@ -249,13 +223,16 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         throw new AffiliationError(Constant.AFFILIATE_NOT_FOUND);
     }
 
-    private ResponseServiceDTO validGeneral(MultipartFile file, String type, Long idOfficial, Affiliate affiliate){
+    private ResponseServiceDTO validGeneral(MultipartFile file, String type, Long idUser, Affiliate affiliate){
 
         try {
 
+            log.info("Start method validGeneral");
+            long startTime = System.currentTimeMillis();
             findDataAfp();
             findDataEps();
             findDataRisk();
+            findMainOffice(affiliate.getIdAffiliate());
             findAllMunicipality();
             findAllActivityEconomic();
 
@@ -269,43 +246,45 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
             if(type.equals(Constant.TYPE_AFFILLATE_INDEPENDENT)){
 
-                listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadIndependent.getDescripcion(),1);
+                listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadIndependent.getDescripcion());
                 listDataExcelIndependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelIndependentDTO.class);
-                listDataExcelIndependentDTO.forEach(independent -> listErrors.addAll(validStructDataIndependent(independent, affiliation)));
+                listDataExcelIndependentDTO.forEach(independent -> listErrors.addAll(validStructDataIndependent(independent, affiliate, affiliation)));
                 listErrors.addAll(findDuplicateNumberIdentification(null, listDataExcelIndependentDTO));
                 listErrors.addAll(compareNumberDocumentsToDb(null, listDataExcelIndependentDTO));
 
                 if(listErrors.isEmpty())
-                    affiliateData(null, listDataExcelIndependentDTO, type, affiliate);
+                    bulkLoadingHelp.affiliateData(null, listDataExcelIndependentDTO, type, affiliate);
 
             }else{
 
-                listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadDependent.getDescripcion(),1);
+                listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadDependent.getDescripcion());
                 listDataExcelDependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelDependentDTO.class);
-                listDataExcelDependentDTO.forEach(dependent -> listErrors.addAll(validStructDataDependent(dependent, salaryDTO, affiliation)));
+                listDataExcelDependentDTO.forEach(dependent -> listErrors.addAll(validStructDataDependent(dependent, salaryDTO, affiliate, affiliation)));
                 listErrors.addAll(findDuplicateNumberIdentification(listDataExcelDependentDTO, null));
                 listErrors.addAll(compareNumberDocumentsToDb(listDataExcelDependentDTO, null));
 
                 if(listErrors.isEmpty())
-                    affiliateData(listDataExcelDependentDTO, null, type, affiliate);
+                    bulkLoadingHelp.affiliateData(listDataExcelDependentDTO, null, type, affiliate);
 
             }
 
             ResponseServiceDTO responseServiceDTO =  new ResponseServiceDTO();
             ExportDocumentsDTO  document = null;
 
+            boolean state = listErrors.isEmpty();
 
-            if(!listErrors.isEmpty()){
+            Long idRecordLoadBulk = bulkCargoTraceability(idUser, affiliate, type, state, file.getOriginalFilename());
+
+
+            if(!state){
+
+                excelProcessingServiceData.saveDetailRecordLoadBulk(listErrors, idRecordLoadBulk);
                 document = excelProcessingServiceData.createDocumentExcelErrors(listErrors);
                 document.setNombre(file.getOriginalFilename());
             }
 
-            boolean state = false;
-            long recordError = listErrors.stream().map(ErrorFileExcelDTO::getIdRecord).distinct().count();
-
             if(document == null) {
 
-                state = true;
                 ExportDocumentsDTO exportDocumentsDTO = new ExportDocumentsDTO();
                 exportDocumentsDTO.setNombre(file.getOriginalFilename());
                 document = exportDocumentsDTO;
@@ -313,16 +292,16 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
             }
 
+            long recordError = listErrors.stream().map(ErrorFileExcelDTO::getIdRecord).distinct().count();
+
             responseServiceDTO.setTotalRecord(String.valueOf(listDataMap.size()));
-            responseServiceDTO.setRecordError(String.valueOf(recordError));
             responseServiceDTO.setDocument(document);
+            responseServiceDTO.setRecordError(String.valueOf(recordError));
             responseServiceDTO.setRecordSuccessful(String.valueOf((listDataMap.size() - recordError)));
 
-            Long idRecordLoadBulk = bulkCargoTraceability(idOfficial, affiliate.getNitCompany(), type, state, file.getOriginalFilename());
-
-            if(!state)
-                excelProcessingServiceData.saveDetailRecordLoadBulk(listErrors, idRecordLoadBulk);
-
+            long endTime = System.currentTimeMillis();
+            log.info("End method validGeneral");
+            log.info("time duration validGeneral: {}", (endTime - startTime));
             return responseServiceDTO;
 
         }catch (AffiliationError affiliation){
@@ -333,7 +312,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-    private List<ErrorFileExcelDTO> validStructDataDependent( DataExcelDependentDTO dependent, SalaryDTO salary, Object affiliation) {
+    private List<ErrorFileExcelDTO> validStructDataDependent( DataExcelDependentDTO dependent, SalaryDTO salary, Affiliate affiliate, Object affiliation) {
         List<ErrorFileExcelDTO> listErrors =  new ArrayList<>();
         String idRecord = (String.valueOf(dependent.getIdRecord()));
 
@@ -407,7 +386,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         listErrors.add(
                 errorDependent(
                         idRecord,
-                        (isRequested(dependent.getOccupationalRiskManager()) && (validRisk(dependent.getOccupationalRiskManager(), "codeARL", "codeARL") != null)) ? null :  "O"));
+                        (isRequested(dependent.getOccupationalRiskManager()) && (validRisk(dependent.getOccupationalRiskManager(), "codeARL", "codeARL") != null || dependent.getOccupationalRiskManager().equals("0"))) ? null :  "O"));
         listErrors.add(
                 errorDependent(
                         idRecord,
@@ -444,7 +423,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         listErrors.add(
                 errorDependent(
                         idRecord,
-                        (isRequested(dependent.getIdHeadquarter()) && validCodeHeadquarter(dependent.getIdHeadquarter(), affiliation)) ? null : "X"));
+                        (isRequested(dependent.getIdHeadquarter()) && validCodeHeadquarter(dependent.getIdHeadquarter(), affiliate, affiliation)) ? null : "X"));
         listErrors.add(
                 errorDependent(
                         idRecord,
@@ -457,7 +436,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         return listErrors.stream().filter(Objects::nonNull).toList();
     }
 
-    private List<ErrorFileExcelDTO> validStructDataIndependent(DataExcelIndependentDTO independent, Object affiliation){
+    private List<ErrorFileExcelDTO> validStructDataIndependent(DataExcelIndependentDTO independent, Affiliate affiliate, Object affiliation){
 
         List<ErrorFileExcelDTO> listError =  new ArrayList<>();
         String idRecord = (String.valueOf(independent.getIdRecord()));
@@ -607,16 +586,16 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         listError.add(
                 errorIndependent(
                         idRecord,
-                        (isRequested(independent.getCodeActivityContract())) ? null : "AA"));
+                        (isRequested(independent.getCodeActivityContract()) &&  validActivityEconomicIndependent(independent.getCodeActivityContract())) ? null : "AA"));
 
         listError.add(
                 errorIndependent(
                         idRecord,
-                        (isRequested(independent.getCodeActivityEmployer()) &&  validActivityEconomicIndependent(independent.getCodeActivityEmployer())) ? null : "AB"));
+                        (isRequested(independent.getCodeActivityEmployer())) ? null : "AB"));
         listError.add(
                 errorIndependent(
                         idRecord,
-                        (isRequested(independent.getIdHeadquarter()) && validCodeHeadquarter(independent.getIdHeadquarter(), affiliation)) ? null : "AC"));
+                        (isRequested(independent.getIdHeadquarter()) && validCodeHeadquarter(independent.getIdHeadquarter(), affiliate, affiliation)) ? null : "AC"));
         listError.add(
                 errorIndependent(
                         idRecord,
@@ -689,9 +668,13 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
     }
 
     private boolean validDataUserMain(Long idUser){
+        UserMain userMain = iUserPreRegisterRepository.findById(idUser).orElse(null);
+        return userMain == null;
+    }
 
-        UserMain user = findById(idUser).orElse(null);
-        return user == null;
+    private Affiliate validEmployer(Long idAffiliateEmployer){
+        return affiliateRepository.findByIdAffiliate(idAffiliateEmployer)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate employer not found"));
     }
 
     private boolean isRequested(String data){
@@ -780,11 +763,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         return genericWebClient.getSmlmvByYear(LocalDate.now().getYear());
     }
 
-    private Optional<UserMain> findById(Long idUser){
-
-        return iUserPreRegisterRepository.findById(idUser);
-    }
-
     private Optional<UserMain> findUserByNumberAndTypeDocument(String type, String number){
 
         Specification<UserMain> spec = UserSpecifications.hasDocumentTypeAndNumber(type, number);
@@ -819,156 +797,16 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-    private void affiliateData(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent, String type, Affiliate affiliate){
-
-        try {
-
-            AtomicInteger realNumWorkers = new AtomicInteger(0);
-            UserMain user = findUserByNumberAndTypeDocument(affiliate.getDocumentType(), affiliate.getDocumentNumber()).orElseThrow( () -> new AffiliationError(Constant.USER_NOT_FOUND_IN_DATA_BASE));
-            Affiliate affiliateEmployer = affiliate(user.getIdentification());
-
-            if(type.equals(Constant.TYPE_AFFILLATE_DEPENDENT)){
-                dataDependent.forEach(data -> {
-
-                    //crea la clase AffiliationDependent y la llena con la informacion de data
-                    AffiliationDependent affiliationDependent =  convertDataAffiliationDependent(data, user);
-
-                    affiliationDependent.setBulkUploadAffiliation(true);
-                    affiliationDependent = dependentRepository.save(affiliationDependent);
-
-                    AffiliationDependentDTO dto = new AffiliationDependentDTO();
-                    DependentWorkerDTO dependentWorkerDTO =  new DependentWorkerDTO();
-
-                    dto.setIdentificationNumberEmployer(user.getIdentification());
-                    dto.setIdentificationTypeEmployer(user.getIdentificationType());
-
-                    BeanUtils.copyProperties(affiliationDependent, dto);
-                    BeanUtils.copyProperties(affiliationDependent, dependentWorkerDTO);
-                    dto.setWorker(dependentWorkerDTO);
-                    dto.setCoverageDate(affiliationDependent.getCoverageDate());
-
-                    Affiliate affiliateDependent = saveAffiliate(dto, affiliationDependent.getFiledNumber(), data.getIdBondingType(), Constant.TYPE_AFFILLATE_DEPENDENT, affiliateEmployer);
-
-                    //Asignar poliza empleador
-                    assignPolicy(affiliate.getIdAffiliate(), affiliate.getNitCompany(), affiliationDependent.getIdentificationDocumentType(),
-                            affiliationDependent.getIdentificationDocumentNumber(), Constant.ID_EMPLOYER_POLICY, affiliateEmployer.getCompany());
-
-
-                    cardAffiliatedService.createCardDependent(affiliateDependent, affiliationDependent.getFirstName(),
-                            affiliationDependent.getSecondName(), affiliationDependent.getSurname(), affiliationDependent.getSecondSurname());
-
-                    realNumWorkers.getAndIncrement();
-                });
-            }
-
-            if(type.equals(Constant.TYPE_AFFILLATE_INDEPENDENT)){
-
-                dataIndependent.forEach(data -> {
-
-                    //crea la clase AffiliationDependent y la llena con la informacion de data
-                    AffiliationDependent affiliationDependent =  convertDataAffiliationIndependent(data, user);
-
-                    affiliationDependent.setBulkUploadAffiliation(true);
-                    affiliationDependent = dependentRepository.save(affiliationDependent);
-
-                    AffiliationDependentDTO dto = new AffiliationDependentDTO();
-                    DependentWorkerDTO dependentWorkerDTO =  new DependentWorkerDTO();
-
-                    dto.setIdentificationNumberEmployer(user.getIdentification());
-                    dto.setIdentificationTypeEmployer(user.getIdentificationType());
-
-                    BeanUtils.copyProperties(affiliationDependent, dto);
-                    BeanUtils.copyProperties(affiliationDependent, dependentWorkerDTO);
-                    dto.setWorker(dependentWorkerDTO);
-                    dto.setCoverageDate(affiliationDependent.getCoverageDate());
-
-                    Affiliate affiliateIndependent  = saveAffiliate(dto, affiliationDependent.getFiledNumber(), data.getIdBondingType(), Constant.TYPE_AFFILLATE_INDEPENDENT, affiliateEmployer);
-
-                    //Asignar poliza empleador
-                    assignPolicy(affiliate.getIdAffiliate(), affiliate.getNitCompany(), affiliationDependent.getIdentificationDocumentType(),
-                            affiliationDependent.getIdentificationDocumentNumber(), Constant.ID_CONTRACTOR_POLICY, affiliate.getCompany());
-
-                    cardAffiliatedService.createCardDependent(affiliateIndependent, affiliationDependent.getFirstName(),
-                            affiliationDependent.getSecondName(), affiliationDependent.getSurname(), affiliationDependent.getSecondSurname());
-
-                    realNumWorkers.getAndIncrement();
-                });
-
-            }
-
-            //Actualizar cantidad de trabajadores del empleador
-            updateRealNumberWorkers(affiliateEmployer, realNumWorkers.get());
-
-        }catch (Exception e){
-            log.error(e.getMessage());
-            throw new IllegalStateException(e);
-        }
-
-    }
-
-    private void assignPolicy(Long idAffiliate, String nitEmployer, String identificationTypeDependent,
-                              String identificationNumberDependent, Long idPolicyType, String nameCompany){
-        Specification<Affiliate> spc = AffiliateSpecification.findByNitEmployer(nitEmployer);
-        Affiliate affiliateEmployer = affiliateRepository.findOne(spc)
-                .orElseThrow(() -> new AffiliateNotFound("Employer affiliate not found"));
-
-        List<Policy> policyList = policyRepository.findByIdAffiliate(affiliateEmployer.getIdAffiliate());
-        if(policyList.isEmpty())
-            throw new PolicyException(Type.POLICY_NOT_FOUND);
-
-        policyList.stream().filter(policy -> policy.getIdPolicyType()==idPolicyType);
-        Policy policyEmployer = policyList.get(0);
-
-        policyService.createPolicyDependent(identificationTypeDependent, identificationNumberDependent, LocalDate.now(), idAffiliate, policyEmployer.getCode(), nameCompany);
-    }
-
-    private void updateRealNumberWorkers(Affiliate affiliate, int realNumberWorkers){
-        AffiliateMercantile affiliationMercantile = affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber())
-                .orElseThrow((() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND)));
-
-        Long realNumWorkers = affiliationMercantile.getRealNumberWorkers()!=null ? affiliationMercantile.getRealNumberWorkers() + Long.valueOf(realNumberWorkers) : Long.valueOf(realNumberWorkers);
-        affiliationMercantile.setRealNumberWorkers(realNumWorkers);
-        affiliationMercantile.setIdEmployerSize(affiliateService.getEmployerSize(realNumberWorkers));
-        affiliateMercantileRepository.save(affiliationMercantile);
-    }
-
-    private Affiliate saveAffiliate(AffiliationDependentDTO dto, String filedNumber, String subType, String type, Affiliate affiliatesEmployer){
-
-        Affiliate newAffiliate = new Affiliate();
-
-        if(dto.getPracticeEndDate() != null){
-            newAffiliate.setRetirementDate(dto.getPracticeEndDate());
-        }
-
-        newAffiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
-        newAffiliate.setDocumentType(dto.getWorker().getIdentificationDocumentType());
-        newAffiliate.setCompany(affiliatesEmployer.getCompany());
-        newAffiliate.setNitCompany(affiliatesEmployer.getNitCompany());
-        newAffiliate.setDocumentNumber(dto.getWorker().getIdentificationDocumentNumber());
-        newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        newAffiliate.setAffiliationDate(LocalDateTime.now());
-        newAffiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_ACTIVE);
-        newAffiliate.setAffiliationCancelled(false);
-        newAffiliate.setStatusDocument(false);
-        newAffiliate.setFiledNumber(filedNumber);
-        newAffiliate.setCoverageStartDate(dto.getCoverageDate());
-        newAffiliate.setRisk(String.valueOf(dto.getRisk()));
-        newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        newAffiliate.setAffiliationSubType(findSubType(subType,type));
-        newAffiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
-
-        return affiliateService.createAffiliate(newAffiliate);
-    }
-
-    private Long bulkCargoTraceability(Long idUserLoad, String nit, String typeAffiliation, boolean state, String fileName){
+    private Long bulkCargoTraceability(Long idUser, Affiliate affiliateEmployer, String typeAffiliation, boolean state, String fileName){
 
         RecordLoadBulk recordLoadBulk =  new RecordLoadBulk();
         recordLoadBulk.setDateLoad(LocalDateTime.now());
-        recordLoadBulk.setIdUserLoad(idUserLoad);
-        recordLoadBulk.setNit(nit);
+        recordLoadBulk.setIdUserLoad(idUser);
+        recordLoadBulk.setNit(affiliateEmployer.getNitCompany());
         recordLoadBulk.setTypeAffiliation(typeAffiliation);
         recordLoadBulk.setState(state);
         recordLoadBulk.setFileName(fileName);
+        recordLoadBulk.setIdAffiliateEmployer(affiliateEmployer.getIdAffiliate());
         return recordLoadBulkService.save(recordLoadBulk).getId();
 
     }
@@ -1039,103 +877,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         }catch (Exception e){
             return null;
         }
-    }
-
-    private AffiliationDependent convertDataAffiliationDependent( DataExcelDependentDTO data, UserMain user){
-
-        EconomicActivityDTO economicActivityDTO = findActivityEconomic(data.getEconomicActivityCode());
-        Integer codeEconomic = null;
-        MainOffice mainOffice = mainOfficeService.getMainOfficeByCode(data.getIdHeadquarter());
-
-        if(economicActivityDTO != null)
-            codeEconomic = Integer.parseInt(economicActivityDTO.getClassRisk());
-
-        AffiliationDependent affiliationDependent = new AffiliationDependent();
-
-        BeanUtils.copyProperties(data, affiliationDependent);
-
-        LocalDate dateCoverageDate = converterDate(data.getCoverageDate());
-
-        affiliationDependent.setIdBondingType(Long.valueOf(data.getIdBondingType()));
-        affiliationDependent.setCoverageDate(dateCoverageDate);
-        affiliationDependent.setDateOfBirth(converterDate(data.getDateOfBirth()));
-        affiliationDependent.setIdDepartment(Long.valueOf(data.getIdDepartment()));
-        affiliationDependent.setIdCity(findMunicipalityById(data.getIdCity()).orElseThrow().getIdMunicipality());
-        affiliationDependent.setIdOccupation(findIdOccupation(data.getIdOccupation()));
-        affiliationDependent.setIdWorkModality(Long.valueOf(data.getIdWorkModality()));
-        affiliationDependent.setSalary(new BigDecimal(data.getSalary()));
-        affiliationDependent.setEndDate(converterDate(data.getEndDate()));
-        affiliationDependent.setRisk(codeEconomic);
-        affiliationDependent.setIdHeadquarter(mainOffice.getId());
-        affiliationDependent.setIdentificationDocumentTypeSignatory(user.getIdentificationType());
-        affiliationDependent.setIdentificationDocumentNumberSignatory(user.getIdentification());
-        affiliationDependent.setFirstNameSignatory(user.getFirstName());
-        affiliationDependent.setSecondNameSignatory(user.getSecondName());
-        affiliationDependent.setSurnameSignatory(user.getSurname());
-        affiliationDependent.setSecondSurnameSignatory(user.getSecondSurname());
-        affiliationDependent.setAge(calculateAge(formatDate(data.getDateOfBirth())));
-        affiliationDependent.setNationality(data.getNationality()!=null ? Long.parseLong(data.getNationality()) : null);
-        affiliationDependent.setOccupationalRiskManager(Constant.CODE_ARL);
-        affiliationDependent.setPriceRisk(riskFeeService.getFeeByRisk(String.valueOf(affiliationDependent.getRisk())).multiply(new BigDecimal(100)));
-        affiliationDependent.setContractIbcValue(affiliationDependent.getSalary());
-        affiliationDependent.setHealthPromotingEntity(Long.parseLong(data.getHealthPromotingEntity()));
-        affiliationDependent.setPensionFundAdministrator(Long.parseLong(data.getPensionFundAdministrator()));
-
-
-        //Generar radicado
-        String filedNumber = filedService.getNextFiledNumberAffiliation();
-        affiliationDependent.setFiledNumber(filedNumber);
-
-        return affiliationDependent;
-    }
-
-    private AffiliationDependent convertDataAffiliationIndependent( DataExcelIndependentDTO data, UserMain user){
-
-        AffiliationDependent affiliationDependent = new AffiliationDependent();
-
-        MainOffice mainOffice = mainOfficeService.getMainOfficeByCode(data.getIdHeadquarter());
-
-        BeanUtils.copyProperties(data, affiliationDependent);
-
-        LocalDate dateCoverageDate = converterDate(data.getCoverageDate());
-
-        affiliationDependent.setIdBondingType(Long.valueOf(data.getIdBondingType()));
-        affiliationDependent.setCoverageDate(dateCoverageDate);
-        affiliationDependent.setDateOfBirth(converterDate(data.getDateOfBirth()));
-        affiliationDependent.setIdDepartment(Long.valueOf(data.getIdDepartment()));
-        affiliationDependent.setIdCity(findMunicipalityById(data.getIdCity()).orElseThrow().getIdMunicipality());
-        affiliationDependent.setIdOccupation(findIdOccupation(data.getIdOccupation()));
-        affiliationDependent.setTransportSupply(Boolean.valueOf(data.getTransportSupply()));
-        affiliationDependent.setStartDate(converterDate(data.getStartDate()));
-        affiliationDependent.setContractTotalValue(new BigDecimal(data.getContractTotalValue()));
-        affiliationDependent.setEndDate(converterDate(data.getEndDate()));
-        affiliationDependent.setSalary(calculateSalaryMouth(data.getContractTotalValue(), data.getEndDate(), data.getStartDate()));
-        affiliationDependent.setRisk(calculateRisk(data.getCodeActivityEmployer(), data.getCodeActivityContract()));
-        affiliationDependent.setEconomicActivityCode(data.getCodeActivityEmployer());
-        affiliationDependent.setIdHeadquarter(mainOffice.getId());
-        affiliationDependent.setJourneyEstablished(findNameWorkingDayByCode(Long.valueOf(data.getJourneyEstablished())));
-        affiliationDependent.setIdentificationDocumentTypeSignatory(user.getIdentificationType());
-        affiliationDependent.setIdentificationDocumentNumberSignatory(user.getIdentification());
-        affiliationDependent.setFirstNameSignatory(user.getFirstName());
-        affiliationDependent.setSecondNameSignatory(user.getSecondName());
-        affiliationDependent.setSurnameSignatory(user.getSurname());
-        affiliationDependent.setSecondSurnameSignatory(user.getSecondSurname());
-        affiliationDependent.setAge(calculateAge(formatDate(data.getDateOfBirth())));
-        affiliationDependent.setNationality(data.getNationality()!=null ? Long.parseLong(data.getNationality()) : null);
-        affiliationDependent.setOccupationalRiskManager(Constant.CODE_ARL);
-        affiliationDependent.setPriceRisk(riskFeeService.getFeeByRisk(String.valueOf(affiliationDependent.getRisk())).multiply(new BigDecimal(100)));
-        affiliationDependent.setHealthPromotingEntity(Long.parseLong(data.getHealthPromotingEntity()));
-        affiliationDependent.setPensionFundAdministrator(Long.parseLong(data.getPensionFundAdministrator()));
-
-        if(affiliationDependent.getSalary() != null && affiliationDependent.getSalary().compareTo(BigDecimal.ONE) > 0){
-            affiliationDependent.setContractIbcValue((affiliationDependent.getSalary().multiply(Constant.PERCENTAGE_40)));
-        }
-
-        //Generar radicado
-        String filedNumber = filedService.getNextFiledNumberAffiliation();
-        affiliationDependent.setFiledNumber(filedNumber);
-
-        return affiliationDependent;
     }
 
     private boolean validActivityEconomicDependent(String codeActivity, Object affiliation){
@@ -1242,35 +983,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-    private int calculateRisk(String codeOne, String codeTwo){
-
-        int riskOne = -1;
-        int riskTwo = -1;
-
-        if(codeOne != null){
-
-            EconomicActivityDTO economicActivityDTO = findActivityEconomic(codeOne);
-            if(economicActivityDTO != null)
-                riskOne = Integer.parseInt(economicActivityDTO.getClassRisk());
-        }
-
-        if(codeTwo != null){
-
-            EconomicActivityDTO economicActivityDTO = findActivityEconomic(codeOne);
-            if(economicActivityDTO != null)
-                riskTwo = Integer.parseInt(economicActivityDTO.getClassRisk());
-        }
-
-        if(riskOne == -1)
-            return riskTwo;
-
-
-        if(riskTwo == -1)
-            return riskOne;
-
-        return Math.max(riskOne, riskTwo);
-    }
-
     private boolean validDepartment(String code){
 
         try{
@@ -1290,21 +1002,26 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         }
     }
 
-    private boolean validCodeHeadquarter(String code, Object affiliation){
+    private boolean validCodeHeadquarter(String code, Affiliate affiliate, Object affiliation){
 
         try {
 
-            MainOffice mainOffice = mainOfficeService.getMainOfficeByCode(code);
+            MainOffice mainOffice = allMainOffice.stream()
+                    .filter(main -> main.getCode().equals(code))
+                    .findFirst()
+                    .orElse(null);
+
+            if(mainOffice == null)
+                return false;
 
             if(affiliation == null)
                 return false;
 
             if(affiliation instanceof AffiliateMercantile affiliateMercantile)
-                return (Objects.equals(affiliateMercantile.getIdMainHeadquarter(), mainOffice.getId()));
+                return (Objects.equals(affiliateMercantile.getIdMainHeadquarter(), mainOffice.getId())) || (Objects.equals(affiliate.getIdAffiliate(), mainOffice.getIdAffiliate()));
 
             if(affiliation instanceof Affiliation affiliationDomestic)
                 return Objects.equals(affiliationDomestic.getIdMainHeadquarter(),  mainOffice.getId());
-
 
             return false;
 
@@ -1319,76 +1036,12 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     private Optional<Municipality> findMunicipalityById(String id){
         return allMunicipality.stream()
-                .filter(m -> m.getDivipolaCode().equals(id))
+                .filter(m -> Integer.valueOf(m.getDivipolaCode()).equals(Integer.valueOf(id)))
                 .findFirst();
     }
 
     private void findAllMunicipality(){
         this.allMunicipality = municipalityRepository.findAll();
-    }
-
-    private Integer calculateAge(LocalDate date){
-
-        return Integer.parseInt(String.valueOf(ChronoUnit.YEARS.between(date, LocalDate.now())));
-    }
-
-    private String findNameWorkingDayByCode(Long code){
-
-        WorkingDay workingDay = workingDayService.findByCode(code);
-
-        if(workingDay != null)
-            return workingDay.getNameWorking();
-
-        return null;
-    }
-
-    private BigDecimal calculateSalaryMouth(String salary, String dateEndContract, String dateStartContract){
-
-        try{
-
-            LocalDate dateEnd = formatDate(dateEndContract);
-            LocalDate dateStart = formatDate(dateStartContract);
-            BigDecimal number = new BigDecimal(salary);
-
-            if(dateEnd != null && dateStart != null){
-                Period period = Period.between(dateStart, dateEnd);
-
-                if(period.getMonths() >= 1)
-                    return number.divide(new BigDecimal(period.getMonths()), RoundingMode.HALF_UP);
-
-                return null;
-            }
-
-            return null;
-
-        }catch (Exception e){
-            return null;
-        }
-
-    }
-
-    private Affiliate findAffiliateWithNumberUser(Long idUser){
-
-        UserMain user = findById(idUser).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND));
-        Specification<Affiliate> specAffiliation = AffiliateSpecification.findByEmployer(user.getIdentification());
-        return  affiliateRepository.findOne(specAffiliation).orElseThrow(() -> new AffiliationError(ERROR_NOT_FIND_AFFILIATION));
-
-    }
-
-    private String findSubType(String number, String type){
-
-        if(type.equals(Constant.TYPE_AFFILLATE_DEPENDENT)){
-            return switch (number){
-                case "1" -> Constant.BONDING_TYPE_DEPENDENT;
-                case "2" -> Constant.BONDING_TYPE_STUDENT;
-                case "3" -> Constant.BONDING_TYPE_APPRENTICE;
-                case "4" -> Constant.BONDING_TYPE_INDEPENDENT;
-                default -> "";
-            };
-        }
-
-        return Constant.BONDING_TYPE_INDEPENDENT;
-
     }
 
     private void sendEmail(Affiliate affiliate, MultipartFile file){
@@ -1408,7 +1061,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-
     private boolean validAge(String dateAge){
 
         try {
@@ -1427,19 +1079,8 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         return messageErrorAge.messageError(type, number);
     }
 
-    private Affiliate affiliate(String identificationNumber){
-
-        return  affiliateRepository.findAll(AffiliateSpecification.findByEmployer(identificationNumber))
-                .stream()
-                .filter(a -> a.getAffiliationType().contains(Constant.TYPE_AFFILLATE_EMPLOYER))
-                .findFirst()
-                .orElseThrow(() -> new AffiliationError("Se encontro informacion del empleador"));
-    }
-
-    private Long findIdOccupation(String code){
-        Optional<Occupation> optionalOccupation =  occupationRepository.findByCodeOccupation(code);
-        return optionalOccupation.map(Occupation::getIdOccupation).orElse(null);
-
+    private void findMainOffice(Long idAffiliateEmployer){
+        this.allMainOffice = mainOfficeRepository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliateEmployer));
     }
 
 }

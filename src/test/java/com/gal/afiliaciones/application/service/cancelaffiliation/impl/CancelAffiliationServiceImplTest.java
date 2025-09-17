@@ -7,14 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -28,14 +31,11 @@ import org.springframework.data.jpa.domain.Specification;
 import com.gal.afiliaciones.application.service.generalnovelty.impl.GeneralNoveltyServiceImpl;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.cancelaffiliation.CancelAffiliationNotFoundException;
-import com.gal.afiliaciones.config.ex.cancelaffiliation.DateCancelAffiliationException;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dto.cancelaffiliate.CancelAffiliateDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
@@ -47,11 +47,7 @@ class CancelAffiliationServiceImplTest {
     @Mock
     private IUserPreRegisterRepository userMainRepository;
     @Mock
-    private AffiliateMercantileRepository affiliateMercantileRepository;
-    @Mock
     private AffiliationDependentRepository affiliationDependentRepository;
-    @Mock
-    private IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
     @Mock
     private GeneralNoveltyServiceImpl generalNoveltyServiceImpl;
 
@@ -69,13 +65,18 @@ class CancelAffiliationServiceImplTest {
         String documentNumber = "123";
         Long idUser = 1L;
         String subType = "SUB";
+        Long idAffiliateEmployer = 1L;
         String filedNumber = "F123";
         String nitCompany = "NIT123";
         String affiliationType = "TYPE1";
 
+        List<AffiliationDependent> affiliationDependentList = new ArrayList<>();
+
         AffiliationDependent dependent = new AffiliationDependent();
         dependent.setFiledNumber(filedNumber);
         dependent.setCoverageDate(LocalDate.now());
+
+        affiliationDependentList.add(dependent);
 
         Affiliate affiliate = new Affiliate();
         affiliate.setAffiliationCancelled(Boolean.FALSE);
@@ -83,18 +84,29 @@ class CancelAffiliationServiceImplTest {
         affiliate.setNitCompany(nitCompany);
         affiliate.setAffiliationType(affiliationType);
 
+        Affiliate affiliateEmployer = new Affiliate();
+        affiliateEmployer.setIdAffiliate(idAffiliateEmployer);
+        affiliateEmployer.setUserId(idUser);
+        affiliateEmployer.setNitCompany("123456");
+        affiliateEmployer.setCompany("NAME");
+        affiliateEmployer.setAffiliationSubType(subType);
+
         UserMain user = new UserMain();
         user.setIdentification("123");
 
-        when(affiliationDependentRepository.findOne(any(Specification.class)))
-                .thenReturn(Optional.of(dependent));
+        when(affiliateRepository.findByIdAffiliate(anyLong()))
+                .thenReturn(Optional.of(affiliateEmployer));
+        when(affiliationDependentRepository.findAll(any(Specification.class)))
+                .thenReturn(affiliationDependentList);
+        when(affiliateRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(affiliate));
         when(affiliateRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(affiliate));
         when(userMainRepository.findById(idUser)).thenReturn(Optional.of(user));
         when(affiliateRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(affiliate));
 
-        CancelAffiliateDTO dto = service.consultAffiliation(documentType, documentNumber, idUser, subType);
+        CancelAffiliateDTO dto = service.consultAffiliation(documentType, documentNumber, idAffiliateEmployer);
 
         assertNotNull(dto);
         assertEquals(affiliationType, dto.getContractType());
@@ -106,7 +118,7 @@ class CancelAffiliationServiceImplTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(CancelAffiliationNotFoundException.class,
-                () -> service.consultAffiliation("CC", "123", 1L, "SUB"));
+                () -> service.consultAffiliation("CC", "123", 1L));
     }
 
     @Test
@@ -121,7 +133,7 @@ class CancelAffiliationServiceImplTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(CancelAffiliationNotFoundException.class,
-                () -> service.consultAffiliation("CC", "123", 1L, "SUB"));
+                () -> service.consultAffiliation("CC", "123", 1L));
     }
 
     @Test
@@ -140,7 +152,7 @@ class CancelAffiliationServiceImplTest {
                 .thenReturn(Optional.of(affiliate));
 
         assertThrows(CancelAffiliationNotFoundException.class,
-                () -> service.consultAffiliation("CC", "123", 1L, "SUB"));
+                () -> service.consultAffiliation("CC", "123", 1L));
     }
 
     @Test
@@ -153,12 +165,21 @@ class CancelAffiliationServiceImplTest {
         affiliate.setAffiliationCancelled(Boolean.FALSE);
         affiliate.setAffiliationStatus("ACTIVE");
 
+        Affiliate affiliateEmployer = new Affiliate();
+        affiliateEmployer.setIdAffiliate(123L);
+        affiliateEmployer.setUserId(1L);
+        affiliateEmployer.setNitCompany("123456");
+        affiliateEmployer.setCompany("NAME");
+        affiliateEmployer.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
+        when(affiliateRepository.findByIdAffiliate(anyLong()))
+                .thenReturn(Optional.of(affiliateEmployer));
         when(affiliationDependentRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(dependent));
         when(affiliateRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(affiliate));
 
-        assertThrows(DateCancelAffiliationException.class, () -> service.consultAffiliation("CC", "123", 1L, "SUB"));
+        assertThrows(CancelAffiliationNotFoundException.class, () -> service.consultAffiliation("CC", "123", 123L));
     }
 
     @Test
@@ -185,7 +206,7 @@ class CancelAffiliationServiceImplTest {
                 .thenReturn(Optional.of(affiliate2));
         when(userMainRepository.findById(anyLong())).thenReturn(Optional.of(user));
 
-        assertThrows(DateCancelAffiliationException.class, () -> service.consultAffiliation("CC", "123", 1L, "SUB"));
+        assertThrows(CancelAffiliationNotFoundException.class, () -> service.consultAffiliation("CC", "123", 1L));
     }
 
     @Test
@@ -194,10 +215,7 @@ class CancelAffiliationServiceImplTest {
         affiliate.setAffiliationCancelled(Boolean.FALSE);
         affiliate.setAffiliationStatus("ACTIVE");
 
-        List<Affiliate> affiliates = Collections.singletonList(affiliate);
-        Page<Affiliate> page = new PageImpl<>(affiliates);
-
-        when(affiliateRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
+        when(affiliateRepository.findByFiledNumber(anyString())).thenReturn(Optional.of(affiliate));
         when(affiliateRepository.save(any(Affiliate.class))).thenReturn(affiliate);
 
         doNothing().when(generalNoveltyServiceImpl).saveGeneralNovelty(any());
@@ -212,68 +230,10 @@ class CancelAffiliationServiceImplTest {
 
     @Test
     void updateStatusCanceledAffiliate_noAffiliateFound() {
-        Page<Affiliate> page = new PageImpl<>(Collections.emptyList());
-        when(affiliateRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(page);
+        when(affiliateRepository.findByFiledNumber(anyString())).thenReturn(Optional.empty());
 
         // Should not throw
-        assertDoesNotThrow(() -> service.updateStatusCanceledAffiliate("123", "obs"));
+        assertThrows(AffiliateNotFound.class, () -> service.updateStatusCanceledAffiliate("123", "obs"));
     }
 
-    @Test
-    void validWorkedCompany_userNotFound() {
-        when(userMainRepository.findById(anyLong())).thenReturn(Optional.empty());
-
-        assertThrows(AffiliationError.class, () -> {
-            // Use reflection to call private method
-            try {
-                var method = CancelAffiliationServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class,
-                        String.class, String.class);
-                method.setAccessible(true);
-                method.invoke(service, 1L, "NIT", "SUB");
-            } catch (Exception e) {
-                throw e.getCause();
-            }
-        });
-    }
-
-    @Test
-    void validWorkedCompany_affiliateNotFound() {
-        UserMain user = new UserMain();
-        user.setIdentification("123");
-        when(userMainRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-
-        assertThrows(CancelAffiliationNotFoundException.class, () -> {
-            try {
-                var method = CancelAffiliationServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class,
-                        String.class, String.class);
-                method.setAccessible(true);
-                method.invoke(service, 1L, "NIT", "SUB");
-            } catch (Exception e) {
-                throw e.getCause();
-            }
-        });
-    }
-
-    @Test
-    void validWorkedCompany_workerUnconnected() {
-        UserMain user = new UserMain();
-        user.setIdentification("123");
-        Affiliate affiliate = new Affiliate();
-        affiliate.setNitCompany("NIT2");
-
-        when(userMainRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-
-        assertThrows(DateCancelAffiliationException.class, () -> {
-            try {
-                var method = CancelAffiliationServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class,
-                        String.class, String.class);
-                method.setAccessible(true);
-                method.invoke(service, 1L, "NIT1", "SUB");
-            } catch (Exception e) {
-                throw e.getCause();
-            }
-        });
-    }
 }

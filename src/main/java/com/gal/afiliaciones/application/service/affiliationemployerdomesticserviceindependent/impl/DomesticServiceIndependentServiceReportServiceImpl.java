@@ -1,5 +1,6 @@
 package com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.impl;
 
+import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.DomesticServiceIndependentServiceReportService;
 import com.gal.afiliaciones.application.service.filed.FiledService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
@@ -18,7 +19,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.domesticservicesaffiliation.DomesticServicesAffiliationRepositoryRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.domesticservicesaffiliation.mainoffice.MainOfficeDao;
-import com.gal.afiliaciones.infrastructure.dao.repository.domesticservicesaffiliation.workcenter.WorkCenterDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.form.ApplicationFormDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.novelty.ContributorTypeRepository;
 import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.AlfrescoResponseDTO;
@@ -40,7 +40,6 @@ public class DomesticServiceIndependentServiceReportServiceImpl implements Domes
 
     private final DomesticServicesAffiliationRepositoryRepository domesticServicesAffiliationDao;
     private final MainOfficeDao mainOfficeDao;
-    private final WorkCenterDao workCenterDao;
     private final DepartmentRepository departmentRepository;
     private final MunicipalityRepository municipalityRepository;
     private final GenericWebClient genericWebClient;
@@ -48,6 +47,7 @@ public class DomesticServiceIndependentServiceReportServiceImpl implements Domes
     private final FiledService filedService;
     private final ContributorTypeRepository contributorTypeRepository;
     private final CollectProperties properties;
+    private final WorkCenterService workCenterService;
 
     private static final String RISK_LABEL = "claseRiesgo";
 
@@ -223,9 +223,8 @@ public class DomesticServiceIndependentServiceReportServiceImpl implements Domes
 
         List<WorkCenter> listWorkCenter = affiliation.getEconomicActivity()
                 .stream()
-                .filter(work -> Objects.nonNull(work.getIdWorkCenter()))
-                .map(work -> workCenterDao.findWorkCenterById(work.getIdWorkCenter()))
-                .toList();
+                .map(work -> workCenterService.getWorkCenterByEconomicActivityAndMainOffice(work.getActivityEconomic().getEconomicActivityCode(), mainOffice.getId())
+                ).toList();
 
         workCenter.put("codigoCentroTrabajo", listWorkCenter.stream().map(WorkCenter::getCode).toList());
         workCenter.put("codigoActividadEconomica",listWorkCenter.stream().map(WorkCenter::getEconomicActivityCode).toList());
@@ -236,8 +235,6 @@ public class DomesticServiceIndependentServiceReportServiceImpl implements Domes
                             .map(AffiliateActivityEconomic::getActivityEconomic)
                             .map(EconomicActivity::getDescription)
                             .toList());
-
-
 
         workCenter.put("montoCotizacion", Arrays.asList("N/A","N/A","N/A","N/A"));
 

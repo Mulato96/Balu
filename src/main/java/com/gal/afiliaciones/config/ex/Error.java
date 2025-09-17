@@ -82,6 +82,7 @@ public class Error implements Serializable {
         MAX_ATTEMPTS,
         INVALID_CODE,
         IDENTIFICATION_TYPE_ERROR,
+        SAT_VALIDATION_ERROR,
 
         // 500
         UNKNOWN_ERROR,
@@ -108,6 +109,7 @@ public class Error implements Serializable {
         ERROR_GENERATING_INDEPENDENT_FORM,
         ACTIVE_SESSION,
         LIMIT_ATTEMPTS_EXCEEDED,
-        INDEPENDENT_RELATIONSHIP, NOVELTY_ERROR
+        INDEPENDENT_RELATIONSHIP, NOVELTY_ERROR,
+        SAT_UPSTREAM_UNAVAILABLE
     }
 }

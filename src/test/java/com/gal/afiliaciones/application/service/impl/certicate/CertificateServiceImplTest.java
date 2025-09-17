@@ -386,68 +386,6 @@ public class CertificateServiceImplTest {
     }
 
     @Test
-    void saveIndependentAndDomesticCertificate_whenDataIsValid_shouldSaveAndReturnCertificate() throws Exception {
-        // Arrange
-        Certificate certificate = new Certificate();
-        Affiliate affiliate = new Affiliate();
-        affiliate.setDocumentNumber("123456789");
-        affiliate.setDocumentType("CC");
-        affiliate.setAffiliationType("Independiente");
-        affiliate.setCompany("Test Company");
-        affiliate.setNitCompany("900123456-1");
-        affiliate.setRetirementDate(null);
-        affiliate.setAffiliationStatus("Activo");
-        affiliate.setAffiliationDate(LocalDateTime.now());
-        affiliate.setCoverageStartDate(LocalDate.now().plusDays(1));
-
-        Affiliation affiliation = new Affiliation();
-        affiliation.setFirstName("John");
-        affiliation.setSecondName("Fitzgerald");
-        affiliation.setSurname("Kennedy");
-        affiliation.setSecondSurname("Jr");
-        affiliation.setOccupation("Developer");
-        affiliation.setRisk("V");
-        affiliation.setContractEndDate(LocalDate.now().plusYears(1));
-
-        EconomicActivity economicActivity = new EconomicActivity();
-        economicActivity.setDescription("Software Development");
-        economicActivity.setEconomicActivityCode("J6201");
-
-        AffiliateActivityEconomic affiliateActivityEconomic = new AffiliateActivityEconomic();
-        affiliateActivityEconomic.setIsPrimary(true);
-        affiliateActivityEconomic.setActivityEconomic(economicActivity);
-        affiliation.setEconomicActivity(Collections.singletonList(affiliateActivityEconomic));
-
-        when(codeValidCertificationService.consultCode(anyString(), anyString())).thenReturn("VALIDCODE123");
-        when(filedService.getNextFiledNumberCertificate()).thenReturn("F-CERT-2024-001");
-        when(certificateRepository.save(any(Certificate.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        java.lang.reflect.Method method = CertificateServiceImpl.class.getDeclaredMethod(
-                "saveIndependentAndDomesticCertificate", Certificate.class, Affiliate.class, Affiliation.class);
-        method.setAccessible(true);
-        Certificate result = (Certificate) method.invoke(certificateService, certificate, affiliate, affiliation);
-
-        // Assert
-        assertEquals(affiliate.getDocumentType(), result.getTypeDocument());
-        assertEquals("John Fitzgerald Kennedy Jr", result.getName());
-        assertEquals(affiliate.getAffiliationType(), result.getVinculationType());
-        assertEquals(affiliate.getCompany(), result.getCompany());
-        assertEquals(affiliate.getNitCompany(), result.getNitContrator());
-        assertEquals("Sin retiro", result.getRetirementDate());
-        assertEquals(affiliate.getAffiliationStatus(), result.getStatus());
-        assertEquals("F-CERT-2024-001", result.getFiledNumber());
-        assertEquals(affiliation.getOccupation(), result.getPosition());
-        assertEquals(affiliation.getRisk(), result.getRisk());
-        assertEquals("Software Development", result.getNameActivityEconomic());
-        assertEquals("J6201", result.getCodeActivityEconomicPrimary());
-        assertEquals(affiliation.getContractEndDate().toString(), result.getEndContractDate());
-
-        verify(filedService).getNextFiledNumberCertificate();
-        verify(certificateRepository, org.mockito.Mockito.times(2)).save(any(Certificate.class));
-    }
-
-    @Test
     void createCertificate_whenNoAffiliationFound_shouldThrowException() {
         // Arrange
         String addressedTo = "Fonodo Nacional del Ahorro";

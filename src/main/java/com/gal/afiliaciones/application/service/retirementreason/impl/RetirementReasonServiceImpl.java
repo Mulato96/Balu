@@ -1,8 +1,6 @@
 package com.gal.afiliaciones.application.service.retirementreason.impl;
 
-import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
-import com.gal.afiliaciones.application.service.economicactivity.IEconomicActivityService;
 import com.gal.afiliaciones.application.service.filed.FiledService;
 import com.gal.afiliaciones.application.service.retirementreason.RetirementReasonService;
 import com.gal.afiliaciones.config.ex.Error.Type;
@@ -18,7 +16,6 @@ import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReason;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReasonWorker;
-import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
@@ -26,7 +23,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateR
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonWorkerDao;
@@ -45,6 +41,7 @@ import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.utils.EmailService;
 import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -56,6 +53,7 @@ import java.util.*;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class RetirementReasonServiceImpl implements RetirementReasonService {
 
     public static final String USER_NOT_FOUND = "User not found";
@@ -65,12 +63,9 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
     private final IUserPreRegisterRepository userPreRegisterRepository;
     private final AffiliateRepository affiliationRepository;
     private final AffiliateMercantileRepository affiliateMercantileRepository;
-    private final IEconomicActivityRepository economicActivityRepository;
     private final AlfrescoService alfrescoService;
     private final CollectProperties properties;
     private final IAffiliationEmployerDomesticServiceIndependentRepository affiliationDetailRepository;
-    private final WorkCenterService workCenterService;
-    private final IEconomicActivityService economicActivityService;
     private final FiledService filedService;
     private final EmailService emailService;
     private final RetirementReasonWorkerDao retirementReasonWorkerDao;
@@ -277,7 +272,19 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
     }
 
     private MultipartFile castBase64ToMultipartfile(String base64String, String name) {
-        return new Base64ToMultipartFile(base64String, name);
+        try {
+            if (base64String == null || base64String.trim().isEmpty()) {
+                log.error("Base64 string is null or empty for file: {}", name);
+                throw new IllegalArgumentException("Base64 string cannot be null or empty");
+            }
+            return new Base64ToMultipartFile(base64String, name);
+        } catch (IllegalArgumentException e) {
+            log.error("Error converting Base64 to MultipartFile for file {}: {}", name, e.getMessage());
+            throw new RuntimeException("Failed to convert Base64 string to file: " + name, e);
+        } catch (Exception e) {
+            log.error("Unexpected error converting Base64 to MultipartFile for file {}: {}", name, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error processing file: " + name, e);
+        }
     }
 
     private String createFolderAlfresco(String numberIdentification) {
@@ -353,19 +360,14 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
 
         return affiliation.getEconomicActivity()
                 .stream()
-                .map(AffiliateActivityEconomic::getIdWorkCenter)
-                .filter(Objects::nonNull)
                 .map(economic -> {
-                    WorkCenter workCenter = workCenterService.getWorkCenterById(economic);
-                    EconomicActivityDTO economicActivity = economicActivityService
-                            .getEconomicActivityByCode(workCenter.getEconomicActivityCode());
-                    economicActivity.setEconomicActivityCode(workCenter.getEconomicActivityCode());
+                    EconomicActivityDTO economicActivity = new EconomicActivityDTO();
+                    BeanUtils.copyProperties(economic.getActivityEconomic(), economicActivity);
                     RegisteredAffiliationsDTO registeredAffiliations = new RegisteredAffiliationsDTO();
                     BeanUtils.copyProperties(economicActivity, registeredAffiliations);
                     registeredAffiliations.setTypeActivity(Boolean.TRUE);
                     return registeredAffiliations;
-                })
-                .toList();
+                }).toList();
 
     }
 

@@ -24,6 +24,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -54,7 +55,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     private final DetailRecordMassiveUpdateWorkerService recordMassiveUpdateWorkerService;
 
     @Override
-    public  List<Map<String, Object>> converterExcelToMap(MultipartFile excel,List<String> listColumn, int numberFile) throws IOException {
+    public  List<Map<String, Object>> converterExcelToMap(MultipartFile excel,List<String> listColumn) throws IOException {
 
         List<Map<String, Object>> dataList = new ArrayList<>();
         InputStream is = excel.getInputStream();
@@ -62,7 +63,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
         try(Workbook workbook = new XSSFWorkbook(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
-            int counterRow = countRow(sheet, numberFile, sheet.getLastRowNum());
+            int counterRow = countRow(sheet, 1, sheet.getLastRowNum());
 
             if(counterRow <= -1)
                 throw new AffiliationError("Error al leer el documento cargado.");
@@ -225,18 +226,19 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
     }
 
+    @Async
     @Override
     public void saveDetailRecordLoadBulk(List<ErrorFileExcelDTO> dataDetail, Long idRecodLoadBulk) {
 
-        dataDetail.forEach(data -> {
+        List<DetailRecordLoadBulk> detail = dataDetail.stream()
+                .map(data -> {
+                    DetailRecordLoadBulk recordLoadBulk = new DetailRecordLoadBulk();
+                    BeanUtils.copyProperties(data, recordLoadBulk);
+                    return recordLoadBulk;
+                })
+                .toList();
 
-            DetailRecordLoadBulk recordLoadBulk = new DetailRecordLoadBulk();
-
-            BeanUtils.copyProperties(data, recordLoadBulk);
-            recordLoadBulk.setIdRecordLoadBulk(idRecodLoadBulk);
-            recordLoadBulkService.saveDetail(recordLoadBulk);
-
-        });
+        recordLoadBulkService.saveDetail(detail);
 
     }
 

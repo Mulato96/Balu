@@ -3,6 +3,7 @@ package com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeract
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.gal.afiliaciones.domain.model.EconomicActivity;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -29,17 +30,20 @@ public class AffiliateActivityEconomic {
      @JsonBackReference
      private AffiliateMercantile affiliateMercantile;
 
+     @Column(name = "id_affiliate_mercantile", insertable = false, updatable = false)
+     private Long idAffiliateMercantile;
+
      @ManyToOne
      @JoinColumn(name = "id_affiliate_domestico")
      @JsonBackReference
      private Affiliation affiliation;
 
+     @Column(name = "id_affiliate_domestico", insertable = false, updatable = false)
+     private Long idAffiliateDomestico;
+
      @ManyToOne
      @JoinColumn(name = "id_activity_economic")
      private EconomicActivity activityEconomic;
-
-     @Column(name = "id_work_center")
-     private Long idWorkCenter;
 
      @Column(name = "is_primary")
      private Boolean isPrimary;

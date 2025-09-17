@@ -13,5 +13,9 @@ public class DataBasicEmployerMigratedDTO {
     private String documentNumberEmployer;
     private Integer digitVerificationEmployer;
     private String businessNameEmployer;
+    private Long idSubEmployer;
+    private String affiliationSubtype;
+    private String filedNumber;
+    private Long idAffiliate;
 
 }

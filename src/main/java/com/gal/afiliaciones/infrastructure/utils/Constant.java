@@ -132,6 +132,8 @@ public class Constant {
     public static final String END_CONTRACT_DATE = "endContractDate";
     public static final String POSITION = "position";
     public static final String INACTIVATION_DATE = "inactivationDate";
+    public static final String CERT_PARAM_DEPENDENT_WORKERS_NUMBER = "dependedWorkersNumber";
+    public static final String CERT_PARAM_INDEPENDENT_WORKERS_NUMBER = "independentWorkerNumber";
     /*-----------------------LOGIN------------------------------*/
     public static final String PASSWORD_INCORRECT = "Por favor verifica la contraseña que ingresaste.";
     public static final String CLIENT_ID = "client_id";
@@ -330,12 +332,14 @@ public class Constant {
     public static final String BONDING_TYPE_APPRENTICE = "Aprendiz SENA";
 
     public static final String PREFIX_RETIREMENT = "RET";
+    public static final String PREFIX_WORKER_DISPLACEMENT = "SND";
     public static final String RETIRED = "Retirado";
     public static final String CONCILIATION_NOT_COLLECTED = "Cotizantes liquidados y recaudados por igual valor";
 
     /*-----------------------NOVELTY TYPE------------------------------*/
     public static final String NOVELTY_TYPE_AFFILIATION = "Afiliación";
     public static final String NOVELTY_TYPE_RETIREMENT = "Retiro";
+    public static final String NOVELTY_TYPE_WORKER_DISPLACEMENT = "Desplazamiento trabajador";
     public static final String POLICY_NOT_FOUND = "poliza no encontrada";
     public static final String EMPLOYEE = "Trabajador";
 
@@ -388,6 +392,7 @@ public class Constant {
     public static final String FIELD_OFFICE_MANAGER = "officeManager";
     public static final String FIELD_ID_DEPARTMENT = "idDepartment";
     public static final String FIELD_ID_CITY = "idCity";
+    public static final String FIELD_ID_AFFILIATE = "idAffiliate";
 
     /*-----------------------CERTIFICATE SERVICE-----------------------------*/
     public static final String ECONOMIC_ACTIVITY_NOT_FOUND = "No se encontro la actividad enconomica";
@@ -461,4 +466,8 @@ public class Constant {
     public static final String ECONOMIC_ACTIVITY_DEFAULT = "1829902";
     public static final String EPS_DEFAULT = "EPS103";
     public static final int AFP_DEFAULT = 0;
+    public static final String EMPLOYER_VOLUNTEER = "899999998";
+
+    /*------------------------Certificados masivo---------------------------*/
+    public static final String TEMPLATE_CERTIFICATE_MASSIVE = "template-emails/massive_affiliation_notification.html";
 }

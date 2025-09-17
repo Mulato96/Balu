@@ -37,4 +37,5 @@ public interface SendEmails {
     void emailApplyPILA(DataEmailApplyDTO dataEmail);
     void emailNotApplyPILA(DataEmailNotApplyDTO dataEmail);
     void emailNotRetirementPILA(Map<String , Object> data, String email);
+    void emailCertificateMassive(LocalDateTime dateRequest, String email);
 }

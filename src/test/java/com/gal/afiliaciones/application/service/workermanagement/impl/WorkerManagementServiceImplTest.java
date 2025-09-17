@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -197,14 +198,21 @@ class WorkerManagementServiceImplTest {
         EmployerCertificateRequestDTO requestDTO = new EmployerCertificateRequestDTO();
         requestDTO.setIdentificationDocumentNumberEmployer("123456");
         requestDTO.setAffiliationTypeEmployer("TYPE");
-        
-        when(affiliateRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+        requestDTO.setIdAffiliateEmployer(1L);
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(1L);
+        affiliate.setDocumenTypeCompany("NI");
+        affiliate.setNitCompany("123456");
+        affiliate.setAffiliationSubType("TYPE");
+
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
         
         // Act
         String result = workerManagementService.generateEmloyerCertificate(requestDTO);
         
         // Assert
-        assertEquals("", result);
+        assertEquals(null, result);
     }
     
     @Test
@@ -214,12 +222,15 @@ class WorkerManagementServiceImplTest {
         requestDTO.setIdentificationDocumentTypeEmployer("CC");
         requestDTO.setIdentificationDocumentNumberEmployer("123456");
         requestDTO.setAffiliationTypeEmployer("TYPE");
-        
+        requestDTO.setIdAffiliateEmployer(1L);
+
         Affiliate affiliate = new Affiliate();
         affiliate.setIdAffiliate(1L);
+        affiliate.setDocumenTypeCompany("NI");
+        affiliate.setNitCompany("123456");
+        affiliate.setAffiliationSubType("TYPE");
         
-        when(affiliateRepository.findAll(any(Specification.class)))
-            .thenReturn(Collections.singletonList(affiliate));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
         
         when(certificateService.createAndGenerateCertificate(any(FindAffiliateReqDTO.class)))
             .thenReturn("certificate-content");

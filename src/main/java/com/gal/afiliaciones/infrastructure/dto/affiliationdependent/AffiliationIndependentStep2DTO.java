@@ -13,6 +13,7 @@ public class AffiliationIndependentStep2DTO {
     private Long idAffiliation;
     private String identificationTypeEmployer;
     private String identificationNumberEmployer;
+    private Long idAffiliateEmployer;
     private ContractDataIndependentDTO contractorData;
     private SignatoryDataIndependentDTO signatoryData;
     private DataContributionVolunteerDTO dataContribution;

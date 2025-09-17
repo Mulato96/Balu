@@ -12,6 +12,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWor
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.HeadquarterDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.RequestSearchEconomicActivitiesDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
+import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityHeadquarterDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -56,11 +57,9 @@ public class AffiliationDependentController {
         }
     }
 
-    @GetMapping("searchHeadquarter/{identificationType}/{identification}/{affiliationSubtype}")
-    public ResponseEntity<HeadquarterDataDTO> consultHeadquarters(@PathVariable String identificationType,
-                                                                  @PathVariable String identification,
-                                                                  @PathVariable String affiliationSubtype) {
-        HeadquarterDataDTO employerHeadquarters = service.consultHeadquarters(identificationType, identification, affiliationSubtype);
+    @GetMapping("/searchHeadquarter/{idAffiliate}")
+    public ResponseEntity<HeadquarterDataDTO> consultHeadquarters(@PathVariable Long idAffiliate) {
+        HeadquarterDataDTO employerHeadquarters = service.consultHeadquarters(idAffiliate);
         return ResponseEntity.ok(employerHeadquarters);
     }
 
@@ -88,9 +87,15 @@ public class AffiliationDependentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("searchEconomicActivities")
-    public ResponseEntity<List<EconomicActivityDTO>> consultEconomicActivities(@RequestBody RequestSearchEconomicActivitiesDTO request) {
-        List<EconomicActivityDTO> economicActivities = service.findEconomicActivitiesByEmployer(request);
+    @GetMapping("searchEconomicActivitiesByEmployer/{idAffiliateEmployer}")
+    public ResponseEntity<List<EconomicActivityDTO>> searchEconomicActivitiesByEmployer(@PathVariable Long idAffiliateEmployer) {
+        List<EconomicActivityDTO> economicActivities = service.findEconomicActivitiesByEmployer(idAffiliateEmployer);
+        return ResponseEntity.ok(economicActivities);
+    }
+
+    @GetMapping("/searchEconomicActivities/{idHeadquarter}")
+    public ResponseEntity<List<EconomicActivityHeadquarterDTO>> consultEconomicActivities(@PathVariable Long idHeadquarter) {
+        List<EconomicActivityHeadquarterDTO> economicActivities = service.findEconomicActivitiesByHeadquarter(idHeadquarter);
         return ResponseEntity.ok(economicActivities);
     }
 

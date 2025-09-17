@@ -1,3 +1,4 @@
+
 package com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
@@ -47,7 +49,6 @@ public class DomesticServiceIndependentServiceReportServiceImplTest {
 
     private DomesticServicesAffiliationRepositoryRepository domesticServicesAffiliationDao;
     private MainOfficeDao mainOfficeDao;
-    private WorkCenterDao workCenterDao;
     private DepartmentRepository departmentRepository;
     private MunicipalityRepository municipalityRepository;
     private GenericWebClient genericWebClient;
@@ -55,6 +56,7 @@ public class DomesticServiceIndependentServiceReportServiceImplTest {
     private FiledService filedService;
     private ContributorTypeRepository contributorTypeRepository;
     private CollectProperties properties;
+    private WorkCenterService workCenterService;
 
     private DomesticServiceIndependentServiceReportServiceImpl service;
 
@@ -62,7 +64,6 @@ public class DomesticServiceIndependentServiceReportServiceImplTest {
     void setup() {
         domesticServicesAffiliationDao = mock(DomesticServicesAffiliationRepositoryRepository.class);
         mainOfficeDao = mock(MainOfficeDao.class);
-        workCenterDao = mock(WorkCenterDao.class);
         departmentRepository = mock(DepartmentRepository.class);
         municipalityRepository = mock(MunicipalityRepository.class);
         genericWebClient = mock(GenericWebClient.class);
@@ -70,17 +71,19 @@ public class DomesticServiceIndependentServiceReportServiceImplTest {
         filedService = mock(FiledService.class);
         contributorTypeRepository = mock(ContributorTypeRepository.class);
         properties = mock(CollectProperties.class);
+        workCenterService = mock(WorkCenterService.class);
 
         service = new DomesticServiceIndependentServiceReportServiceImpl(
                 domesticServicesAffiliationDao,
                 mainOfficeDao,
-                workCenterDao,
                 departmentRepository,
                 municipalityRepository,
                 genericWebClient,
                 applicationFormDao,
                 filedService,
-                contributorTypeRepository, properties
+                contributorTypeRepository,
+                properties,
+                workCenterService
         );
 
     }

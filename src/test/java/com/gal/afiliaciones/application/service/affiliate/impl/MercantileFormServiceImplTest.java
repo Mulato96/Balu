@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -53,7 +54,6 @@ class MercantileFormServiceImplTest {
     @Mock private GenericWebClient genericWebClient;
     @Mock private AffiliateRepository affiliateRepository;
     @Mock private MainOfficeRepository mainOfficeRepository;
-    @Mock private WorkCenterRepository workCenterRepository;
     @Mock private DepartmentRepository departmentRepository;
     @Mock private IUserPreRegisterRepository iUserPreRegisterRepository;
     @Mock private IEconomicActivityRepository iEconomicActivityRepository;
@@ -62,6 +62,7 @@ class MercantileFormServiceImplTest {
     @Mock private AffiliationEconomicActivityDao affiliationEconomicActivityDao;
     @Mock private LegalNatureRepository legalNatureRepository;
     @Mock private FiledService filedService;
+    @Mock private WorkCenterService workCenterService;
 
     @InjectMocks
     private MercantileFormServiceImpl service;
@@ -155,7 +156,6 @@ class MercantileFormServiceImplTest {
         economic.setCodeCIIU("A123");
         economic.setAdditionalCode("B");
         activity.setActivityEconomic(economic);
-        activity.setIdWorkCenter(4L);
 
         am.setEconomicActivity(List.of(activity));
         return am;

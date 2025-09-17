@@ -117,4 +117,10 @@ public class Certificate {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "dependent_workers_number")
+    private Integer dependentWorkersNumber;
+
+    @Column(name = "independent_workers_number")
+    private Integer independentWorkersNumber;
 }

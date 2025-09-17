@@ -7,5 +7,5 @@ import java.util.List;
 public interface DetailRecordLoadBulkService {
 
     List<DetailRecordLoadBulk> findByIdRecordLoadBulk(Long id);
-    void saveDetail(DetailRecordLoadBulk recordLoadBulk);
+    void saveDetail(List<DetailRecordLoadBulk> recordLoadBulk);
 }

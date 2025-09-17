@@ -30,9 +30,8 @@ public class WorkerRetirementController {
     @Operation(summary = "find worker data by identification")
     public ResponseEntity<BodyResponseConfig<DataWorkerRetirementDTO>> findWorker(@RequestParam String documentType,
                                                                                  @RequestParam String documentNumber,
-                                                                                 @RequestParam Long idUser,
-                                                                                 @RequestParam String subType) {
-        return ResponseEntity.ok(service.consultWorker(documentType, documentNumber, idUser, subType));
+                                                                                 @RequestParam Long idAffiliateEmployer) {
+        return ResponseEntity.ok(service.consultWorker(documentType, documentNumber, idAffiliateEmployer));
     }
 
     @PostMapping()

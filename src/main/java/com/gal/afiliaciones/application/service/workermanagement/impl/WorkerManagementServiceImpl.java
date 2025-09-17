@@ -1,7 +1,5 @@
 package com.gal.afiliaciones.application.service.workermanagement.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.CertificateService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
@@ -14,6 +12,7 @@ import com.gal.afiliaciones.config.ex.Error.Type;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.config.ex.workermanagement.NotFoundWorkersException;
 import com.gal.afiliaciones.config.util.CollectProperties;
@@ -26,7 +25,6 @@ import com.gal.afiliaciones.domain.model.affiliate.RecordMassiveUpdateWorker;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
@@ -50,11 +48,17 @@ import com.gal.afiliaciones.infrastructure.dto.workermanagement.DataExcelMassive
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementPaginatedResponseDTO;
 import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadWorker;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -76,7 +80,6 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private final AffiliateRepository affiliateRepository;
     private final AffiliationDependentRepository affiliationDependentRepository;
     private final OccupationRepository occupationRepository;
-    private final GenericWebClient webClient;
     private final IUserPreRegisterRepository iUserPreRegisterRepository;
     private final ExcelProcessingServiceData excelProcessingServiceData;
     private final RecordMassiveUpdateWorkerService recordMassiveUpdateService;
@@ -89,8 +92,10 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private final IAffiliationEmployerDomesticServiceIndependentRepository affiliationRepository;
     private final CertificateService certificateService;
     private final RetirementRepository retirementRepository;
+    private final RegistraduriaUnifiedService registraduriaUnifiedService;
 
     private static final String DOCUMENT_NUMBER_ERROR_TEXT = "Validar información del campo Número documento identificación.";
+    private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
 
     @Override
     public List<WorkerManagementDTO> findWorkersByEmployer(FiltersWorkerManagementDTO filters){
@@ -106,6 +111,62 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         List<Affiliate> affiliateList = affiliateRepository.findAll(specAffiliation);
 
         return mapperDataWorkers(filters, affiliateList, documentNumberEmployer);
+    }
+
+    @Override
+    public WorkerManagementPaginatedResponseDTO findWorkersByEmployerPaginated(FiltersWorkerManagementDTO filters){
+
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(filters.getIdAffiliateEmployer()).
+                orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+        String nitCompany = affiliateEmployer.getNitCompany();
+
+        if(nitCompany.isBlank())
+            throw new AffiliateNotFoundException("Contratante no existente");
+
+        // ESTRATEGIA OPTIMIZADA: Solo procesar la página solicitada
+        Specification<Affiliate> specAffiliation = AffiliateSpecification
+                .hasActiveStatusAndEmployer(filters);
+
+        // PASO 1: Contar total de afiliados (consulta rápida de conteo)
+        long totalAffiliates = affiliateRepository.count(specAffiliation);
+
+        // PASO 2: Aplicar paginación solo a la página solicitada
+        Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize(), Sort.by("filedNumber").descending());
+
+        // PASO 3: Procesar SOLO los afiliados de la página actual (NO todos)
+        Page<WorkerManagementDTO> pageWorkers = affiliateRepository.searchWorkersByFilters(
+                filters.getIdAffiliateEmployer(),
+                filters.getStartContractDate(),
+                filters.getEndContractDate(),
+                filters.getStatus(),
+                filters.getIdentificationDocumentType(),
+                filters.getIdentificationDocumentNumber(),
+                filters.getIdbondingType(),
+                filters.getUpdateRequired(),
+                pageable
+        );
+
+        // PASO 4: Calcular métricas de paginación basadas en afiliados
+        int totalPages = (int) Math.ceil((double) totalAffiliates / filters.getSize());
+        int currentPage = filters.getPage();
+
+        // Validar página solicitada
+        if (currentPage >= totalPages && totalPages > 0) {
+            currentPage = totalPages - 1;
+        }
+
+        // Construir respuesta paginada optimizada
+        return new WorkerManagementPaginatedResponseDTO(
+                pageWorkers.getContent(),       // Contenido de la página actual
+                currentPage,                    // Página actual
+                filters.getSize(),              // Tamaño de página
+                totalAffiliates,                // Total de afiliados (no dependientes)
+                totalPages,                     // Total de páginas
+                currentPage < totalPages - 1,   // ¿Hay siguiente página?
+                currentPage > 0,                // ¿Hay página anterior?
+                currentPage == 0,               // ¿Es la primera página?
+                currentPage == totalPages - 1 || totalPages == 0  // ¿Es la última página?
+        );
     }
 
     private List<WorkerManagementDTO> mapperDataWorkers(FiltersWorkerManagementDTO filters, List<Affiliate> affiliateList,
@@ -316,12 +377,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private DependentWorkerDTO searchUserInNationalRegistry(String identificationNumber){
         DependentWorkerDTO userRegistry = new DependentWorkerDTO();
 
-        List<RegistryOfficeDTO> registries = webClient.searchNationalRegistry(identificationNumber);
-
-        ObjectMapper mapper = new ObjectMapper();
-        List<RegistryOfficeDTO> registryOfficeDTOS = mapper.convertValue(registries,
-                new TypeReference<>() {
-                });
+        List<RegistryOfficeDTO> registryOfficeDTOS = registraduriaUnifiedService.searchUserInNationalRegistry(identificationNumber);
 
         if(!registryOfficeDTOS.isEmpty()){
             RegistryOfficeDTO registry = registryOfficeDTOS.get(0);
@@ -340,18 +396,18 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     }
 
     @Override
-    public ResponseServiceDTO massiveUpdateWorkers(MultipartFile file, String documentType, String documentNumber) {
+    public ResponseServiceDTO massiveUpdateWorkers(MultipartFile file, Long idUser, Long idAffiliateEmployer) {
 
         try {
-            validGeneral(file, documentType, documentNumber);
+            validGeneral(file, idUser);
 
-            DataEmailUpdateEmployerDTO dataEmail = findEmailAndUserEmployer(documentType, documentNumber);
+            DataEmailUpdateEmployerDTO dataEmail = findEmailEmployer(idAffiliateEmployer);
 
-                    List<ErrorFileExcelDTO> listErrors =  new ArrayList<>();
+            List<ErrorFileExcelDTO> listErrors =  new ArrayList<>();
             List<DataExcelMassiveUpdateDTO> listData = new ArrayList<>();
             List<Map<String, Object>> listDataMap;
 
-            listDataMap = excelProcessingServiceData.converterExcelToMap(file, FieldsExcelLoadWorker.getDescripcion(),1);
+            listDataMap = excelProcessingServiceData.converterExcelToMap(file, FieldsExcelLoadWorker.getDescripcion());
 
             ResponseServiceDTO responseServiceDTO =  new ResponseServiceDTO();
             ExportDocumentsDTO document = null;
@@ -375,13 +431,13 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                     if(filedWorker != null){
 
                         if(filedWorker.equals(FieldsExcelLoadWorker.DOCUMENT_NUMBER)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeDocument,id, documentType, documentNumber);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeDocument, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.RISK)){
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract,id, documentType, documentNumber);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.CONTRACT_START_DATE)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract,id, documentType, documentNumber);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.CONTRACT_END_DATE)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract,id, documentType, documentNumber);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.EPS_CODE)){
 
                             if(isRequested(String.valueOf(data.getValue()))){
@@ -421,7 +477,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                             }
 
                         }else{
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),null,id, documentType, documentNumber);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),null,id, idAffiliateEmployer);
                         }
 
                     }
@@ -467,7 +523,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
             responseServiceDTO.setDocument(document);
             responseServiceDTO.setRecordSuccessful(String.valueOf((listDataMap.size() - recordError)));
 
-            Long idRecordMassiveLoad = massiveUpdateTraceability(documentType, documentNumber, state, file.getOriginalFilename());
+            Long idRecordMassiveLoad = massiveUpdateTraceability(idUser, state, file.getOriginalFilename(), idAffiliateEmployer);
 
             if(!state)
                 excelProcessingServiceData.saveDetailRecordMassiveUpdate(listErrors, idRecordMassiveLoad);
@@ -481,11 +537,11 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         }
     }
 
-    private DataEmailUpdateEmployerDTO findEmailAndUserEmployer(String documentType, String documentNumber){
+    private DataEmailUpdateEmployerDTO findEmailEmployer(Long idAffiliateEmployer){
         String emailEmployer = "";
         String completeName = "";
-        Specification<Affiliate> specAffiliationRep = AffiliateSpecification.findByIdentificationTypeAndNumber(documentType, documentNumber);
-        Affiliate affiliateLegalRep =  affiliateRepository.findOne(specAffiliationRep).orElseThrow(() -> new AffiliationError("No se econtro la afiliacion del representante"));
+        Affiliate affiliateLegalRep =  affiliateRepository.findByIdAffiliate(idAffiliateEmployer)
+                .orElseThrow(() -> new AffiliationError(AFFILIATE_EMPLOYER_NOT_FOUND));
 
         if(affiliateLegalRep.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)){
             Specification<AffiliateMercantile> specAffiliate = AffiliateMercantileSpecification.findByFieldNumber(affiliateLegalRep.getFiledNumber());
@@ -590,7 +646,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                 .orElse(null);
     }
 
-    private ErrorFileExcelDTO validStructDataWorker(FieldsExcelLoadWorker filed, String data, String aux, String id, String documentTypeLegalRepresentative, String documentNumberLegalRepresentative){
+    private ErrorFileExcelDTO validStructDataWorker(FieldsExcelLoadWorker filed, String data, String aux, String id, Long idAffiliateEmployer){
 
         ErrorFileExcelDTO errorFileExcelDTO  = null;
         String error =  switch (filed) {
@@ -598,7 +654,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                     "" : "Validar información del campo tipo de vinculación; puedes apoyarte en la tabla Tipos de vinculación del documento guía para diligenciar el archivo.";
             case DOCUMENT_TYPE_CODE -> (isRequested(data) && validTypeNumberIdentification(data)) ?
                     "" : "Validar información del campo Tipo documento identificación; puedes apoyarte en la tabla Tipos documento de identificación del documento guía para diligenciar el archivo.";
-            case DOCUMENT_NUMBER -> (isRequested(data) && isRequested(aux) && validNumberIdentification(data, aux) && validWorkerByEmployer(data, aux, documentTypeLegalRepresentative, documentNumberLegalRepresentative)) ?
+            case DOCUMENT_NUMBER -> (isRequested(data) && isRequested(aux) && validNumberIdentification(data, aux) && validWorkerByEmployer(data, aux, idAffiliateEmployer)) ?
                     "" : DOCUMENT_NUMBER_ERROR_TEXT;
             case OCCUPATION -> (!isRequested(data) || validOccupationCode(data)) ?
                     "" : "Validar información del campo Código cargo u ocupación;  puedes apoyarte en la tabla Cargo - Ocupación del documento guía para diligenciar el archivo.";
@@ -659,18 +715,12 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         return List.of("CC", "NI",  "CE", "TI", "RC", "PA", "CD", "PE", "SC", "PT").contains(typeNumber);
     }
 
-    private boolean validWorkerByEmployer(String number, String type,String documentTypeLegalRepresentative, String documentNumberLegalRepresentative){
-        Specification<Affiliate> specAffiliationRep = AffiliateSpecification.findByIdentificationTypeAndNumber(documentTypeLegalRepresentative, documentNumberLegalRepresentative);
-        Affiliate affiliateLegalRep =  affiliateRepository.findOne(specAffiliationRep).orElseThrow(() -> new AffiliationError("No se econtro la afiliacion del representante"));
+    private boolean validWorkerByEmployer(String number, String type, Long idAffiliateEmployer){
+        Specification<AffiliationDependent> specAffiliationWorker = AffiliationDependentSpecification
+                .findByTypeDependentAndEmployer(type, number, idAffiliateEmployer);
+        List<AffiliationDependent> affiliateWorker =  affiliationDependentRepository.findAll(specAffiliationWorker);
 
-        Specification<Affiliate> specAffiliationWorker = AffiliateSpecification.findByIdentificationTypeAndNumber(type, number);
-        List<Affiliate> affiliateWorker =  affiliateRepository.findAll(specAffiliationWorker);
-
-        if(!affiliateWorker.isEmpty()){
-            List<String> affiliationsList = affiliateWorker.stream().map(Affiliate::getNitCompany).toList();
-            return affiliationsList.contains(affiliateLegalRep.getNitCompany());
-        }
-        return false;
+        return !affiliateWorker.isEmpty();
     }
 
     private boolean validNumberIdentification(String number, String type){
@@ -693,9 +743,9 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         return (data != null && !data.isEmpty());
     }
 
-    private void validGeneral(MultipartFile file, String documentType, String documentNumber){
+    private void validGeneral(MultipartFile file, Long idUser){
 
-        if(validDataLegalRepresentative(documentType, documentNumber)){
+        if(validDataLegalRepresentative(idUser)){
             throw new AffiliationError(Constant.USER_NOT_FOUND);
         }
 
@@ -708,9 +758,8 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
 
     }
 
-    private boolean validDataLegalRepresentative(String documentType, String documentNumber){
-        UserMain user = iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(documentType,
-                documentNumber).orElse(null);
+    private boolean validDataLegalRepresentative(Long idUser){
+        UserMain user = iUserPreRegisterRepository.findById(idUser).orElse(null);
         return user == null;
     }
 
@@ -726,15 +775,13 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         return alfrescoService.getDocument(idDocument);
     }
 
-    private Long massiveUpdateTraceability(String documentType, String documentNumber, boolean state, String fileName){
-        UserMain user = iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(documentType,
-                documentNumber).orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_IN_DATA_BASE));
-
+    private Long massiveUpdateTraceability(Long idUser, boolean state, String fileName, Long idAffiliateEmployer){
         RecordMassiveUpdateWorker recordLoadBulk =  new RecordMassiveUpdateWorker();
         recordLoadBulk.setDateLoad(LocalDateTime.now());
-        recordLoadBulk.setIdUserLoad(user.getId());
+        recordLoadBulk.setIdUserLoad(idUser);
         recordLoadBulk.setState(state);
         recordLoadBulk.setFileName(fileName);
+        recordLoadBulk.setIdAffiliateEmployer(idAffiliateEmployer);
         return recordMassiveUpdateService.save(recordLoadBulk).getId();
 
     }
@@ -805,18 +852,14 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
 
     @Override
     public String generateEmloyerCertificate(EmployerCertificateRequestDTO requestDTO){
-        Specification<Affiliate> spc = AffiliateSpecification.findByEmployerByNumberDocumentAndSubType(
-                requestDTO.getIdentificationDocumentNumberEmployer(), requestDTO.getAffiliationTypeEmployer());
-        List<Affiliate> affiliateList = affiliateRepository.findAll(spc);
-        if(!affiliateList.isEmpty()){
-            FindAffiliateReqDTO requestCertificate = new FindAffiliateReqDTO();
-            requestCertificate.setIdAffiliate(affiliateList.get(0).getIdAffiliate().intValue());
-            requestCertificate.setDocumentType(requestDTO.getIdentificationDocumentTypeEmployer());
-            requestCertificate.setDocumentNumber(requestDTO.getIdentificationDocumentNumberEmployer());
-            requestCertificate.setAffiliationType(requestDTO.getAffiliationTypeEmployer());
-            return certificateService.createAndGenerateCertificate(requestCertificate);
-        }
-        return "";
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(requestDTO.getIdAffiliateEmployer())
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+        FindAffiliateReqDTO requestCertificate = new FindAffiliateReqDTO();
+        requestCertificate.setIdAffiliate(affiliateEmployer.getIdAffiliate().intValue());
+        requestCertificate.setDocumentType(affiliateEmployer.getDocumenTypeCompany());
+        requestCertificate.setDocumentNumber(affiliateEmployer.getNitCompany());
+        requestCertificate.setAffiliationType(affiliateEmployer.getAffiliationSubType());
+        return certificateService.createAndGenerateCertificate(requestCertificate);
     }
 
     private String retiredWorker(String filedNumber){

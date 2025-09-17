@@ -48,10 +48,12 @@ class DetailRecordLoadBulkServiceImplTest {
     void testSaveDetail_CallsRepositorySave() {
         DetailRecordLoadBulk record = mock(DetailRecordLoadBulk.class);
 
-        service.saveDetail(record);
+        service.saveDetail(List.of(record));
 
-        ArgumentCaptor<DetailRecordLoadBulk> captor = ArgumentCaptor.forClass(DetailRecordLoadBulk.class);
-        verify(recordLoadBulkRepository).save(captor.capture());
-        assertEquals(record, captor.getValue());
+        ArgumentCaptor<List<DetailRecordLoadBulk>> captor = ArgumentCaptor.forClass(List.class);
+        verify(recordLoadBulkRepository).saveAll(captor.capture());
+        List<DetailRecordLoadBulk> capturedList = captor.getValue();
+        assertEquals(1, capturedList.size());
+        assertEquals(record, capturedList.get(0));
     }
 }

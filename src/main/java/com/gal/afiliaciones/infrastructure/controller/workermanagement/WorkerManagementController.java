@@ -11,6 +11,7 @@ import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.R
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementPaginatedResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
@@ -52,6 +53,19 @@ public class WorkerManagementController {
         }
     }
 
+    @PostMapping("/getworkersbyfilters/paginated")
+    @Operation(summary = "Obtener los trabajadores dependientes de un empleador por filtros con paginación")
+    public ResponseEntity<WorkerManagementPaginatedResponseDTO> getWorkersByEmployerPaginated(@RequestBody FiltersWorkerManagementDTO filters) {
+        try {
+            WorkerManagementPaginatedResponseDTO workers = service.findWorkersByEmployerPaginated(filters);
+            return ResponseEntity.ok(workers);
+        } catch (NotFoundWorkersException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new WorkerManagementPaginatedResponseDTO());
+        } catch (AffiliateNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new WorkerManagementPaginatedResponseDTO());
+        }
+    }
+
     @GetMapping("/getAffiliation/{filedNumber}")
     @Operation(summary = "Obtener los datos de la afiliacion de un dependiente por numero de radicado")
     public ResponseEntity<BodyResponseConfig<AffiliationDependent>> getAffiliationDependent(
@@ -61,9 +75,9 @@ public class WorkerManagementController {
 
     @PostMapping(value = "/loading", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseServiceDTO> loading(@RequestParam(name = "files") MultipartFile file,
-                                                      @RequestParam(name = "documentType") String documentType,
-                                                      @RequestParam(name = "documentNumber") String documentNumber){
-        return ResponseEntity.ok().body(service.massiveUpdateWorkers(file, documentType, documentNumber));
+                                                      @RequestParam(name = "idUser") Long idUser,
+                                                      @RequestParam(name = "idAffiliateEmployer") Long idAffiliateEmployer){
+        return ResponseEntity.ok().body(service.massiveUpdateWorkers(file, idUser, idAffiliateEmployer));
     }
 
     @GetMapping("downloadTemplateMassiveUpdate")

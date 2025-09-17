@@ -1,10 +1,13 @@
 package com.gal.afiliaciones.domain.model.affiliationdependent;
 
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -176,5 +179,11 @@ public class AffiliationDependent {
 
     @Column(name = "ibc_percentage")
     private BigDecimal ibcPercentage;
+
+    @Column(name = "id_affiliate_employer")
+    private Long idAffiliateEmployer;
+
+    @Column(name = "id_work_center")
+    private Long idWorkCenter;
 
 }

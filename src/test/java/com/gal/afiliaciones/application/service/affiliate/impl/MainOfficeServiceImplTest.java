@@ -1,9 +1,11 @@
 package com.gal.afiliaciones.application.service.affiliate.impl;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -66,6 +69,8 @@ class MainOfficeServiceImplTest {
     private AffiliationDependentRepository affiliationDependentRepository;
     @Mock
     private IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
+    @Mock
+    private ArlInformationDao arlInformationDao;
 
     @InjectMocks
     private MainOfficeServiceImpl mainOfficeService;
@@ -160,13 +165,14 @@ class MainOfficeServiceImplTest {
         office.setMain(true);
         when(repository.findById(1L)).thenReturn(Optional.of(office));
         Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(123L);
         affiliate.setFiledNumber("F1");
         when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
         AffiliateMercantile mercantile = new AffiliateMercantile();
         mercantile.setEconomicActivity(new ArrayList<>());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(mercantile));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.delete(1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.delete(1L, 123L));
     }
 
     @Test
@@ -176,15 +182,19 @@ class MainOfficeServiceImplTest {
         office.setOfficeManager(new UserMain());
         office.getOfficeManager().setId(10L);
         when(repository.findById(1L)).thenReturn(Optional.of(office));
+
         Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(123L);
         affiliate.setFiledNumber("F1");
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
         AffiliateMercantile mercantile = new AffiliateMercantile();
         mercantile.setEconomicActivity(new ArrayList<>());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(mercantile));
         when(repository.findAll(any(Specification.class))).thenReturn(List.of(office));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.delete(1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.delete(1L, 123L));
     }
 
     @Test
@@ -195,17 +205,21 @@ class MainOfficeServiceImplTest {
         user.setId(10L);
         office.setOfficeManager(user);
         when(repository.findById(1L)).thenReturn(Optional.of(office));
+
         Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(123L);
         affiliate.setFiledNumber("F1");
         affiliate.setCompany("Test");
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
         AffiliateMercantile mercantile = new AffiliateMercantile();
         mercantile.setEconomicActivity(new ArrayList<>());
         mercantile.setEmail("test@test.com");
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(mercantile));
         when(repository.findAll(any(Specification.class))).thenReturn(List.of(office, new MainOffice()));
 
-        String result = mainOfficeService.delete(1L, "F1");
+        String result = mainOfficeService.delete(1L, 123L);
 
         assertEquals("OK", result);
         verify(repository).delete(office);
@@ -233,7 +247,7 @@ class MainOfficeServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
         when(repository.findAll(any(Specification.class))).thenReturn(List.of(existingOffice));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -285,80 +299,73 @@ class MainOfficeServiceImplTest {
     void validNumberPhone_requestedTrue_withValidPrefix_returnsFalse() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, "3101234567", true);
-
-        assertEquals(false, result);
+        assertDoesNotThrow(() -> {
+            method.invoke(mainOfficeService, "3101234567", true);
+        });
     }
 
     @Test
     void validNumberPhone_requestedTrue_withInvalidPrefix_returnsTrue() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
+        assertThrows(InvocationTargetException.class, () -> {
+            method.invoke(mainOfficeService, "9991234567", true);
+        });
 
-        boolean result = (boolean) method.invoke(mainOfficeService, "9991234567", true);
-
-        assertEquals(true, result);
     }
 
     @Test
     void validNumberPhone_requestedTrue_withEmptyNumber_returnsTrue() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, "", true);
-
-        assertEquals(true, result);
+        assertThrows(InvocationTargetException.class, () -> {
+            method.invoke(mainOfficeService, "", true);
+        });
     }
 
     @Test
     void validNumberPhone_requestedTrue_withNullNumber_returnsTrue() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, null, true);
-
-        assertEquals(true, result);
+        assertThrows(InvocationTargetException.class, () -> {
+            method.invoke(mainOfficeService, null, true);
+        });
     }
 
     @Test
     void validNumberPhone_requestedFalse_withValidPrefix_returnsFalse() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, "6011234567", false);
-
-        assertEquals(false, result);
+        assertDoesNotThrow(() -> {
+            method.invoke(mainOfficeService, "6011234567", false);
+        });
     }
 
     @Test
     void validNumberPhone_requestedFalse_withInvalidPrefix_returnsTrue() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, "1234567890", false);
-
-        assertEquals(true, result);
+        assertThrows(InvocationTargetException.class, () -> {
+            method.invoke(mainOfficeService, "1234567890", false);
+        });
     }
 
     @Test
     void validNumberPhone_requestedFalse_withEmptyNumber_returnsFalse() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, "", false);
-
-        assertEquals(false, result);
+        assertDoesNotThrow(() -> {
+            method.invoke(mainOfficeService, "", false);
+        });
     }
 
     @Test
     void validNumberPhone_requestedFalse_withNullNumber_returnsFalse() throws Exception {
         java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("validNumberPhone", String.class, boolean.class);
         method.setAccessible(true);
-
-        boolean result = (boolean) method.invoke(mainOfficeService, null, false);
-
-        assertEquals(false, result);
+        assertDoesNotThrow(() -> {
+            method.invoke(mainOfficeService, null, false);
+        });
     }
 
     @Test
@@ -696,7 +703,7 @@ class MainOfficeServiceImplTest {
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
         when(repository.findAll(any(Specification.class))).thenReturn(List.of(existingOffice));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -721,7 +728,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -746,7 +753,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -771,7 +778,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -796,7 +803,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -824,7 +831,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -844,7 +851,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -866,7 +873,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -890,7 +897,7 @@ class MainOfficeServiceImplTest {
 
         when(repository.findById(1L)).thenReturn(Optional.of(officeToUpdate));
 
-        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L, "F1"));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.update(dto, 1L));
     }
 
     @Test
@@ -933,8 +940,7 @@ class MainOfficeServiceImplTest {
         // Assert
         assertEquals(mainOffice.getMainOfficeName(), result.getMainOfficeName());
         assertEquals(mainOffice.getOfficeManager().getId(), result.getOfficeManager());
-        assertEquals(1, result.getEconomicActivity().size());
-        assertEquals(economicActivityId, result.getEconomicActivity().get(0));
+        assertEquals(0, result.getEconomicActivity().size());
     }
 
     @Test
@@ -977,8 +983,7 @@ class MainOfficeServiceImplTest {
         // Assert
         assertEquals(mainOffice.getMainOfficeName(), result.getMainOfficeName());
         assertEquals(mainOffice.getOfficeManager().getId(), result.getOfficeManager());
-        assertEquals(1, result.getEconomicActivity().size());
-        assertEquals(economicActivityId, result.getEconomicActivity().get(0));
+        assertEquals(0, result.getEconomicActivity().size());
     }
 
     @Test
@@ -1021,17 +1026,23 @@ class MainOfficeServiceImplTest {
 
         UserMain user = new UserMain();
         user.setId(1L);
+
         Long department = 10L;
         Long city = 20L;
         String zone = "URBAN";
+
+        MainOffice mainOffice = new MainOffice();
+        mainOffice.setIdDepartment(department);
+        mainOffice.setIdCity(city);
+        mainOffice.setMainOfficeZone(zone);
 
         when(workCenterService.getWorkCenterByCodeAndIdUser(expectedActivityCode, user)).thenReturn(null);
         when(workCenterService.getNumberCode(user)).thenReturn(100L);
 
         // Act
-        java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("workCenter", EconomicActivity.class, UserMain.class, Long.class, Long.class, String.class);
+        java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("workCenter", EconomicActivity.class, UserMain.class, MainOffice.class, Boolean.class);
         method.setAccessible(true);
-        method.invoke(mainOfficeService, activity, user, department, city, zone);
+        method.invoke(mainOfficeService, activity, user, mainOffice, Boolean.TRUE);
 
         // Assert
         ArgumentCaptor<WorkCenter> captor = ArgumentCaptor.forClass(WorkCenter.class);
@@ -1063,13 +1074,18 @@ class MainOfficeServiceImplTest {
         Long city = 20L;
         String zone = "URBAN";
 
+        MainOffice mainOffice = new MainOffice();
+        mainOffice.setIdDepartment(department);
+        mainOffice.setIdCity(city);
+        mainOffice.setMainOfficeZone(zone);
+
         WorkCenter existingCenter = new WorkCenter();
         when(workCenterService.getWorkCenterByCodeAndIdUser(expectedActivityCode, user)).thenReturn(existingCenter);
 
         // Act
-        java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("workCenter", EconomicActivity.class, UserMain.class, Long.class, Long.class, String.class);
+        java.lang.reflect.Method method = MainOfficeServiceImpl.class.getDeclaredMethod("workCenter", EconomicActivity.class, UserMain.class, MainOffice.class, Boolean.class);
         method.setAccessible(true);
-        method.invoke(mainOfficeService, activity, user, department, city, zone);
+        method.invoke(mainOfficeService, activity, user, mainOffice, Boolean.TRUE);
 
         // Assert
         verify(workCenterService, never()).saveWorkCenter(any());

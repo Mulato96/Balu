@@ -42,5 +42,12 @@ public class AffiliationProperties {
     private String insertWorkCenterUrl;
     @Value("${volunteer.relation.url}")
     private String insertVolunteerUrl;
+    @Value("${sat.consult.transferable.employer.url}")
+    private String satConsultTransferableEmployerUrl;
+
+
+
+    @Value("${worker.displacement.notification.url}")
+    private String workerDisplacementNotificationUrl;
 
 }

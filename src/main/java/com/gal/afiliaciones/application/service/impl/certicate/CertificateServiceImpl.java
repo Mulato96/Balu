@@ -608,6 +608,18 @@ public class CertificateServiceImpl implements CertificateService {
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
 
+        AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findFirstByNumberIdentification(affiliate.getNitCompany())
+                                                    .orElseThrow(() -> new AffiliationError("No se encontro afiliacion mercantil del empleador"));
+        Long idActivityEconomic = affiliateMercantile.getEconomicActivity()
+                .stream()
+                .filter(AffiliateActivityEconomic::getIsPrimary)
+                .map(economic -> economic.getActivityEconomic().getId())
+                .findFirst()
+                .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
+
+        Integer dependentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_DEPENDENT);
+        Integer independentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_INDEPENDENT);
+
         certificate.setTypeDocument(affiliate.getDocumentType());
         String completeName = concatCompleteName(affiliation.getFirstName(), affiliation.getSecondName(),
                 affiliation.getSurname(), affiliation.getSecondSurname());
@@ -622,29 +634,19 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setValidatorCode(generateValidationCode(affiliate.getDocumentNumber(), affiliate.getDocumentType()));
         certificate.setExpeditionDate(formatDate(today));
         certificate.setPosition(affiliation.getOccupation());
-        certificate.setInitContractDate(LocalDate.from(affiliate.getAffiliationDate()));
+        certificate.setInitContractDate(LocalDate.from(affiliation.getContractStartDate()!=null ? affiliation.getContractStartDate() : certificate.getCoverageDate()));
         certificate.setCity(Constant.CITY_ARL);
         certificate.setMembershipDate(LocalDate.parse(today.format(formatter)));
         certificate.setRisk(affiliation.getRisk());
-        certificate.setNameActivityEconomic(affiliation.getEconomicActivity()
-                .stream()
-                .filter(AffiliateActivityEconomic::getIsPrimary)
-                .map(AffiliateActivityEconomic::getActivityEconomic)
-                .map(EconomicActivity::getDescription)
-                .findFirst()
-                .orElse(""));
-        certificate.setCodeActivityEconomicPrimary(affiliation.getEconomicActivity()
-                .stream()
-                .filter(AffiliateActivityEconomic::getIsPrimary)
-                .map(AffiliateActivityEconomic::getActivityEconomic)
-                .map(EconomicActivity::getEconomicActivityCode)
-                .findFirst()
-                .orElse(""));
+        certificate.setNameActivityEconomic(nameActivityEconomic(idActivityEconomic));
+        certificate.setCodeActivityEconomicPrimary(findEconomicActivityById(idActivityEconomic));
         certificate.setEndContractDate(affiliation.getContractEndDate()!=null ? affiliation.getContractEndDate().toString() : null);
         certificateRepository.save(certificate);
 
         certificate.setValidatorCode(generateValidationCode(certificate.getNumberDocument(), certificate.getTypeDocument()));
         certificate.setFiledNumber(filedService.getNextFiledNumberCertificate());
+        certificate.setDependentWorkersNumber(dependentWorkersNumber);
+        certificate.setIndependentWorkersNumber(independentWorkersNumber);
         return certificateRepository.save(certificate);
 
     }
@@ -723,6 +725,8 @@ public class CertificateServiceImpl implements CertificateService {
         LocalDate tomorrow = today.plusDays(1);
 
         UserMain userMain = findByIdUserMain(affiliation.getIdUserPreRegister());
+        Integer dependentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_DEPENDENT);
+        Integer independentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_INDEPENDENT);
 
         Long idActivityEconomic = affiliation.getEconomicActivity()
                 .stream()
@@ -749,6 +753,8 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setNameActivityEconomic(nameActivityEconomic(idActivityEconomic));
         certificate.setCodeActivityEconomicPrimary(findEconomicActivityById(idActivityEconomic));
         certificate.setStatus(affiliate.getAffiliationStatus());
+        certificate.setDependentWorkersNumber(dependentWorkersNumber);
+        certificate.setIndependentWorkersNumber(independentWorkersNumber);
         certificateRepository.save(certificate);
 
         certificate.setValidatorCode(generateValidationCode(certificate.getNumberDocument(), certificate.getTypeDocument()));
@@ -762,6 +768,15 @@ public class CertificateServiceImpl implements CertificateService {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(FORMAT_DATE_TEXT);
         LocalDate today = LocalDate.now();
+
+        AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findFirstByNumberIdentification(affiliate.getNitCompany())
+                                                    .orElseThrow(() -> new AffiliationError("No se encontro afiliacion mercantil del empleador"));
+        Long idActivityEconomic = affiliateMercantile.getEconomicActivity()
+                .stream()
+                .filter(AffiliateActivityEconomic::getIsPrimary)
+                .map(economic -> economic.getActivityEconomic().getId())
+                .findFirst()
+                .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
 
         certificate.setCompany(affiliate.getCompany());
         certificate.setDocumentTypeContrator(findDocumentTypeEmployer(affiliate.getNitCompany()));
@@ -783,6 +798,7 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setCity(Constant.CITY_ARL);
         certificate.setMembershipDate(LocalDate.parse(today.format(formatter)));
         certificate.setEndContractDate(affiliation.getEndDate()!=null ? affiliation.getEndDate().toString() : null);
+        certificate.setCodeActivityEconomicPrimary(findEconomicActivityById(idActivityEconomic));
         certificateRepository.save(certificate);
 
         certificate.setValidatorCode(generateValidationCodeDependent(certificate.getNumberDocument(), certificate.getTypeDocument()));

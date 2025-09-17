@@ -1,6 +1,7 @@
 package com.gal.afiliaciones.application.service.affiliate.impl;
 
 import com.gal.afiliaciones.application.service.affiliate.MercantileFormService;
+import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.application.service.filed.FiledService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.util.CollectProperties;
@@ -21,7 +22,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterReposi
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.legalnature.LegalNatureRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.AlfrescoResponseDTO;
@@ -51,13 +51,13 @@ public class MercantileFormServiceImpl implements MercantileFormService {
     private final GenericWebClient genericWebClient;
     private final AffiliateRepository affiliateRepository;
     private final MainOfficeRepository mainOfficeRepository;
-    private final WorkCenterRepository workCenterRepository;
     private final DepartmentRepository departmentRepository;
     private final IUserPreRegisterRepository iUserPreRegisterRepository;
     private final AffiliateMercantileRepository affiliateMercantileRepository;
     private final MunicipalityRepository municipalityRepository;
     private final LegalNatureRepository legalNatureRepository;
     private final FiledService filedService;
+    private final WorkCenterService workCenterService;
 
     private static final Integer NUMBER_WORK_CENTER = 4;
 
@@ -155,8 +155,13 @@ public class MercantileFormServiceImpl implements MercantileFormService {
 
         String nodeId = findNodeIdSignature(affiliation.getNumberIdentification());
         String signatureBase64 = "";
-        if(nodeId != null)
-            signatureBase64 = genericWebClient.getFileBase64(nodeId).block();
+        if(nodeId != null) {
+            String retrievedSignature = genericWebClient.getFileBase64(nodeId).block();
+            // Solo asignar la firma si no es null y no está vacía
+            if(retrievedSignature != null && !retrievedSignature.trim().isEmpty()) {
+                signatureBase64 = retrievedSignature;
+            }
+        }
 
         parameters.put("firmaEmpleador", signatureBase64);
     }
@@ -229,7 +234,7 @@ public class MercantileFormServiceImpl implements MercantileFormService {
 
         activityEconomics
                 .forEach(economic -> {
-                    WorkCenter work = workCenterRepository.findById(economic.getIdWorkCenter()).orElse(null);
+                    WorkCenter work = workCenterService.getWorkCenterByEconomicActivityAndMainOffice(economic.getActivityEconomic().getEconomicActivityCode(), mainOffice.getId());
                     economicArray.add(economic.getActivityEconomic().getDescription());
                     classRisk.add(work != null ? work.getRiskClass() : defaultIfNullOrEmpty(""));
                     codeWorkCenterArray.add(work != null ? work.getCode() : defaultIfNullOrEmpty(""));

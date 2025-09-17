@@ -4,6 +4,7 @@ import com.gal.afiliaciones.application.service.KeycloakService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.employer.UpdateEmployerService;
 import com.gal.afiliaciones.application.service.retirementreason.impl.RetirementReasonServiceImpl;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotRegisteredException;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
@@ -30,12 +31,15 @@ import com.gal.afiliaciones.infrastructure.dto.workermanagement.DataEmailUpdateE
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.boot.autoconfigure.rsocket.RSocketProperties.Server.Spec;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -55,38 +59,29 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
         String emailEmployer = "";
         String nameEmployer = "";
 
-        if (dto.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)) {
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification
-                    .findDomesticEmployerByLegalRepresentative(dto.getDocumentNumberEmployer());
-            Optional<Affiliate> affiliateOpt = affiliateRepository.findOne(spcAffiliate);
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(dto.getIdAffiliateEmployer())
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate employer not found"));
 
-            if (affiliateOpt.isPresent()) {
-                Specification<Affiliation> spcAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications
-                        .hasFiledNumber(affiliateOpt.get().getFiledNumber());
-                Optional<Affiliation> affiliationOpt = domesticRepository.findOne(spcAffiliation);
+        if (affiliate.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)) {
+            Specification<Affiliation> spcAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications
+                    .hasFiledNumber(affiliate.getFiledNumber());
+            Optional<Affiliation> affiliationOpt = domesticRepository.findOne(spcAffiliation);
 
-                if (affiliationOpt.isPresent()) {
-                    emailEmployer = affiliationOpt.get().getEmail();
-                    nameEmployer = affiliationOpt.get().getFirstName().concat(" ").concat(affiliationOpt.get().getSurname());
-                    updateDataBasicDomestic(dto, affiliationOpt.get());
-                }
+            if (affiliationOpt.isPresent()) {
+                emailEmployer = affiliationOpt.get().getEmail();
+                nameEmployer = affiliationOpt.get().getFirstName().concat(" ").concat(affiliationOpt.get().getSurname());
+                updateDataBasicDomestic(dto, affiliationOpt.get());
             }
 
-        } else if (dto.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification
-                    .findMercantileByLegalRepresentative(dto.getDocumentNumberEmployer());
-            Optional<Affiliate> affiliateOpt = affiliateRepository.findOne(spcAffiliate);
+        } else if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
+            Specification<AffiliateMercantile> spcAffiliation = AffiliateMercantileSpecification
+                    .findByFieldNumber(affiliate.getFiledNumber());
+            Optional<AffiliateMercantile> affiliationOpt = affiliateMercantileRepository.findOne(spcAffiliation);
 
-            if (affiliateOpt.isPresent()) {
-                Specification<AffiliateMercantile> spcAffiliation = AffiliateMercantileSpecification
-                        .findByFieldNumber(affiliateOpt.get().getFiledNumber());
-                Optional<AffiliateMercantile> affiliationOpt = affiliateMercantileRepository.findOne(spcAffiliation);
-
-                if (affiliationOpt.isPresent()) {
-                    emailEmployer = affiliationOpt.get().getEmail();
-                    nameEmployer = affiliationOpt.get().getBusinessName();
-                    updateDataBasicMercantile(dto, affiliationOpt.get());
-                }
+            if (affiliationOpt.isPresent()) {
+                emailEmployer = affiliationOpt.get().getEmail();
+                nameEmployer = affiliationOpt.get().getBusinessName();
+                updateDataBasicMercantile(dto, affiliationOpt.get());
             }
         }
 
@@ -143,21 +138,17 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
             Specification<AffiliateMercantile> spc = AffiliateMercantileSpecification
                     .findByPersonResponsible(documentNumber, documentType);
             List<AffiliateMercantile> affiliateMercantileList = affiliateMercantileRepository.findAll(spc);
-            List<AffiliateMercantile> affiliationList = affiliateMercantileList!=null ?
-                    affiliateMercantileList.stream().filter(
-                            affiliateMercantile -> affiliateMercantile.getFiledNumber()!=null).toList() : null;
 
-
-            if (affiliationList!=null){
-                response.setDocumentTypeEmployer(affiliationList.get(0).getTypeDocumentIdentification());
-                response.setDocumentNumberEmployer(affiliationList.get(0).getNumberIdentification());
-                response.setDigitVerificationEmployer(affiliationList.get(0).getDigitVerificationDV());
-                response.setBusinessNameEmployer(affiliationList.get(0).getBusinessName());
-                response.setEconomicActivityListEmployer(searchEconomicActivitiesMercantile(affiliationList));
-                response.setAddressEmployer(transformAddressContactCompanyMercantile(affiliationList.get(0)));
-                response.setPhone1Employer(affiliationList.get(0).getPhoneOneContactCompany());
-                response.setPhone2Employer(affiliationList.get(0).getPhoneTwoContactCompany());
-                response.setEmailEmployer(affiliationList.get(0).getEmailContactCompany());
+            if (!affiliateMercantileList.isEmpty()){
+                response.setDocumentTypeEmployer(affiliateMercantileList.get(0).getTypeDocumentIdentification());
+                response.setDocumentNumberEmployer(affiliateMercantileList.get(0).getNumberIdentification());
+                response.setDigitVerificationEmployer(affiliateMercantileList.get(0).getDigitVerificationDV());
+                response.setBusinessNameEmployer(affiliateMercantileList.get(0).getBusinessName());
+                response.setEconomicActivityListEmployer(searchEconomicActivitiesMercantile(affiliateMercantileList));
+                response.setAddressEmployer(transformAddressContactCompanyMercantile(affiliateMercantileList.get(0)));
+                response.setPhone1Employer(affiliateMercantileList.get(0).getPhoneOneContactCompany());
+                response.setPhone2Employer(affiliateMercantileList.get(0).getPhoneTwoContactCompany());
+                response.setEmailEmployer(affiliateMercantileList.get(0).getEmailContactCompany());
                 response.setAcceptDataProcessingPolicies(true);
             }
         }
@@ -452,6 +443,85 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
         }
 
         return true;
+    }
+
+    @Override
+    public UpdateEmployerDataBasicDTO searchEmployerDataBasicById(Long idAffiliate){
+        UpdateEmployerDataBasicDTO response = new UpdateEmployerDataBasicDTO();
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
+
+        if (affiliate.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)){
+            Optional<Affiliation> affiliationOpt = domesticRepository.findByFiledNumber(affiliate.getFiledNumber());
+
+            if(affiliationOpt.isPresent()){
+                response.setDocumentTypeEmployer(affiliationOpt.get().getIdentificationDocumentType());
+                response.setDocumentNumberEmployer(affiliationOpt.get().getIdentificationDocumentNumber());
+                response.setDigitVerificationEmployer(0);
+                response.setBusinessNameEmployer(affiliate.getCompany());
+                response.setEconomicActivityListEmployer(retirementReasonService
+                        .findEconomicActivitiesDomestic(affiliationOpt.get()));
+                response.setAddressEmployer(transformAddressContactDomestic(affiliationOpt.get()));
+                response.setPhone1Employer(affiliationOpt.get().getPhone1());
+                response.setPhone2Employer(affiliationOpt.get().getPhone2());
+                response.setEmailEmployer(affiliationOpt.get().getEmail());
+                response.setAcceptDataProcessingPolicies(true);
+            }
+        } else if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
+            Optional<AffiliateMercantile> affiliateMercantileOpt = affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber());
+
+            if (affiliateMercantileOpt.isPresent()){
+                response.setDocumentTypeEmployer(affiliateMercantileOpt.get().getTypeDocumentIdentification());
+                response.setDocumentNumberEmployer(affiliateMercantileOpt.get().getNumberIdentification());
+                response.setDigitVerificationEmployer(affiliateMercantileOpt.get().getDigitVerificationDV());
+                response.setBusinessNameEmployer(affiliateMercantileOpt.get().getBusinessName());
+                response.setEconomicActivityListEmployer(searchEconomicActivitiesMercantile(affiliateMercantileOpt.get()));
+                response.setAddressEmployer(transformAddressContactCompanyMercantile(affiliateMercantileOpt.get()));
+                response.setPhone1Employer(affiliateMercantileOpt.get().getPhoneOneContactCompany());
+                response.setPhone2Employer(affiliateMercantileOpt.get().getPhoneTwoContactCompany());
+                response.setEmailEmployer(affiliateMercantileOpt.get().getEmailContactCompany());
+                response.setAcceptDataProcessingPolicies(true);
+            }
+        }
+
+        return response;
+
+    }
+
+    private List<RegisteredAffiliationsDTO> searchEconomicActivitiesMercantile(AffiliateMercantile affiliateMercantile){
+
+        List<Long> activityIds = affiliateMercantile.getEconomicActivity()
+                .stream()
+                .map(economic  -> economic.getActivityEconomic().getId())
+                .toList();
+
+        return economicActivityRepository.findEconomicActivities(activityIds).stream().map(
+                economicActivity -> {
+                    boolean activityType = Boolean.FALSE;
+                    Long idActivityEconomic = affiliateMercantile.getEconomicActivity()
+                            .stream()
+                            .filter(AffiliateActivityEconomic::getIsPrimary)
+                            .map(economic -> economic.getActivityEconomic().getId())
+                            .findFirst()
+                            .orElse(null);
+
+                    if (idActivityEconomic != null && idActivityEconomic.equals(economicActivity.getId())) {
+                        activityType = Boolean.TRUE;
+                    }
+
+                    return RegisteredAffiliationsDTO.builder()
+                            .classRisk(economicActivity.getClassRisk())
+                            .codeCIIU(economicActivity.getCodeCIIU())
+                            .additionalCode(economicActivity.getAdditionalCode())
+                            .description(economicActivity.getDescription())
+                            .economicActivityCode(economicActivity.getClassRisk()
+                                    + economicActivity.getCodeCIIU() +
+                                    economicActivity.getAdditionalCode())
+                            .typeActivity(activityType)
+                            .build();
+                }
+        ).toList();
+
     }
 
 }

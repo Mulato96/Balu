@@ -28,10 +28,12 @@ public class BulkLoadingDependentIndependentController {
     private final RecordLoadBulkService recordLoadBulkService;
     private final BulkLoadingDependentIndependentService bulkLoadingDependentIndependentService;
 
-
     @PostMapping(value = "/loading", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseServiceDTO> loading(@RequestParam(name = "files") MultipartFile file, @RequestParam(name = "type") String type, @RequestParam(name = "idUser") Long idUser){
-        return ResponseEntity.ok().body(bulkLoadingDependentIndependentService.dataFile(file, type, idUser));
+    public ResponseEntity<ResponseServiceDTO> loading(@RequestParam(name = "files") MultipartFile file,
+                                                      @RequestParam(name = "type") String type,
+                                                      @RequestParam(name = "idUser") Long idUser,
+                                                      @RequestParam(name = "idAffiliateEmployer") Long idAffiliateEmployer){
+        return ResponseEntity.ok().body(bulkLoadingDependentIndependentService.dataFile(file, type, idUser, idAffiliateEmployer));
     }
 
     @PostMapping(value = "/loadingWithNumber", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -54,9 +56,10 @@ public class BulkLoadingDependentIndependentController {
         return ResponseEntity.ok(bulkLoadingDependentIndependentService.downloadTemplateGuide());
     }
 
-    @GetMapping("findAllRecordByIdUser/{idRecordLoadBulk}")
-    public ResponseEntity<List<RecordLoadBulk>> findAllRecordBulkLoad(@PathVariable Long idRecordLoadBulk){
-        return ResponseEntity.ok().body(recordLoadBulkService.findAllByIdUser(idRecordLoadBulk));
+    @GetMapping("findAllRecordByIdUser/{idUser}/{idAffiliateEmployer}")
+    public ResponseEntity<List<RecordLoadBulk>> findAllRecordBulkLoad(@PathVariable Long idUser,
+                                                                      @PathVariable Long idAffiliateEmployer){
+        return ResponseEntity.ok().body(recordLoadBulkService.findAllByIdUser(idUser, idAffiliateEmployer));
     }
 
     @GetMapping("documentDetail/{idRecordLoadBulk}")

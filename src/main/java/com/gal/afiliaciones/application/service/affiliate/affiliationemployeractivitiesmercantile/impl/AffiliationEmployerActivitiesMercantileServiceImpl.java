@@ -1,9 +1,31 @@
 package com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.WebClient;
+
 import com.gal.afiliaciones.application.service.IUserRegisterService;
-import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
 import com.gal.afiliaciones.application.service.affiliate.ScheduleInterviewWebService;
 import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
@@ -19,11 +41,17 @@ import com.gal.afiliaciones.config.ex.Error.Type;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco;
+import com.gal.afiliaciones.config.ex.sat.SatError;
+import com.gal.afiliaciones.config.ex.sat.SatUpstreamError;
 import com.gal.afiliaciones.config.ex.validationpreregister.ErrorDocumentConditions;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
-import com.gal.afiliaciones.domain.model.*;
+import com.gal.afiliaciones.domain.model.ArlInformation;
+import com.gal.afiliaciones.domain.model.Department;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.Municipality;
+import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
 import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
@@ -35,16 +63,18 @@ import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindep
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.client.generic.employer.ConsultEmployerClient;
 import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerResponse;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.client.generic.sat.SatConsultTransferableEmployerClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
@@ -58,43 +88,27 @@ import com.gal.afiliaciones.infrastructure.dto.affiliate.TemplateSendEmailsDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.AffiliateMercantileDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataContactCompanyDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataLegalRepresentativeDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.InterviewWebDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.StateAffiliation;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadRequest;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.Entries;
-import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataLegalRepresentativeDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.Entry;
+import com.gal.afiliaciones.infrastructure.dto.sat.TransferableEmployerRequest;
+import com.gal.afiliaciones.infrastructure.dto.sat.TransferableEmployerResponse;
 import com.gal.afiliaciones.infrastructure.dto.typeemployerdocument.DocumentRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.BondDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RecordResponseDTO;
-import com.gal.afiliaciones.infrastructure.enums.DocumentNameStandardization;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Base64ToMultipartFile;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.document.ValidationDocument;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -124,10 +138,12 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
     private final IdentificationLegalNatureService identificationLegalNatureService;
     private final MessageErrorAge messageError;
     private final DocumentNameStandardizationService documentNameStandardizationService;
-    private final GenericWebClient genericWebClient;
     private final ConsultEmployerClient consultEmployerClient;
     private final ArlInformationDao arlInformationDao;
+    private final ArlRepository arlRepository;
     private final PolicyService policyService;
+    private final SatConsultTransferableEmployerClient satConsultTransferableEmployerClient;
+    private final RegistraduriaUnifiedService registraduriaUnifiedService;
 
     @Override
     public DataBasicCompanyDTO validationsStepOne(@NotNull String numberDocument, String typeDocument, String dv) {
@@ -136,6 +152,8 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         DataBasicCompanyDTO dataBasicCompanyDTO =  new DataBasicCompanyDTO();
         DataContactCompanyDTO dataContactCompanyDTO = new DataContactCompanyDTO();
         String typePerson;
+
+
 
         if (typeDocument.equals(Constant.TI)) {
             throw new AffiliationError(Constant.TI_DOCUMENT_TYPE_RESTRICTED);
@@ -147,9 +165,12 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
         if(typeDocument.equals(Constant.NI))
             validNit(numberDocument, dv, dataBasicCompanyDTO);
+            
 
         if(typeDocument.equals(Constant.CC))
             validCC(numberDocument, dataBasicCompanyDTO);
+
+        validateTrasladoSat(typeDocument, numberDocument);
 
         if (typeDocument.equals(Constant.NI)){
 
@@ -172,6 +193,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 throw new AffiliationAlreadyExistsError(Type.ERROR_AFFILIATION_ALREADY_EXISTS);
         });
 
+
         UserMain user = findUserMainByEmail();
 
         dataBasicCompanyDTO.setTypeDocumentIdentification(typeDocument);
@@ -183,6 +205,72 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
 
         return dataBasicCompanyDTO;
+    }
+
+    private void validateTrasladoSat(String typeDocument, String numberDocument) {
+
+        try {
+            // Fetch latest AffiliateMercantile for the given doc to obtain decentralizedConsecutive and ARL
+            Optional<AffiliateMercantile> mercantileOpt = affiliateMercantileRepository
+                    .findFirstByTypeDocumentIdentificationAndNumberIdentificationOrderByFiledNumberDesc(
+                            typeDocument, numberDocument);
+            String consecutivo = mercantileOpt.map(m -> String.valueOf(
+                    Optional.ofNullable(m.getDecentralizedConsecutive()).orElse(0L)
+            )).orElse("0");
+
+            log.info("SAT transferable employer request: tipoDoc={}, numeroDoc={}, consecutivo={}", typeDocument, numberDocument, consecutivo);
+            TransferableEmployerRequest satRequest = TransferableEmployerRequest.builder()
+                    .tipoDocumentoEmpleador(typeDocument)
+                    .numeroDocumentoEmpleador(numberDocument)
+                    .consecutivoNITEmpleador(consecutivo)
+                    .build();
+
+            TransferableEmployerResponse satResponse = satConsultTransferableEmployerClient.consult(satRequest);
+
+            if (satResponse != null) {
+                Integer causal = satResponse.getCausal();
+                if (causal == null) {
+                    throw new SatUpstreamError("Estimado empleador:\nPor motivos de conectividad con el SAT (Sistema de Afiliación Transaccional), en este momento no es posible continuar con tu solicitud de afiliación a nuestra ARL.\nPor favor intenta nuevamente en unos momentos.");
+                }
+                log.info("SAT transferable employer response: causal={}, empresaTrasladable={}, codigoARL={}, arlAfiliacion={}",
+                        satResponse.getCausal(),
+                        satResponse.getEmpresaTrasladable(),
+                        satResponse.getCodigoArl(),
+                        satResponse.getArlAfiliacion());
+
+                String employerArlCode = satResponse.getArlAfiliacion();
+                String employerArl = Optional.ofNullable(employerArlCode)
+                        .flatMap(arlRepository::findByCodeARL)
+                        .map(com.gal.afiliaciones.domain.model.Arl::getAdministrator)
+                        .orElse("otra ARL");
+
+                
+
+                boolean allowedByCausal = causal != null && (causal == 3);
+
+                if (!allowedByCausal) {
+
+                    if (Constant.CODE_ARL.equals(employerArlCode)) {
+                        throw new SatError("Estimado empleador, hemos detectado que con el número de documento ingresado existe una afiliación con la ARL POSITIVA COMPAÑIA DE SEGUROS S.A. Puedes ingresar al portal transaccional con tu usuario y contraseña en Iniciar sesión");
+                    }
+
+                     throw new SatError("Estimado empleador:\n\nHemos identificado que el número de documento ingresado ya se encuentra actualmente afiliado a la ARL " + employerArl + ".\n\nPor esta razón, no es posible continuar con la solicitud de afiliación a nuestra ARL.\nTe invitamos a gestionar tus novedades y solicitudes con la entidad en la que actualmente registras la afiliación.");
+            }
+
+            }
+        } catch (SatError e) {
+            log.warn("SAT business error (transferable employer): {}", e.getMessage(), e);
+            throw e;
+        } catch (SatUpstreamError e) {
+            log.error("SAT upstream error (transferable employer): {}", e.getMessage(), e);
+
+            throw e;
+        } catch (Exception e) {
+            // If SAT service is unreachable or returns an error, surface a controlled error
+            log.error("Error calling SAT transferable employer service: {}", e.getMessage(), e);
+
+            throw new SatError(Optional.ofNullable(e.getMessage()).orElse("Estimado empleador:\nPor motivos de conectividad con el SAT (Sistema de Afiliación Transaccional), en este momento no es posible continuar con tu solicitud de afiliación a nuestra ARL.\nPor favor intenta nuevamente en unos momentos."));
+        }
     }
 
     @Override
@@ -608,7 +696,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             throw new AffiliationError("La actividad economica principal no puede ser nula");
         }
 
-        createWorkCenter(userMain, affiliateMercantile);
+        createWorkCenter(userMain, affiliateMercantile, mainOffice);
 
         timer.setType('D');
         affiliateMercantile.setStageManagement(Constant.SING);
@@ -691,7 +779,10 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 throw new AffiliationError(Constant.ERROR_AFFILIATION);
 
             List<DocumentRequested> listDocumentRequested = typeEmployerDocumentService.findByIdSubTypeEmployerListDocumentRequested(idSubTypeEmployer);
-            List<Long> ids = listDocumentRequested.stream().map(DocumentRequested::getId).toList();
+            List<Long> ids = listDocumentRequested.stream()
+                .filter(DocumentRequested::getRequested)
+                .map(DocumentRequested::getId)
+                .toList();
 
             if (findDocumentsRequired(files, ids))
                 throw new AffiliationError(("No se encontraron todos los documentos requeridos"));
@@ -979,13 +1070,26 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
     }
 
     private MultipartFile castBase64ToMultipartfile(String base64String, String name) {
-        return new Base64ToMultipartFile(base64String, name);
+        try {
+            if (base64String == null || base64String.trim().isEmpty()) {
+                log.error("Base64 string is null or empty for file: {}", name);
+                throw new IllegalArgumentException("Base64 string cannot be null or empty");
+            }
+            return new Base64ToMultipartFile(base64String, name);
+        } catch (IllegalArgumentException e) {
+            log.error("Error converting Base64 to MultipartFile for file {}: {}", name, e.getMessage());
+            throw new RuntimeException("Failed to convert Base64 string to file: " + name, e);
+        } catch (Exception e) {
+            log.error("Unexpected error converting Base64 to MultipartFile for file {}: {}", name, e.getMessage(), e);
+            throw new RuntimeException("Unexpected error processing file: " + name, e);
+        }
     }
 
     private static @NotNull Affiliate getAffiliate(AffiliateMercantile affiliateMercantile) {
         Affiliate affiliate = new Affiliate();
         affiliate.setUserId(affiliateMercantile.getIdUserPreRegister());
         affiliate.setCompany(affiliateMercantile.getBusinessName());
+        affiliate.setDocumenTypeCompany(affiliateMercantile.getTypeDocumentIdentification());
         affiliate.setNitCompany(affiliateMercantile.getNumberIdentification());
         affiliate.setFiledNumber(affiliateMercantile.getFiledNumber());
         affiliate.setDocumentNumber(affiliateMercantile.getNumberDocumentPersonResponsible());
@@ -1020,18 +1124,19 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         listTimer.forEach(timerRepository::delete);
     }
 
-    private void createWorkCenter(UserMain finalUserMain, AffiliateMercantile affiliateMercantile){
+    private void createWorkCenter(UserMain finalUserMain, AffiliateMercantile affiliateMercantile, MainOffice mainOffice){
 
         AtomicInteger counter = new AtomicInteger(2);
 
         affiliateMercantile.getEconomicActivity()
                 .forEach(activity -> {
                     String code = Boolean.TRUE.equals(activity.getIsPrimary()) ? "1" : String.valueOf(counter.getAndIncrement());
-                    activity.setIdWorkCenter(saveWorkCenters(affiliateMercantile, finalUserMain, code , activity.getActivityEconomic()));
+                    saveWorkCenters(affiliateMercantile, finalUserMain, code , activity.getActivityEconomic(), mainOffice);
                 });
     }
 
-    private Long saveWorkCenters(AffiliateMercantile affiliateMercantile, UserMain userMain, String code, EconomicActivity economicActivity) {
+    private Long saveWorkCenters(AffiliateMercantile affiliateMercantile, UserMain userMain, String code,
+                                 EconomicActivity economicActivity, MainOffice mainOffice) {
 
         try {
             WorkCenter workCenter = new WorkCenter();
@@ -1044,6 +1149,9 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             workCenter.setWorkCenterCity(affiliateMercantile.getCityMunicipality());
             workCenter.setWorkCenterDepartment(affiliateMercantile.getDepartment());
             workCenter.setWorkCenterZone(affiliateMercantile.getZoneLocationEmployer());
+            workCenter.setMainOffice(mainOffice);
+            workCenter.setIdAffiliate(mainOffice.getIdAffiliate());
+            workCenter.setIsEnable(true);
             workCenter = workCenterRepository.save(workCenter);
             return workCenter.getId();
 
@@ -1127,12 +1235,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
     private void searchUserInNationalRegistry(String identification, DataBasicCompanyDTO dataBasicCompanyDTO){
 
-        List<RegistryOfficeDTO> registries = genericWebClient.searchNationalRegistry(identification);
-
-        ObjectMapper mapper = new ObjectMapper();
-        List<RegistryOfficeDTO> registryOfficeDTOS = mapper.convertValue(registries,
-                new TypeReference<>() {
-                });
+        List<RegistryOfficeDTO> registryOfficeDTOS = registraduriaUnifiedService.searchUserInNationalRegistry(identification);
 
         if(!registryOfficeDTOS.isEmpty()){
 
@@ -1213,7 +1316,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 mercantileNew.setEconomicActivity(new ArrayList<>());
                 mercantileNew.getEconomicActivity().addAll(createAffiliateActivityEconomic(mapActivity, mercantileNew));
                 String code = "1";
-                mercantileNew.getEconomicActivity().get(0).setIdWorkCenter(saveWorkCenters(mercantileNew, userRegister, code, activity.get(0)));
+                saveWorkCenters(mercantileNew, userRegister, code, activity.get(0), mainOffice);
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
                 LocalDate date = LocalDate.parse(response.getFechaAfiliacionEfectiva(), formatter);
                 affiliate.setFiledNumber(filedNumber);
@@ -1245,6 +1348,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         affiliate.setAffiliationDate(LocalDateTime.now());
         return affiliate;
     }
+
 
     private void validNit(String numberDocument, String dv, DataBasicCompanyDTO dataBasicCompanyDTO){
 

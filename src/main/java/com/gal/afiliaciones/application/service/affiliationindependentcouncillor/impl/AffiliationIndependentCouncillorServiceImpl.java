@@ -1,5 +1,22 @@
 package com.gal.afiliaciones.application.service.affiliationindependentcouncillor.impl;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.affiliationindependentcouncillor.AffiliationIndependentCouncillorService;
@@ -19,10 +36,10 @@ import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeracti
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
@@ -37,23 +54,8 @@ import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
 import com.gal.afiliaciones.infrastructure.enums.DocumentNameStandardization;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.AffiliationValidations;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -156,6 +158,8 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
             dependence.setNit(affiliateMercantile.getNumberIdentification());
             dependence.setDv(affiliateMercantile.getDigitVerificationDV());
             dependence.setName(affiliateMercantile.getBusinessName());
+            dependence.setResponsibleDocumentNumber(affiliateMercantile.getNumberDocumentPersonResponsible());
+            dependence.setResponsibleDocumentType(affiliateMercantile.getTypeDocumentPersonResponsible());
             dependence.setDecentralizedConsecutive(affiliateMercantile.getDecentralizedConsecutive());
             response.add(dependence);
         });

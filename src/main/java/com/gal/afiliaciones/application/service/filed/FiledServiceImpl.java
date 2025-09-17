@@ -92,4 +92,14 @@ public class FiledServiceImpl implements FiledService {
         return String.format(PREFIX, prefixFiled, nextNumber);
     }
 
+    @Override
+    public String getNextFiledNumberWorkerDisplacement() {
+        ConsecutiveRequestDTO request = new ConsecutiveRequestDTO();
+        request.setPrefix(Constant.PREFIX_WORKER_DISPLACEMENT);
+        request.setProcessId(Constant.ID_PROCESS_AFFILIATIONS);
+        String prefixFiled = consecutiveService.getConsecutive(request);
+
+        long nextNumber = sequenceRepository.nextFiledNumberWorkerDisplacement();
+        return String.format(PREFIX, prefixFiled, nextNumber);
+    }
 }

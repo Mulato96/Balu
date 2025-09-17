@@ -8,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -42,5 +43,12 @@ public class WorkCenter {
     @ManyToOne
     @JoinColumn(name = "work_center_manager", referencedColumnName = "id")
     private UserMain workCenterManager;
+    @ManyToOne
+    @JoinColumn(name = "id_main_office", nullable = false)
+    private MainOffice mainOffice;
+    @Column(name = "id_affiliate")
+    private Long idAffiliate;
+    @Column(name = "is_enable")
+    private Boolean isEnable;
 
 }

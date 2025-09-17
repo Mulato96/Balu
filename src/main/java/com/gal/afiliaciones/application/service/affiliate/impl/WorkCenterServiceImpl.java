@@ -3,6 +3,7 @@ package com.gal.afiliaciones.application.service.affiliate.impl;
 import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
 import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.WorkCenterSpecification;
@@ -60,6 +61,16 @@ public class WorkCenterServiceImpl implements WorkCenterService {
             throw new AffiliationError("Ocurrio un error");
         }
 
+    }
+
+    @Override
+    public List<WorkCenter> getWorkCenterByMainOffice(MainOffice idMainOffice) {
+        return repository.findByMainOffice(idMainOffice);
+    }
+
+    @Override
+    public WorkCenter getWorkCenterByEconomicActivityAndMainOffice(String economicActivity, Long idMainOffice){
+        return repository.findByeconomicActivityCodeAndMainOffice(economicActivity, idMainOffice);
     }
 
 }

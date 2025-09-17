@@ -89,9 +89,9 @@ public class AffiliationIndependentVolunteerServiceImpl implements AffiliationIn
                     messageError.messageError(dto.getIndependentVolunteerData().getIdentificationDocumentType(),
                             dto.getIndependentVolunteerData().getIdentificationDocumentNumber()));
 
-        UserMain user = userPreRegisterRepository
-                .findOne(UserSpecifications
-                        .byIdentification(dto.getIndependentVolunteerData().getIdentificationDocumentNumber()))
+        String username = dto.getIndependentVolunteerData().getIdentificationDocumentType() + "-" + 
+                         dto.getIndependentVolunteerData().getIdentificationDocumentNumber() + "-EXT";
+        UserMain user = userPreRegisterRepository.findOne(UserSpecifications.byUsername(username))
                 .orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_IN_DATA_BASE));
 
         if (user.getPensionFundAdministrator() == null && user.getHealthPromotingEntity() == null)

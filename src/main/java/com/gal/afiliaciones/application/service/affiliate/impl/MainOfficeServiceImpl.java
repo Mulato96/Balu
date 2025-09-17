@@ -4,6 +4,8 @@ import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
 import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.domain.model.ArlInformation;
 import com.gal.afiliaciones.domain.model.EconomicActivity;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
@@ -11,6 +13,7 @@ import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
 import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
@@ -18,6 +21,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterReposi
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
@@ -27,15 +31,20 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.MainOff
 import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeGrillaDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeOfficialDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MainOfficeServiceImpl implements MainOfficeService {
@@ -57,12 +67,13 @@ public class MainOfficeServiceImpl implements MainOfficeService {
     private final AffiliateMercantileRepository affiliateMercantileRepository;
     private final AffiliationDependentRepository affiliationDependentRepository;
     private final IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
+    private final ArlInformationDao arlInformationDao;
 
-    private static final String ERROR_DELETE = "no puedes eliminar este centro de trabajo ya que tienes trabajadores asociados";
+    private static final String ERROR_DELETE = "No puede eliminar este centro de trabajo ya que tienes trabajadores asociados";
 
     @Override
-    public List<MainOfficeGrillaDTO> getAllMainOffices(Long idUser) {
-        return repository.findAll(MainOfficeSpecification.findAllByIdUser(idUser))
+    public List<MainOfficeGrillaDTO> getAllMainOffices(Long idAffiliateEmployer) {
+        return repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliateEmployer))
                 .stream()
                 .map(main -> {
 
@@ -70,7 +81,7 @@ public class MainOfficeServiceImpl implements MainOfficeService {
                     BeanUtils.copyProperties(main, mainOfficeDTO);
                     return mainOfficeDTO;
 
-                    })
+                    }).sorted(Comparator.comparing(MainOfficeGrillaDTO::getMain).reversed())
                 .toList();
     }
 
@@ -88,10 +99,10 @@ public class MainOfficeServiceImpl implements MainOfficeService {
     @Override
     public MainOffice saveMainOffice(MainOfficeDTO mainOfficeDTO){
 
-        if(!findByIdUserAndDepartmentAndCityAndAddress(mainOfficeDTO.getOfficeManager(), mainOfficeDTO.getAddressDTO()).isEmpty())
+        if(!findByIdUserAndDepartmentAndCityAndAddress(mainOfficeDTO.getIdAffiliateEmployer(), mainOfficeDTO.getAddressDTO()).isEmpty())
             throw new AffiliationError("La sede ya se encuentra creada, Valida la información y vuelve a intentar");
 
-        if(!repository.findAll(MainOfficeSpecification.findByIdUserAndName(mainOfficeDTO.getOfficeManager(), mainOfficeDTO.getMainOfficeName())).isEmpty())
+        if(!repository.findAll(MainOfficeSpecification.findByIdUserAndName(mainOfficeDTO.getIdAffiliateEmployer(), mainOfficeDTO.getMainOfficeName())).isEmpty())
             throw new AffiliationError("La sede ya se encuentra creada, Valida la información y vuelve a intentar");
 
         mainOfficeDTO.setEconomicActivity(mainOfficeDTO.getEconomicActivity().stream().filter(Objects::nonNull).toList());
@@ -103,11 +114,8 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         MainOffice mainOffice = new MainOffice();
 
         UserMain userMain = findUserMain(mainOfficeDTO.getOfficeManager());
-        Affiliate affiliate =  affiliateRepository.findAll(AffiliateSpecification.findByIdentificationTypeAndNumber(userMain.getIdentificationType(), userMain.getIdentification()))
-                .stream()
-                .findFirst()
+        Affiliate affiliate =  affiliateRepository.findByIdAffiliate(mainOfficeDTO.getIdAffiliateEmployer())
                 .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
-
 
         BeanUtils.copyProperties(mainOfficeDTO, mainOffice);
         BeanUtils.copyProperties(mainOfficeDTO.getAddressDTO(), mainOffice);
@@ -115,21 +123,51 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         mainOffice.setOfficeManager(userMain);
         mainOffice.setIdAffiliate(affiliate.getIdAffiliate());
 
-        List<EconomicActivity> economicActivityList =  findAllActivityEconomicById(mainOfficeDTO.getEconomicActivity());
-
-        economicActivityList.forEach(economic -> workCenter(economic, userMain, mainOffice.getIdDepartment(), mainOffice.getIdCity(), mainOffice.getMainOfficeZone()));
-
         mainOffice.setCode(findCode());
 
         if(Boolean.TRUE.equals(mainOfficeDTO.getMain()))
-            changeMain(mainOffice.getOfficeManager().getId());
+            changeMain(mainOffice.getIdAffiliate(), mainOffice);
 
-        if(repository.findAll(MainOfficeSpecification.findAllByIdUser(mainOfficeDTO.getOfficeManager())).isEmpty())
+        if(repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(mainOfficeDTO.getIdAffiliateEmployer())).isEmpty())
             mainOffice.setMain(true);
 
-        sendEmail(findByNumberAndTypeDocument(userMain));
+        MainOffice newMainOffice = repository.save(mainOffice);
+        createWorkCentersByMainOffice(mainOfficeDTO, newMainOffice, userMain);
 
-        return repository.save(mainOffice);
+        sendEmail(affiliate);
+
+        return newMainOffice;
+    }
+
+    private void createWorkCentersByMainOffice(MainOfficeDTO mainOfficeDTO, MainOffice newMainOffice, UserMain userMain){
+        List<EconomicActivity> economicActivityList =  findAllActivityEconomicById(mainOfficeDTO.getEconomicActivity());
+        economicActivityList.forEach(economic -> workCenter(economic, userMain, newMainOffice, Boolean.TRUE));
+
+        List<EconomicActivity> economicActivityEmployer = findEconomicActivitiesByEmployer(mainOfficeDTO.getIdAffiliateEmployer());
+
+        List<EconomicActivity> diferentList = new ArrayList<>(economicActivityEmployer);
+        diferentList.removeAll(economicActivityList);
+
+        diferentList.forEach(economic -> workCenter(economic, userMain, newMainOffice, Boolean.FALSE));
+    }
+
+    private List<EconomicActivity> findEconomicActivitiesByEmployer(Long idAffiliate){
+        List<EconomicActivity> economicActivityList = new ArrayList<>();
+        Object affiliate = findAffiliateMercantile(idAffiliate);
+
+        if(affiliate instanceof AffiliateMercantile affiliateMercantile){
+            economicActivityList = affiliateMercantile.getEconomicActivity()
+                    .stream()
+                    .map(AffiliateActivityEconomic::getActivityEconomic).toList();
+        }
+
+        if(affiliate instanceof Affiliation affiliation) {
+            economicActivityList = affiliation.getEconomicActivity()
+                    .stream()
+                    .map(AffiliateActivityEconomic::getActivityEconomic).toList();
+        }
+
+        return economicActivityList;
     }
 
     @Override
@@ -146,10 +184,14 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         Object affiliate = findAffiliateMercantile(mainOffice.getIdAffiliate());
 
         if(affiliate instanceof AffiliateMercantile affiliateMercantile){
-            List<Long> activityEconomic = affiliateMercantile.getEconomicActivity()
-                    .stream()
-                    .map(economic -> economic.getActivityEconomic().getId())
-                    .toList();
+            List<WorkCenter> workCenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
+            List<Long> activityEconomic = new ArrayList<>();
+            workCenterList.forEach(workCenter -> {
+                if(workCenter.getIsEnable().booleanValue()) {
+                    List<EconomicActivity> economicActivity = economicActivityRepository.findByEconomicActivityCode(workCenter.getEconomicActivityCode());
+                    activityEconomic.add(economicActivity.get(0).getId());
+                }
+            });
 
             BeanUtils.copyProperties(mainOffice, mainOfficeDTO);
             BeanUtils.copyProperties(mainOffice,addressDTO);
@@ -164,11 +206,14 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
         if(affiliate instanceof Affiliation affiliation) {
 
-            List<Long> activityEconomic = affiliation.getEconomicActivity()
-                    .stream()
-                    .map(AffiliateActivityEconomic::getActivityEconomic)
-                    .map(EconomicActivity::getId)
-                    .toList();
+            List<WorkCenter> workCenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
+            List<Long> activityEconomic = new ArrayList<>();
+            workCenterList.forEach(workCenter -> {
+                if(workCenter.getIsEnable().booleanValue()) {
+                    List<EconomicActivity> economicActivity = economicActivityRepository.findByEconomicActivityCode(workCenter.getEconomicActivityCode());
+                    activityEconomic.add(economicActivity.get(0).getId());
+                }
+            });
 
             BeanUtils.copyProperties(mainOffice, mainOfficeDTO);
             BeanUtils.copyProperties(mainOffice, addressDTO);
@@ -199,7 +244,7 @@ public class MainOfficeServiceImpl implements MainOfficeService {
     }
 
     @Override
-    public MainOffice update(MainOfficeDTO mainOfficeDTO, Long id, String filedNumber) {
+    public MainOffice update(MainOfficeDTO mainOfficeDTO, Long id) {
 
         MainOffice mainOffice = findById(id);
 
@@ -221,9 +266,8 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
         validMainOffice(mainOfficeDTO);
 
-        Affiliate affiliate = findByFiledNumber(filedNumber);
-
-        UserMain userMain = findUserMain(mainOfficeDTO.getOfficeManager());
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(mainOfficeDTO.getIdAffiliateEmployer())
+                .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
 
         String code = mainOffice.getCode();
 
@@ -231,32 +275,61 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         BeanUtils.copyProperties(mainOfficeDTO.getAddressDTO(), mainOffice);
 
         List<EconomicActivity> economicActivityList =  findAllActivityEconomicById(mainOfficeDTO.getEconomicActivity());
+
         AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findOne(AffiliateMercantileSpecification.findByFieldNumber(affiliate.getFiledNumber()))
                 .orElse(null);
 
-        if(changedEconomicActivitiesList(economicActivityList, affiliateMercantile)) {
-            if (affiliateMercantile != null && affiliateMercantile.getEconomicActivity() != null) {
-                affiliateMercantile.getEconomicActivity()
-                        .forEach(economic -> {
-                            if (!economicActivityList.isEmpty() && economicActivityList.get(0) != null)
-                                validWorkedAssociated(mainOffice.getId(), economic.getActivityEconomic().getId(), affiliate);
-                        });
-            }
+        if(affiliateMercantile!=null){
+            if(changedEconomicActivitiesList(economicActivityList, affiliateMercantile) && affiliateMercantile.getEconomicActivity() != null) {
+                List<EconomicActivity> economicActivitiesEmployer = affiliateMercantile.getEconomicActivity()
+                        .stream()
+                        .map(AffiliateActivityEconomic::getActivityEconomic).toList();
 
-            economicActivityList.forEach(economic -> workCenter(economic, userMain, mainOffice.getIdDepartment(), mainOffice.getIdCity(), mainOffice.getMainOfficeZone()));
+                List<EconomicActivity> diferentList = new ArrayList<>(economicActivitiesEmployer);
+                diferentList.removeAll(economicActivityList);
+
+                diferentList.forEach(economic -> {
+                        if (!economicActivityList.isEmpty() && economicActivityList.get(0) != null)
+                            validWorkedAssociatedToWorkCenter(mainOffice.getId(), economic, affiliate);
+                    });
+            }
+        }else{
+            Affiliation affiliationDomestic = domesticServiceIndependentRepository.findByFiledNumber(affiliate.getFiledNumber())
+                    .orElse(null);
+
+            if (affiliationDomestic != null &&
+                    changedEconomicActivitiesDomestic(economicActivityList, affiliationDomestic) &&
+                    affiliationDomestic.getEconomicActivity() != null) {
+                List<EconomicActivity> economicActivitiesEmployer = affiliationDomestic.getEconomicActivity()
+                        .stream()
+                        .map(AffiliateActivityEconomic::getActivityEconomic).toList();
+
+                List<EconomicActivity> diferentList = new ArrayList<>(economicActivitiesEmployer);
+                diferentList.removeAll(economicActivityList);
+
+                diferentList.forEach(economic -> {
+                    if (!economicActivityList.isEmpty() && economicActivityList.get(0) != null)
+                        validWorkedAssociatedToWorkCenter(mainOffice.getId(), economic, affiliate);
+                });
+            }
         }
 
-        if(Boolean.TRUE.equals(mainOffice.getMain()))
-            changeMain(mainOffice.getOfficeManager().getId());
+        UserMain userMain = findUserMain(mainOfficeDTO.getOfficeManager());
+        updateWorkCenter(economicActivityList, mainOffice, userMain);
+
+        if(Boolean.TRUE.equals(mainOfficeDTO.getMain()))
+            changeMain(mainOfficeDTO.getIdAffiliateEmployer(), mainOffice);
 
         mainOffice.setCode(code);
 
-        if(repository.findAll(MainOfficeSpecification.findAllByIdUser(mainOfficeDTO.getOfficeManager())).size() == 1)
+        if(repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(mainOfficeDTO.getIdAffiliateEmployer())).size() == 1)
             mainOffice.setMain(true);
+
+        MainOffice newMainOffice = repository.save(mainOffice);
 
         sendEmail(affiliate);
 
-        return repository.save(mainOffice);
+        return newMainOffice;
 
     }
 
@@ -273,21 +346,49 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
     }
 
+    private boolean changedEconomicActivitiesDomestic(List<EconomicActivity> economicActivityList, Affiliation affiliation) {
+        if (affiliation != null && affiliation.getEconomicActivity() != null &&
+                economicActivityList.size() != affiliation.getEconomicActivity().size())
+            return true;
+
+        Set<Long> idsEconomicActivityEmployer = affiliation.getEconomicActivity().stream()
+                .map(AffiliateActivityEconomic::getId).collect(Collectors.toSet());
+
+        return economicActivityList.stream().map(EconomicActivity::getId)
+                .anyMatch(idsEconomicActivityEmployer::contains);
+
+    }
+
     @Override
-    public String delete(Long id, String filedNumber) {
+    public String delete(Long id, Long idAffiliateEmployer) {
 
         MainOffice mainOffice = findById(id);
-        Affiliate affiliate = findByFiledNumber(filedNumber);
-        AffiliateMercantile affiliateMercantile =  affiliateMercantileRepository.findOne(AffiliateMercantileSpecification.findByFieldNumber(affiliate.getFiledNumber()))
-                .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
 
         if(Boolean.TRUE.equals(mainOffice.getMain()))
             throw new AffiliationError("No se puede eliminar la sede, porque es la sede principal");
 
-        affiliateMercantile.getEconomicActivity()
-                        .forEach(main -> validWorkedAssociated(mainOffice.getId(), main.getActivityEconomic().getId(), affiliate));
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(idAffiliateEmployer)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate employer not found"));
 
-        if(repository.findAll(MainOfficeSpecification.findAllByIdUser(mainOffice.getOfficeManager().getId())).size() <= 1)
+        List<AffiliateActivityEconomic> economicActivityList = new ArrayList<>();
+        if(affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
+            AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findOne(AffiliateMercantileSpecification.findByFieldNumber(affiliate.getFiledNumber()))
+                    .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
+
+            economicActivityList = affiliateMercantile.getEconomicActivity();
+        }
+
+        if(affiliate.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)) {
+            Affiliation affiliationDomestic = domesticServiceIndependentRepository.findByFiledNumber(affiliate.getFiledNumber())
+                    .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
+
+            economicActivityList = affiliationDomestic.getEconomicActivity();
+        }
+
+        economicActivityList
+                .forEach(main -> validWorkedAssociated(mainOffice.getId(), main.getActivityEconomic().getId(), affiliate));
+
+        if(repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliateEmployer)).size() <= 1)
             throw new AffiliationError("No se puede eliminar la sede, debe quedar minimo una sede.");
 
         repository.delete(mainOffice);
@@ -308,43 +409,28 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         return iUserPreRegisterRepository.findById(id).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND));
     }
 
-    private Affiliate findByFiledNumber(String filedNumber){
-
-        return affiliateRepository.findOne(AffiliateSpecification.findByField(filedNumber)).orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
-    }
-
     private List<EconomicActivity> findAllActivityEconomicById(List<Long> ids){
         return ids.stream()
                 .map(id -> economicActivityRepository.findById(id).orElseThrow(() -> new AffiliationError("No se encontro la actividad economica con id: " + id)))
                 .toList();
     }
 
-
     private void validMainOffice(MainOfficeDTO mainOfficeDTO){
+
+        validEmpty(String.valueOf(mainOfficeDTO.getAddressDTO().getIdCity()), "El campo ciudad no puede ser vacio");
+        validEmpty(String.valueOf(mainOfficeDTO.getAddressDTO().getIdDepartment()), "El campo departamento no puede ser vacio");
+        validEmpty(mainOfficeDTO.getMainOfficeEmail(),"El campo email no puede ser vacio");
+        validNumberPhone(mainOfficeDTO.getMainOfficePhoneNumber(), true);
+        validNumberPhone(mainOfficeDTO.getMainPhoneNumberTwo(), false);
+        validNumberPhone(mainOfficeDTO.getPhoneOneResponsibleHeadquarters(), true);
+        validNumberPhone(mainOfficeDTO.getPhoneTwoResponsibleHeadquarters(), false);
+        validNames(mainOfficeDTO.getFirstNameResponsibleHeadquarters(), true, 50, "Nombre incorrecto");
+        validNames(mainOfficeDTO.getSecondNameResponsibleHeadquarters(), false, 100, "Segundo nombre incorrecto");
+        validNames(mainOfficeDTO.getSurnameResponsibleHeadquarters(), true, 50, "Apellido incorrecto");
+        validNames(mainOfficeDTO.getSecondSurnameResponsibleHeadquarters(), false, 100, "Segundo apellido incorrecto");
 
         if(validEmpty(mainOfficeDTO.getMainOfficeName()) && mainOfficeDTO.getMainOfficeName().length() >= 101)
             throw new AffiliationError("El nombre de la sede excede el tamaño permitido, el tamaño debe ser menor a 100 caracteres");
-
-        if(validEmpty(String.valueOf(mainOfficeDTO.getAddressDTO().getIdCity())))
-            throw new AffiliationError("El campo ciudad no puede ser vacio");
-
-        if(validEmpty(String.valueOf(mainOfficeDTO.getAddressDTO().getIdDepartment())))
-            throw new AffiliationError("El campo departamento no puede ser vacio");
-
-        if(validEmpty(mainOfficeDTO.getMainOfficeEmail()))
-            throw new AffiliationError("El campo email no puede ser vacio");
-
-        if(validNumberPhone(mainOfficeDTO.getMainOfficePhoneNumber(), true))
-            throw new AffiliationError(Constant.PHONE);
-
-        if(validNumberPhone(mainOfficeDTO.getMainPhoneNumberTwo(), false))
-            throw new AffiliationError(Constant.PHONE);
-
-        if(validNumberPhone(mainOfficeDTO.getPhoneOneResponsibleHeadquarters(), true))
-            throw new AffiliationError(Constant.PHONE);
-
-        if(validNumberPhone(mainOfficeDTO.getPhoneTwoResponsibleHeadquarters(), false))
-            throw new AffiliationError(Constant.PHONE);
 
         if(validEmail(mainOfficeDTO.getMainOfficeEmail()) && validEmail(mainOfficeDTO.getEmailResponsibleHeadquarters()))
             throw new AffiliationError("El correo tiene un formato incorrecto");
@@ -359,45 +445,28 @@ public class MainOfficeServiceImpl implements MainOfficeService {
                 !validNumberIdentification(mainOfficeDTO.getNumberDocumentResponsibleHeadquarters(), mainOfficeDTO.getTypeDocumentResponsibleHeadquarters()))
             throw new AffiliationError("Tipo o numero de documento incorrectos");
 
-        if(validNames(mainOfficeDTO.getFirstNameResponsibleHeadquarters(), true, 50))
-            throw new AffiliationError("Nombre incorrecto");
-
-        if(validNames(mainOfficeDTO.getSecondNameResponsibleHeadquarters(), false, 100))
-            throw new AffiliationError("Segundo nombre incorrecto");
-
-        if(validNames(mainOfficeDTO.getSurnameResponsibleHeadquarters(), true, 50))
-            throw new AffiliationError("Apellido incorrecto");
-
-        if(validNames(mainOfficeDTO.getSecondSurnameResponsibleHeadquarters(), false, 100))
-            throw new AffiliationError("Segundo apellido incorrecto");
-
     }
 
     private boolean validEmpty(String data){
-        return !(data != null && !data.isEmpty());
+        return data == null || data.isEmpty();
     }
 
-    private boolean validNumberPhone(String number, boolean requested){
+    private void validEmpty(String data, String message){
+        if (data == null || data.isEmpty())
+            throw new AffiliationError(message);
+    }
 
-        if(requested){
-            if(!validEmpty(number))
-                return !List.of(
-                        "601", "602", "604", "605", "606", "607", "608",
-                        "300", "301", "302", "303", "304", "305", "310", "311", "312",
-                        "313", "314", "315", "316", "317", "318", "319", "320", "321",
-                        "322", "323", "324", "333", "350", "351")
-                        .contains(number.substring(0, 3));
-            return true;
-        }
+    private void validNumberPhone(String number, boolean requested){
 
-        if(!validEmpty(number))
-            return !List.of(
-                    "601", "602", "604", "605", "606", "607", "608",
-                    "300", "301", "302", "303", "304", "305", "310", "311", "312",
-                    "313", "314", "315", "316", "317", "318", "319", "320", "321",
-                    "322", "323", "324", "333", "350", "351")
-                    .contains(number.substring(0, 3));
-        return false;
+        boolean isEmpty = validEmpty(number);
+
+        List<String> codesPhone = List.of("6", "3");
+
+        if(requested && isEmpty)
+            throw new AffiliationError(Constant.PHONE);
+
+        if(!isEmpty && !codesPhone.contains(number.substring(0, 1)))
+            throw new AffiliationError(Constant.PHONE);
 
     }
 
@@ -408,16 +477,15 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         return true;
     }
 
-    private void changeMain(Long idUser){
-
-        repository.findAll(MainOfficeSpecification.findByMainTrue(idUser)).forEach(main -> {
+    private void changeMain(Long idAffiliateEmployer, MainOffice mainOffice){
+        repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliateEmployer)).forEach(main -> {
             main.setMain(false);
             repository.save(main);
         });
-
+        mainOffice.setMain(true);
     }
 
-    private void workCenter(EconomicActivity economicActivity , UserMain user, Long department, Long city, String zone){
+    private void workCenter(EconomicActivity economicActivity, UserMain user, MainOffice mainOffice, Boolean isEnable){
 
         String codeActivityEconomic = codeActivityEconomic(economicActivity);
 
@@ -431,14 +499,44 @@ public class MainOfficeServiceImpl implements MainOfficeService {
             workCenter.setEconomicActivityCode(codeActivityEconomic);
             workCenter.setTotalWorkers(0);
             workCenter.setRiskClass(economicActivity.getClassRisk());
-            workCenter.setWorkCenterDepartment(department);
-            workCenter.setWorkCenterCity(city);
-            workCenter.setWorkCenterZone(zone);
+            workCenter.setWorkCenterDepartment(mainOffice.getIdDepartment());
+            workCenter.setWorkCenterCity(mainOffice.getIdCity());
+            workCenter.setWorkCenterZone(mainOffice.getMainOfficeZone());
             workCenter.setWorkCenterManager(user);
+            workCenter.setMainOffice(mainOffice);
+            workCenter.setIdAffiliate(mainOffice.getIdAffiliate());
+            workCenter.setIsEnable(isEnable);
             workCenterService.saveWorkCenter(workCenter);
 
         }
 
+    }
+
+    private void updateWorkCenter(List<EconomicActivity> economicActivityList, MainOffice mainOffice, UserMain userMain){
+        List<WorkCenter> workcenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
+        //Deshabilitar todos los centros de trabajo
+        workcenterList.forEach(workCenter -> {
+            workCenter.setIsEnable(Boolean.FALSE);
+            workCenterService.saveWorkCenter(workCenter);
+        });
+
+        List<String> newActivities = economicActivityList.stream()
+                .map(EconomicActivity::getEconomicActivityCode).toList();
+
+        if(!newActivities.isEmpty()){
+            //habilitar los centros de trabajo seleccionados
+            newActivities.forEach(economicActivityCode -> {
+                WorkCenter workCenter = workCenterService.
+                        getWorkCenterByEconomicActivityAndMainOffice(economicActivityCode, mainOffice.getId());
+                if(workCenter!=null) {
+                    workCenter.setIsEnable(Boolean.TRUE);
+                    workCenterService.saveWorkCenter(workCenter);
+                }else{
+                    EconomicActivity economic = economicActivityRepository.findByEconomicActivityCode(economicActivityCode).get(0);
+                    workCenter(economic, userMain, mainOffice, Boolean.TRUE);
+                }
+            });
+        }
     }
 
     private String codeActivityEconomic(EconomicActivity economicActivity){
@@ -470,65 +568,89 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
     }
 
-    private boolean validNames(String name, boolean requested, long length){
+    private void validNames(String name, boolean requested, long length, String message){
 
-        if(requested){
+        boolean isEmpty = validEmpty(name);
 
-            if(!validEmpty(name))
-                return !(name.length() <= length && name.matches("^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ ]+$"));
-            else
-                return true;
-        }
+        if(requested && isEmpty)
+            throw new AffiliationError(message);
 
-        if(!validEmpty(name))
-            return !(name.length() <= length && name.matches("^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ ]+$"));
-        return false;
+        if(!isEmpty && !(name.length() <= length && name.matches("^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ ]+$")))
+            throw new AffiliationError(message);
 
     }
 
     private List<MainOffice> findByIdUserAndDepartmentAndCityAndAddress(Long idUser, AddressDTO addressDTO){
-
         return repository.findAll(MainOfficeSpecification.findByIdUserAndDepartmentAndCityAndAddress(idUser, addressDTO));
     }
 
     private void validWorkedAssociated(Long idHeadquarter, Long idEconomicActivity, Affiliate affiliate){
 
-       try {
+        try {
 
-           if(idEconomicActivity != null){
+            if(idEconomicActivity != null){
 
-               List<String> filedNumbers = affiliateRepository.findAll(AffiliateSpecification.findDependentsByEmployer(affiliate.getNitCompany()))
-                       .stream()
-                       .map(Affiliate::getFiledNumber)
-                       .toList();
+                List<String> filedNumbers = affiliationDependentRepository.findAll(AffiliationDependentSpecification.findDependentsByIdAffiliateEmployer(affiliate.getIdAffiliate()))
+                        .stream()
+                        .map(AffiliationDependent::getFiledNumber)
+                        .toList();
 
-               if(!filedNumbers.isEmpty() &&
-                       (!affiliationDependentRepository.findAll(AffiliationDependentSpecification.findByEconomicActivityAndEmployer(filedNumbers))
-                               .stream()
-                               .filter(dependent -> Objects.equals(dependent.getIdHeadquarter(), idHeadquarter))
-                               .toList()
-                               .isEmpty()
-                       )
-               )
-                   throw new AffiliationError(ERROR_DELETE);
+                if(!filedNumbers.isEmpty() &&
+                        (!affiliationDependentRepository.findAll(AffiliationDependentSpecification.findByFiledNumberList(filedNumbers))
+                                .stream()
+                                .filter(dependent -> Objects.equals(dependent.getIdHeadquarter(), idHeadquarter))
+                                .toList()
+                                .isEmpty()))
+                    throw new AffiliationError(ERROR_DELETE);
 
-               Object affiliation = findAffiliation(affiliate.getFiledNumber());
+                Object affiliation = findAffiliation(affiliate.getFiledNumber());
 
-               if(affiliation instanceof AffiliateMercantile affiliateMercantile && Objects.equals(affiliateMercantile.getIdMainHeadquarter(), idHeadquarter)
-               )
-                   throw new AffiliationError(ERROR_DELETE);
+                if(affiliation instanceof AffiliateMercantile affiliateMercantile && Objects.equals(affiliateMercantile.getIdMainHeadquarter(), idHeadquarter))
+                    throw new AffiliationError(ERROR_DELETE);
 
-               if(affiliation instanceof Affiliation affiliationDomestic && Objects.equals(affiliationDomestic.getIdMainHeadquarter(), idHeadquarter))
-                   throw new AffiliationError(ERROR_DELETE);
+                if(affiliation instanceof Affiliation affiliationDomestic && Objects.equals(affiliationDomestic.getIdMainHeadquarter(), idHeadquarter))
+                    throw new AffiliationError(ERROR_DELETE);
 
 
-           }
+            }
 
-       }catch (AffiliationError e){
-           throw e;
-       }catch (Exception e){
-           throw new AffiliationError("Ocurrio un error");
-       }
+        }catch (AffiliationError e){
+            throw e;
+        }catch (Exception e){
+            throw new AffiliationError("Ocurrio un error");
+        }
+
+    }
+
+    private void validWorkedAssociatedToWorkCenter(Long idHeadquarter, EconomicActivity economicActivity, Affiliate affiliate){
+
+        try {
+
+            if(economicActivity != null){
+                WorkCenter workCenter = workCenterService.getWorkCenterByEconomicActivityAndMainOffice(economicActivity.getEconomicActivityCode(), idHeadquarter);
+
+                if(workCenter!=null) {
+                    List<String> filedNumbers = affiliationDependentRepository.findAll(AffiliationDependentSpecification.findDependentsByIdAffiliateEmployer(affiliate.getIdAffiliate()))
+                            .stream()
+                            .map(AffiliationDependent::getFiledNumber)
+                            .toList();
+
+                    if (!filedNumbers.isEmpty() &&
+                            (!affiliationDependentRepository.findAll(AffiliationDependentSpecification.findByEconomicActivityAndEmployer(filedNumbers, economicActivity.getEconomicActivityCode()))
+                                    .stream()
+                                    .filter(dependent -> Objects.equals(dependent.getIdWorkCenter(), workCenter.getId()))
+                                    .toList()
+                                    .isEmpty()))
+                        throw new AffiliationError(ERROR_DELETE);
+                }
+
+            }
+
+        }catch (AffiliationError e){
+            throw e;
+        }catch (Exception e){
+            throw new AffiliationError("Ocurrio un error");
+        }
 
     }
 
@@ -537,6 +659,11 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         Object affiliation = findAffiliation(affiliate.getFiledNumber());
         String nameCompany = affiliate.getCompany();
         String email = null;
+        String emailArl = Constant.EMAIL_ARL;
+
+        List<ArlInformation> arlInformation = arlInformationDao.findAllArlInformation();
+        if(!arlInformation.isEmpty())
+            emailArl = arlInformation.get(0).getEmail();
 
         if(affiliation instanceof AffiliateMercantile affiliateMercantile)
             email = affiliateMercantile.getEmail();
@@ -551,7 +678,7 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
             data.put("nameCompany", nameCompany);
             data.put("date", LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy, h:mm a")));
-            data.put("mail", Constant.EMAIL_ARL);
+            data.put("mail", emailArl);
             data.put("sectionName", "Datos basicos empresa");
 
         sendEmails.sendEmailHeadquarters(data, email);
@@ -563,25 +690,18 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         Specification<AffiliateMercantile> specMercantile = AffiliateMercantileSpecification.findByFieldNumber(filedNumber);
         Specification<Affiliation> specAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications.hasFiledNumber(filedNumber);
 
-        Optional<AffiliateMercantile> optionalAffiliation = affiliateMercantileRepository.findOne(specMercantile);
-        Optional<Affiliation> optionalAffiliate =  domesticServiceIndependentRepository.findOne(specAffiliation);
+        Optional<AffiliateMercantile> optionalAffiliationMercantile = affiliateMercantileRepository.findOne(specMercantile);
+        Optional<Affiliation> optionalAffiliationDomestic =  domesticServiceIndependentRepository.findOne(specAffiliation);
 
-        if(optionalAffiliation.isEmpty() && optionalAffiliate.isEmpty())
+        if(optionalAffiliationMercantile.isEmpty() && optionalAffiliationDomestic.isEmpty())
             throw new AffiliationError(Constant.AFFILIATE_NOT_FOUND);
 
-        return optionalAffiliate.isPresent() ? optionalAffiliate.get() : optionalAffiliation.get();
+        return optionalAffiliationDomestic.isPresent() ? optionalAffiliationDomestic.get() : optionalAffiliationMercantile.get();
 
-    }
-
-    private Affiliate findByNumberAndTypeDocument(UserMain userMain){
-        Specification<Affiliate> spc = AffiliateSpecification.findByEmployerAndIdentification(userMain.getIdentificationType(), userMain.getIdentification());
-        List<Affiliate> affiliateList = affiliateRepository.findAll(spc);
-        return affiliateList.get(0);
     }
 
     @Override
     public Object findAffiliateMercantile(Long idAffiliate){
-
         if(idAffiliate == null)
             return null;
 
@@ -598,6 +718,72 @@ public class MainOfficeServiceImpl implements MainOfficeService {
 
     }
 
+    @Override
+    public List<MainOfficeGrillaDTO> getAllMainOfficesByIdAffiliate(Long idAffiliate) {
+        return repository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliate))
+                .stream()
+                .map(main -> {
+                    MainOfficeGrillaDTO mainOfficeDTO = new MainOfficeGrillaDTO();
+                    BeanUtils.copyProperties(main, mainOfficeDTO);
+                    return mainOfficeDTO;
+                })
+                .toList();
+    }
 
+    @Override
+    public List<MainOfficeGrillaDTO> findByNumberAndTypeDocument(String number, String type){
 
+        validOfficial(number);
+        Affiliate affiliate = findAffiliate(number);
+
+        return getAllMainOffices(affiliate.getUserId());
+    }
+
+    @Override
+    public MainOffice saveMainOfficeOfficial(MainOfficeOfficialDTO mainOfficeOfficialDTO){
+
+        validOfficial(mainOfficeOfficialDTO.getNumberDocument());
+        Affiliate affiliate = findAffiliate(mainOfficeOfficialDTO.getNumberDocument());
+        mainOfficeOfficialDTO.getMainOfficeDTO().setOfficeManager(affiliate.getUserId());
+        return saveMainOffice(mainOfficeOfficialDTO.getMainOfficeDTO());
+    }
+
+    @Override
+    public MainOffice updateOfficial(MainOfficeDTO mainOfficeDTO, Long id, String number) {
+        validOfficial(number);
+        return update(mainOfficeDTO, id);
+    }
+
+    @Override
+    public String deleteOfficial(Long id, String number) {
+        validOfficial(number);
+        Affiliate affiliate = findAffiliate(number);
+        return delete(id, affiliate.getIdAffiliate());
+    }
+
+    @Override
+    public List<MainOffice> findAll() {
+        return repository.findAll();
+    }
+
+    private Affiliate findAffiliate(String number){
+        return affiliateRepository.findOne(AffiliateSpecification.findMercantileByLegalRepresentative(number))
+                .orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND));
+    }
+
+    private void validOfficial(String number){
+        try {
+            Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            UserMain userMain = iUserPreRegisterRepository.findByEmail(jwt.getClaim("email")).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND));
+
+            if (number.equals(userMain.getIdentification()))
+                throw new AffiliationError("El usuario logueado no puede ser el mismo usuario al cual se le esta gestionando las sedes");
+
+        }catch (AffiliationError a){
+            throw a;
+        }catch (Exception e){
+            log.error("Error method getEmailUserPreRegister : {}", e.getMessage());
+            throw new AffiliationError(Constant.USER_NOT_FOUND_IN_DATA_BASE);
+        }
+    }
 }

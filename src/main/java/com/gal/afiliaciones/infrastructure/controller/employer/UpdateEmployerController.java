@@ -51,4 +51,10 @@ public class UpdateEmployerController {
         return ResponseEntity.ok(service.updateLegalRepresentativeData(dto));
     }
 
+    @GetMapping("/searchEmployerById/{idAffiliate}")
+    public ResponseEntity<UpdateEmployerDataBasicDTO> consultEmployerById(@PathVariable Long idAffiliate) {
+        UpdateEmployerDataBasicDTO employer = service.searchEmployerDataBasicById(idAffiliate);
+        return ResponseEntity.ok(employer);
+    }
+
 }

@@ -42,4 +42,8 @@ public class RecordLoadBulk {
 
     @Column(name = "file_name")
     private String fileName;
+
+    @Column(name = "id_affiliate_employer")
+    private Long idAffiliateEmployer;
+
 }

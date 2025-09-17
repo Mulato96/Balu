@@ -55,4 +55,13 @@ public class GeneralNoveltyController {
                 typeIdentification, identification, exportType);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/export/worker-by-idaffiliate")
+    public ResponseEntity<ExportDocumentsDTO> exportNoveltiesByWorkerByIdAffiliate(
+            @Param("idAffiliate") Long idAffiliate,
+            @Param("exportType") String exportType) {
+        ExportDocumentsDTO response = generalNoveltyService.exportNoveltiesByWorkerByIdAffiliate(
+                idAffiliate, exportType);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -14,4 +14,6 @@ public interface FiledService {
 
     String getNextFiledNumberPermanentNovelty();
 
+    String getNextFiledNumberWorkerDisplacement();
+
 }

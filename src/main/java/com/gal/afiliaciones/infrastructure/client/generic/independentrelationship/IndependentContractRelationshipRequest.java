@@ -13,8 +13,6 @@ public class IndependentContractRelationshipRequest {
     private int idActividadEconomica;
     private int idDepartamento;
     private int idMunicipio;
-    private int idSede;
-    private int idCentroTrabajo;
     private String fechaInicioVinculacion;
     private int teletrabajo;
     private int idTipoVinculado;

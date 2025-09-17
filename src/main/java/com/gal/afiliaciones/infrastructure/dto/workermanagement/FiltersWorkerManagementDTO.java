@@ -18,6 +18,7 @@ public class FiltersWorkerManagementDTO {
     private String identificationDocumentTypeEmployer;
     @NotBlank(message = Constant.NULL_FIELD)
     private String identificationDocumentNumberEmployer;
+    private Long idAffiliateEmployer;
     @NotNull(message = "This field cannot be null")
     private String affiliationTypeEmployer;
     private LocalDate startContractDate;
@@ -28,5 +29,9 @@ public class FiltersWorkerManagementDTO {
     private Long idbondingType;
     private LocalDate retiredWorker;
     private Boolean updateRequired;
+
+    // Pagination fields
+    private Integer page = 0;
+    private Integer size = 10;
 
 }

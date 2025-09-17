@@ -27,6 +27,7 @@ import com.gal.afiliaciones.config.mapper.UpdatePreRegisterMapper;
 import com.gal.afiliaciones.config.mapper.UserMapper;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +117,8 @@ class UserPreRegisterServiceImplTest {
     private UserMapper userMapper;
     @Mock
     private ArlRepository arlRepository;
+    @Mock
+    private RegistraduriaUnifiedService registraduriaUnifiedService;
 
     @InjectMocks
     private UserPreRegisterServiceImpl service;
@@ -187,7 +190,7 @@ class UserPreRegisterServiceImplTest {
     @Test
     void testConsultUser_notFoundRegistry() {
         when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-        when(webClient.searchNationalRegistry(anyString())).thenReturn(List.of());
+        when(registraduriaUnifiedService.searchUserInNationalRegistry(anyString())).thenReturn(List.of());
         UserPreRegisterDto dto = service.consultUser("CC", "111222333");
         assertNotNull(dto);
         assertEquals("", dto.getFirstName());
@@ -368,7 +371,7 @@ class UserPreRegisterServiceImplTest {
                 keycloakService,
                 affiliateMercantileRepository,
                 Mockito.mock(AffiliationDetailRepository.class),
-                affiliateRepository, updatePreRegisterMapper, userMapper, arlRepository);
+                affiliateRepository, updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
         // Replace the affiliationDetailRepository with our mock via reflection
         java.lang.reflect.Field field = UserPreRegisterServiceImpl.class
                 .getDeclaredField("affiliationDetailRepository");
@@ -513,7 +516,7 @@ class UserPreRegisterServiceImplTest {
                 keycloakService, affiliateMercantileRepository,
                 affiliationDetailRepository,
                 affiliateRepository,
-                updatePreRegisterMapper, userMapper, arlRepository);
+                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
 
         Affiliate affiliate = Affiliate.builder().affiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC).affiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER).build();
 
@@ -915,7 +918,7 @@ class UserPreRegisterServiceImplTest {
                 keycloakService, affiliateMercantileRepo,
                 affiliationDetailRepo,
                 affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository);
+                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
 
         // Prepare a valid NIT for a natural employer.
         // Choose a base number that qualifies as natural: e.g., "700000000"
@@ -967,7 +970,7 @@ class UserPreRegisterServiceImplTest {
                 keycloakService, affiliateMercantileRepo,
                 affiliationDetailRepo,
                 affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository);
+                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
 
         String baseNumber = "700000000";
         int calculatedDV = service.calculateModulo11DV(baseNumber);
@@ -1019,7 +1022,7 @@ class UserPreRegisterServiceImplTest {
                 keycloakService, affiliateMercantileRepo,
                 affiliationDetailRepo,
                 affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository);
+                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
 
         // Test with a completely non-numeric NIT value
         String nonNumericNIT = "ABC123X";
@@ -1131,7 +1134,7 @@ class UserPreRegisterServiceImplTest {
 
         // Set up repository and webClient behavior
         when(iUserPreRegisterRepository.findById(1L)).thenReturn(Optional.of(dummyUser));
-        when(webClient.searchNationalRegistry("12345"))
+        when(registraduriaUnifiedService.searchUserInNationalRegistry("12345"))
                 .thenReturn(List.of(new com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO()));
 
         UserUpdateDTO result = service.findUserDataById(1L);
@@ -1161,7 +1164,7 @@ class UserPreRegisterServiceImplTest {
 
         // Set up repository and webClient behavior: empty registry list
         when(iUserPreRegisterRepository.findById(2L)).thenReturn(Optional.of(dummyUser));
-        when(webClient.searchNationalRegistry("67890")).thenReturn(List.of());
+        when(registraduriaUnifiedService.searchUserInNationalRegistry("67890")).thenReturn(List.of());
 
         UserUpdateDTO result = service.findUserDataById(2L);
 

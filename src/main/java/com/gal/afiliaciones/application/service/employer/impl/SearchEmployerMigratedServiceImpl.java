@@ -29,31 +29,7 @@ public class SearchEmployerMigratedServiceImpl implements SearchEmployerMigrated
 
     @Override
     public List<DataBasicEmployerMigratedDTO> searchEmployerDataBasic(String documentType, String documentNumber){
-        List<DataBasicEmployerMigratedDTO> response = new ArrayList<>();
-
-        Specification<Affiliate> spc = AffiliateSpecification.findByEmployerAndIdentification(documentType, documentNumber);
-        List<Affiliate> affiliateList = affiliateRepository.findAll(spc);
-
-        affiliateList.forEach(affiliate -> {
-            DataBasicEmployerMigratedDTO dataEmployer = new DataBasicEmployerMigratedDTO();
-            if(affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC)){
-                Affiliation affiliation = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber())
-                        .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
-                dataEmployer.setDocumentTypeEmployer(affiliation.getIdentificationDocumentType());
-                dataEmployer.setDocumentNumberEmployer(affiliation.getIdentificationDocumentNumber());
-                dataEmployer.setDigitVerificationEmployer(0);
-                dataEmployer.setBusinessNameEmployer(affiliate.getCompany());
-            }else{
-                AffiliateMercantile mercantile = mercantileRepository.findByFiledNumber(affiliate.getFiledNumber())
-                        .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
-                dataEmployer.setDocumentTypeEmployer(mercantile.getTypeDocumentIdentification());
-                dataEmployer.setDocumentNumberEmployer(mercantile.getNumberIdentification());
-                dataEmployer.setDigitVerificationEmployer(mercantile.getDigitVerificationDV());
-                dataEmployer.setBusinessNameEmployer(mercantile.getBusinessName());
-            }
-            response.add(dataEmployer);
-        });
-        return response;
+        return affiliateRepository.findEmployerDataByDocument(documentType, documentNumber);
     }
 
 }

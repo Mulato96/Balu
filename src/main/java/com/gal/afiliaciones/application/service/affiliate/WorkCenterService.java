@@ -1,6 +1,7 @@
 package com.gal.afiliaciones.application.service.affiliate;
 
 import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
 import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 
 import java.util.List;
@@ -12,5 +13,7 @@ public interface WorkCenterService {
     WorkCenter getWorkCenterById(Long id);
     WorkCenter getWorkCenterByCodeAndIdUser(String codeEconomicActivity, UserMain user);
     Long getNumberCode(UserMain userMain);
+    List<WorkCenter> getWorkCenterByMainOffice(MainOffice idMainOffice);
+    WorkCenter getWorkCenterByEconomicActivityAndMainOffice(String economicActivity, Long idMainOffice);
 
 }

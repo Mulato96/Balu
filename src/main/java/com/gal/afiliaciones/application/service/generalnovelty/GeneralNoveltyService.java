@@ -22,4 +22,6 @@ public interface GeneralNoveltyService {
 
     ExportDocumentsDTO exportNoveltiesByContributorDocument(String contributorIdentificationType,
             String contributorIdentification, String exportType);
+
+    ExportDocumentsDTO exportNoveltiesByWorkerByIdAffiliate(Long idAffiliate, String exportType);
 }

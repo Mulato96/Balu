@@ -1,9 +1,16 @@
 package com.gal.afiliaciones.infrastructure.dao.repository.specifications;
 
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AffiliateSpecification {
 
@@ -117,15 +124,6 @@ public class AffiliateSpecification {
         };
     }
 
-    public static Specification<Affiliate> findActiveWorkersByEmployer(String identificationNumber){
-        return (root, query, criteriaBuilder) -> {
-            Predicate identificationPredicate = criteriaBuilder.equal(root.get(NIT_NUMBER_TEXT), identificationNumber);
-            Predicate dependentPredicate = criteriaBuilder.equal(root.get(AFFILIATION_TYPE_TEXT), Constant.TYPE_AFFILLATE_DEPENDENT);
-            Predicate activePredicate = criteriaBuilder.equal(root.get(AFFILIATION_STATUS_TEXT), Constant.AFFILIATION_STATUS_ACTIVE);
-            return criteriaBuilder.and(identificationPredicate, dependentPredicate, activePredicate);
-        };
-    }
-
     public static Specification<Affiliate> findByIndependentEmployer(String identificationType, String identificationNumber,
                                                                      String employerName){
         return (root, query, criteriaBuilder) -> {
@@ -143,12 +141,58 @@ public class AffiliateSpecification {
         };
     }
 
-    public static Specification<Affiliate> findByIdentificationWorker(String identificationType, String identificationNumber){
+    public static Specification<Affiliate> findByIdentificationEmployer(String identificationType, String identificationNumber){
         return (root, query, criteriaBuilder) -> {
             Predicate identificationTypePredicate = criteriaBuilder.equal(root.get(DOCUMENT_TYPE_TEXT), identificationType);
             Predicate identificationPredicate = criteriaBuilder.equal(root.get(DOCUMENT_NUMBER_TEXT), identificationNumber);
             Predicate affiliationTypeWorker = criteriaBuilder.like(root.get(AFFILIATION_TYPE_TEXT), "%" + Constant.EMPLOYEE + "%");
             return criteriaBuilder.and(identificationTypePredicate, identificationPredicate, affiliationTypeWorker);
+        };
+    }
+
+    public static Specification<Affiliate> hasActiveStatusAndEmployer(FiltersWorkerManagementDTO filter) {
+        return (root, query, cb) -> {
+            // Evitar duplicados si hay múltiples dependents
+            query.distinct(true);
+
+            // Join con AffiliationDependent
+            Join<Affiliate, AffiliationDependent> depJoin = root.join("dependents", JoinType.LEFT);
+
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (filter.getIdAffiliateEmployer() != null) {
+                predicates.add(cb.equal(depJoin.get("idAffiliateEmployer"), filter.getIdAffiliateEmployer()));
+            }
+
+            if (filter.getStartContractDate() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(depJoin.get("coverageDate"), filter.getStartContractDate()));
+            }
+
+            if (filter.getEndContractDate() != null) {
+                predicates.add(cb.lessThanOrEqualTo(depJoin.get("coverageDate"), filter.getEndContractDate()));
+            }
+
+            if (filter.getStatus() != null) {
+                predicates.add(cb.equal(root.get(AFFILIATION_STATUS_TEXT), filter.getStatus()));
+            }
+
+            if (filter.getIdentificationDocumentType() != null) {
+                predicates.add(cb.equal(depJoin.get("identificationDocumentType"), filter.getIdentificationDocumentType()));
+            }
+
+            if (filter.getIdentificationDocumentNumber() != null) {
+                predicates.add(cb.equal(depJoin.get("identificationDocumentNumber"), filter.getIdentificationDocumentNumber()));
+            }
+
+            if (filter.getIdbondingType() != null) {
+                predicates.add(cb.equal(depJoin.get("idBondingType"), filter.getIdbondingType()));
+            }
+
+            if (filter.getUpdateRequired() != null) {
+                predicates.add(cb.equal(depJoin.get("pendingCompleteFormPila"), filter.getUpdateRequired()));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 

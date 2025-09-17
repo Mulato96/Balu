@@ -59,6 +59,7 @@ class RecordLoadBulkServiceImplTest {
     @Test
     void findAllByIdUser_ShouldReturnSortedList() {
         Long userId = 1L;
+        Long idAffiliateEmployer = 123L;
         RecordLoadBulk r1 = new RecordLoadBulk();
         r1.setDateLoad(LocalDateTime.now().minusDays(1));
         RecordLoadBulk r2 = new RecordLoadBulk();
@@ -67,7 +68,7 @@ class RecordLoadBulkServiceImplTest {
 
         when(recordLoadBulkRepository.findAll(any(Specification.class))).thenReturn(unsorted);
 
-        List<RecordLoadBulk> result = recordLoadBulkServiceImpl.findAllByIdUser(userId);
+        List<RecordLoadBulk> result = recordLoadBulkServiceImpl.findAllByIdUser(userId, idAffiliateEmployer);
 
         assertThat(result).containsExactly(r2, r1);
         verify(recordLoadBulkRepository).findAll(any(Specification.class));

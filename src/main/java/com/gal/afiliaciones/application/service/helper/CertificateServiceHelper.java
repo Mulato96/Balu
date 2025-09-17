@@ -88,6 +88,7 @@ public class CertificateServiceHelper {
         parameters.put(Constant.INIT_CONTRACT_DATE, localDateToDateFormatter(certificate.getInitContractDate()));
         parameters.put(Constant.NAME_CONTRACTOR, certificate.getCompany());
         parameters.put(Constant.CONSECUTIVE_DOCUMENT, certificate.getFiledNumber());
+        parameters.put(Constant.ECONOMY_ACTIVITY, String.valueOf(certificate.getCodeActivityEconomicPrimary()));
 
         if(certificate.getEndContractDate() == null)
             parameters.put(Constant.END_CONTRACT_DATE, "Sin fecha");
@@ -133,6 +134,7 @@ public class CertificateServiceHelper {
         parameters.put(Constant.NAME_ARL_LABEL, certificate.getNameARL());
         parameters.put(Constant.CONSECUTIVE_DOCUMENT, certificate.getFiledNumber());
         parameters.put(Constant.ADDRESSED_TO_LABEL, certificate.getAddressedTo());
+        parameters.put(Constant.ECONOMY_ACTIVITY, String.valueOf(certificate.getCodeActivityEconomicPrimary()));
 
         reportRequestDTO.setParameters(parameters);
         return reportRequestDTO;
@@ -160,6 +162,8 @@ public class CertificateServiceHelper {
             parameters.put(Constant.RISK, economicActivity.getClassRisk());
             parameters.put(Constant.DOCUMENT_IDENTIFIER, certificate.getTypeDocument() + ". " + certificate.getNumberDocument());
             parameters.put(Constant.NAME, certificate.getName());
+            parameters.put(Constant.CERT_PARAM_DEPENDENT_WORKERS_NUMBER, String.valueOf(certificate.getDependentWorkersNumber()));
+            parameters.put(Constant.CERT_PARAM_INDEPENDENT_WORKERS_NUMBER, String.valueOf(certificate.getIndependentWorkersNumber()));
         }
 
         if(Constant.TYPE_AFFILIATE_EMPLOYER.equals(certificate.getVinculationType()) ||
@@ -170,6 +174,8 @@ public class CertificateServiceHelper {
             String documentTypeEmployer = certificate.getDocumentTypeContrator()==null ? Constant.NI : certificate.getDocumentTypeContrator();
             parameters.put(Constant.DOCUMENT_IDENTIFIER, documentTypeEmployer + ". " + certificate.getNitContrator());
             parameters.put(Constant.NAME, certificate.getCompany());
+            parameters.put(Constant.CERT_PARAM_DEPENDENT_WORKERS_NUMBER, String.valueOf(certificate.getDependentWorkersNumber()));
+            parameters.put(Constant.CERT_PARAM_INDEPENDENT_WORKERS_NUMBER, String.valueOf(certificate.getIndependentWorkersNumber()));
         }
 
         if (certificate.getEndContractDate() == null)

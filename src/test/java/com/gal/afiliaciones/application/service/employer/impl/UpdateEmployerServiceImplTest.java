@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -93,7 +94,8 @@ class UpdateEmployerServiceImplTest {
         requestUpdateDataBasicDTO.setPhone1Employer("1234567890");
         requestUpdateDataBasicDTO.setPhone2Employer("0987654321");
         requestUpdateDataBasicDTO.setEmailEmployer("test@example.com");
-        
+        requestUpdateDataBasicDTO.setIdAffiliateEmployer(123L);
+
         requestUpdateLegalRepresentativeDTO = new RequestUpdateLegalRepresentativeDTO();
         requestUpdateLegalRepresentativeDTO.setTypeDocumentPersonResponsible("CC");
         requestUpdateLegalRepresentativeDTO.setNumberDocumentPersonResponsible("123456789");
@@ -102,20 +104,22 @@ class UpdateEmployerServiceImplTest {
         requestUpdateLegalRepresentativeDTO.setEmail("new@example.com");
         requestUpdateLegalRepresentativeDTO.setEps(1L);
         requestUpdateLegalRepresentativeDTO.setAfp(1L);
-        
+
         affiliate = new Affiliate();
+        affiliate.setIdAffiliate(123L);
         affiliate.setFiledNumber("FILE123");
-        
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
         affiliateMercantile = new AffiliateMercantile();
         affiliateMercantile.setFiledNumber("FILE123");
         affiliateMercantile.setBusinessName("Test Company");
         affiliateMercantile.setEmail("test@example.com");
-        
+
         affiliation = new Affiliation();
         affiliation.setFirstName("John");
         affiliation.setSurname("Doe");
         affiliation.setEmail("test@example.com");
-        
+
         userMain = new UserMain();
         userMain.setId(1L);
         userMain.setEmail("test@example.com");
@@ -123,16 +127,22 @@ class UpdateEmployerServiceImplTest {
 
     @Test
     void updateEmployerDataBasic_DomesticServices_Success() {
+
+        Affiliate affiliateDomestic = new Affiliate();
+        affiliateDomestic.setIdAffiliate(123L);
+        affiliateDomestic.setFiledNumber("FILE123");
+        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+
         // Arrange
         requestUpdateDataBasicDTO.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliateDomestic));
         when(domesticRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(userPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(userMain));
-        
+
         // Act
         Boolean result = updateEmployerService.updateEmployerDataBasic(requestUpdateDataBasicDTO);
-        
+
         // Assert
         assertTrue(result);
         verify(domesticRepository).save(any(Affiliation.class));
@@ -144,14 +154,14 @@ class UpdateEmployerServiceImplTest {
     void updateEmployerDataBasic_MercantileEmployer_Success() {
         // Arrange
         requestUpdateDataBasicDTO.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-        
-        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
         when(userPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(userMain));
-        
+
         // Act
         Boolean result = updateEmployerService.updateEmployerDataBasic(requestUpdateDataBasicDTO);
-        
+
         // Assert
         assertTrue(result);
         verify(affiliateMercantileRepository).save(any(AffiliateMercantile.class));
@@ -165,19 +175,19 @@ class UpdateEmployerServiceImplTest {
         String documentType = "CC";
         String documentNumber = "123456789";
         String affiliationSubType = Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES;
-        
+
         List<RegisteredAffiliationsDTO> economicActivities = new ArrayList<>();
         economicActivities.add(RegisteredAffiliationsDTO.builder().build());
-        
+
         when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
         when(domesticRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(retirementReasonService.findEconomicActivitiesDomestic(any(Affiliation.class)))
-            .thenReturn(economicActivities);
-        
+                .thenReturn(economicActivities);
+
         // Act
         UpdateEmployerDataBasicDTO result = updateEmployerService.searchEmployerDataBasic(
-            documentType, documentNumber, affiliationSubType);
-        
+                documentType, documentNumber, affiliationSubType);
+
         // Assert
         assertNotNull(result);
         assertEquals(affiliation.getEmail(), result.getEmailEmployer());
@@ -190,12 +200,12 @@ class UpdateEmployerServiceImplTest {
         String documentType = "CC";
         String documentNumber = "123456789";
         String affiliationSubType = Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE;
-        
+
         List<AffiliateMercantile> mercantileList = Collections.singletonList(affiliateMercantile);
-        
+
         when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(mercantileList);
         when(affiliateMercantileRepository.findByFiledNumber(anyString())).thenReturn(Optional.of(affiliateMercantile));
-        
+
         AffiliateActivityEconomic activityEconomic = mock(AffiliateActivityEconomic.class);
         EconomicActivity economicActivity = new EconomicActivity();
         economicActivity.setId(1L);
@@ -203,20 +213,20 @@ class UpdateEmployerServiceImplTest {
         economicActivity.setCodeCIIU("1234");
         economicActivity.setAdditionalCode("56");
         economicActivity.setDescription("Test Activity");
-        
+
         when(activityEconomic.getActivityEconomic()).thenReturn(economicActivity);
         when(activityEconomic.getIsPrimary()).thenReturn(true);
-        
+
         List<AffiliateActivityEconomic> activities = Collections.singletonList(activityEconomic);
         affiliateMercantile.setEconomicActivity(activities);
-        
+
         List<EconomicActivity> economicActivities = Collections.singletonList(economicActivity);
         when(economicActivityRepository.findEconomicActivities(anyList())).thenReturn(economicActivities);
-        
+
         // Act
         UpdateEmployerDataBasicDTO result = updateEmployerService.searchEmployerDataBasic(
-            documentType, documentNumber, affiliationSubType);
-        
+                documentType, documentNumber, affiliationSubType);
+
         // Assert
         assertNotNull(result);
         assertEquals(affiliateMercantile.getEmailContactCompany(), result.getEmailEmployer());
@@ -228,14 +238,14 @@ class UpdateEmployerServiceImplTest {
         String documentType = "CC";
         String documentNumber = "123456789";
         String affiliationSubType = Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES;
-        
+
         when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
         when(domesticRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        
+
         // Act
         UpdateLegalRepresentativeDataDTO result = updateEmployerService.searchLegalRepresentativeData(
-            documentType, documentNumber, affiliationSubType);
-        
+                documentType, documentNumber, affiliationSubType);
+
         // Assert
         assertNotNull(result);
         assertEquals(documentType, result.getTypeDocumentPersonResponsible());
@@ -248,17 +258,17 @@ class UpdateEmployerServiceImplTest {
         String documentType = "CC";
         String documentNumber = "123456789";
         String affiliationSubType = Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE;
-        
+
         List<AffiliateMercantile> mercantileList = Collections.singletonList(affiliateMercantile);
-        
+
         when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(mercantileList);
         when(userPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
-            .thenReturn(Optional.of(userMain));
-        
+                .thenReturn(Optional.of(userMain));
+
         // Act
         UpdateLegalRepresentativeDataDTO result = updateEmployerService.searchLegalRepresentativeData(
-            documentType, documentNumber, affiliationSubType);
-        
+                documentType, documentNumber, affiliationSubType);
+
         // Assert
         assertNotNull(result);
         assertEquals(documentType, result.getTypeDocumentPersonResponsible());

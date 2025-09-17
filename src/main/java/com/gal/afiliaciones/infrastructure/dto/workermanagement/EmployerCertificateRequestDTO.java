@@ -12,4 +12,6 @@ public class EmployerCertificateRequestDTO {
     private String identificationDocumentTypeEmployer;
     private String identificationDocumentNumberEmployer;
     private String affiliationTypeEmployer;
+    private Long idAffiliateEmployer;
+
 }

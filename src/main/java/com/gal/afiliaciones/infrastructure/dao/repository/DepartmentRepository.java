@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface DepartmentRepository extends JpaRepository<Department, Long>, JpaSpecificationExecutor<Department> {
     Optional<Department> findByDepartmentName(String departmentName);
     Optional<Department> findByDepartmentCode(String departmentCode);
+    Optional<Department> findByIdDepartment(Integer idDepartment);
 }

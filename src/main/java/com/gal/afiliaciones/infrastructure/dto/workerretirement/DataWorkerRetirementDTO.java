@@ -24,5 +24,6 @@ public class DataWorkerRetirementDTO {
     private LocalDate affiliationDate;
     private LocalDate retirementDate;
     private Long idRetirementReason;
+    private Long idAffiliateEmployer;
 
 }

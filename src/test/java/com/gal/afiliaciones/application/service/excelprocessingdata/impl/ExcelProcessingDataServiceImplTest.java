@@ -64,7 +64,7 @@ class ExcelProcessingDataServiceImplTest {
     @Test
     void converterExcelToMap_Error() throws IOException {
         MultipartFile emptyFile = new MockMultipartFile("file", "empty.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", new byte[0]);
-        assertThrows(AffiliationError.class, () -> excelProcessingDataService.converterExcelToMap(emptyFile, listColumn, 1));
+        assertThrows(AffiliationError.class, () -> excelProcessingDataService.converterExcelToMap(emptyFile, listColumn));
     }
 
     @Test

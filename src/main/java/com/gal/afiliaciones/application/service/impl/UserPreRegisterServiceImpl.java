@@ -1,7 +1,5 @@
 package com.gal.afiliaciones.application.service.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.KeycloakService;
 import com.gal.afiliaciones.application.service.OtpService;
@@ -41,6 +39,7 @@ import com.gal.afiliaciones.infrastructure.dto.otp.OTPRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.user.UserNameDTO;
 import com.gal.afiliaciones.infrastructure.dto.user.UserUpdateDTO;
 import com.gal.afiliaciones.infrastructure.enums.TypeUser;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.document.ValidationDocument;
 import jakarta.mail.MessagingException;
@@ -49,7 +48,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.jetbrains.annotations.NotNull;
-import org.keycloak.jose.jwk.JWK.Use;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -94,18 +92,17 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
     private final SendEmails sendEmails;
     private final OtpService otpService;
     private final KeycloakService keycloakService;
+    private final AffiliateMercantileRepository affiliateMercantileRepository;
+    private final AffiliationDetailRepository affiliationDetailRepository;
+    private final AffiliateRepository affiliateRepository;
+    private final UpdatePreRegisterMapper updatePreRegisterMapper;
+    private final UserMapper userMapper;
+    private final ArlRepository arlRepository;
+    private final RegistraduriaUnifiedService registraduriaUnifiedService;
 
     private static final Logger logger = LoggerFactory.getLogger(UserPreRegisterServiceImpl.class);
     private static final String NAME_SCREEN_OTP = "Usuario pre-registrado";
     private static final String EXT = "EXT";
-
-    private final AffiliateMercantileRepository affiliateMercantileRepository;
-    private final AffiliationDetailRepository affiliationDetailRepository;
-    private final AffiliateRepository affiliateRepository;
-
-    private final UpdatePreRegisterMapper updatePreRegisterMapper;
-    private final UserMapper userMapper;
-    private final ArlRepository arlRepository;
 
     @Override
     @Transactional
@@ -154,7 +151,9 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
         userRegister.setUserType(2L);
         userRegister.setIsPasswordExpired(false);
         userRegister.setUserName(structureUsername(userPreRegisterDto.getIdentificationType(),userPreRegisterDto.getIdentification()));
-        userRegister.setVerificationDigit(dvNit);   
+        userRegister.setVerificationDigit(dvNit);
+        userRegister.setHealthPromotingEntity(userPreRegisterDto.getHealthPromotingEntity());
+        userRegister.setPensionFundAdministrator(userPreRegisterDto.getPensionFundAdministrator());
         Long idNationality = null;
         userPreRegisterDto.setUserName(structureUsername(userPreRegisterDto.getIdentificationType(),userPreRegisterDto.getIdentification()));
         try {
@@ -557,15 +556,10 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
     @Override
     public UserDtoApiRegistry searchUserInNationalRegistry(String identificationNumber) {
         UserDtoApiRegistry userRegistry = new UserDtoApiRegistry();
-        List<RegistryOfficeDTO> registries = webClient.searchNationalRegistry(identificationNumber);
+        List<RegistryOfficeDTO> registries = registraduriaUnifiedService.searchUserInNationalRegistry(identificationNumber);
 
-        ObjectMapper mapper = new ObjectMapper();
-        List<RegistryOfficeDTO> registryOfficeDTOS = mapper.convertValue(registries,
-                new TypeReference<>() {
-                });
-
-        if(!registryOfficeDTOS.isEmpty()){
-            RegistryOfficeDTO registry = registryOfficeDTOS.get(0);
+        if(!registries.isEmpty()){
+            RegistryOfficeDTO registry = registries.get(0);
             userRegistry.setIdentificationType(Constant.CC);
             userRegistry.setIdentification(identificationNumber);
             userRegistry.setFirstName(capitalize(registry.getFirstName()));
@@ -575,7 +569,7 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
             userRegistry.setPhoneNumber("");
             userRegistry.setEmail("");
             userRegistry.setDateBirth(LocalDate.parse(registry.getBirthDate()));
-            userRegistry.setGender(registry.getGender());
+            userRegistry.setGender(RegistraduriaUnifiedService.mapGender(registry.getGender()));
         }
 
         return userRegistry;
@@ -639,7 +633,7 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
         UserMain user = iUserPreRegisterRepository.findById(id).orElse(null);
 
         if (user != null) {
-            List<RegistryOfficeDTO> registryData = webClient.searchNationalRegistry(user.getIdentification());
+            List<RegistryOfficeDTO> registryData = registraduriaUnifiedService.searchUserInNationalRegistry(user.getIdentification());
             if (registryData != null && !registryData.isEmpty()) {
                 UserUpdateDTO response = UserConverter.entityToDto.apply(user);
                 response.setIsRegistryData(true);

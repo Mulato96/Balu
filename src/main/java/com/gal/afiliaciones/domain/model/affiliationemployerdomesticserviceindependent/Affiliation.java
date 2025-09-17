@@ -1,14 +1,8 @@
 package com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent;
 
+import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -557,5 +551,9 @@ public class Affiliation {
 
     @Column(name = "ibc_percentage")
     private BigDecimal ibcPercentage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assign_to")
+    private UserMain assignTo;
 
 }

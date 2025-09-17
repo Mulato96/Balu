@@ -34,6 +34,7 @@ import com.gal.afiliaciones.infrastructure.client.generic.volunteer.VolunteerRel
 import com.gal.afiliaciones.infrastructure.client.generic.workcenter.InsertWorkCenterClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.FamilyMemberRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.decree1563.OccupationDecree1563Repository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -198,6 +199,7 @@ class AffiliateServiceImplTest {
     private VolunteerRelationshipClient insertVolunteerClient;
     @Mock
     private FamilyMemberRepository familyMemberRepository;
+    private OccupationDecree1563Repository occupationVolunteerRepository;
     @Mock
     private GeneralNoveltyServiceImpl generalNoveltyService;
 
@@ -220,7 +222,7 @@ class AffiliateServiceImplTest {
                 generalNoveltyService, affiliateMapper, insertPersonClient, insertEmployerClient,
                 insertLegalRepresentativeClient, independentContractClient, occupationRepository, insertPolicyClient,
                 consultEmployerClient, mercantileService, insertWorkCenterClient, insertVolunteerClient,
-                familyMemberRepository, keyCloakProvider);
+                familyMemberRepository, occupationVolunteerRepository, keyCloakProvider);
     }
 
     @Test

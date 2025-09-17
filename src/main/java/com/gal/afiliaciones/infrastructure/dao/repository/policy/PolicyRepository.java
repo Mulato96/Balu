@@ -18,9 +18,10 @@ public interface PolicyRepository extends JpaRepository<Policy, Long>, JpaSpecif
 
     @Query(value = """
             SELECT tp.nombre, p.codigo, p.fecha_vigencia_desde, 
-            p.fecha_vigencia_hasta, p.fecha_emision, p.estado, p.id_affiliate
+            p.fecha_vigencia_hasta, p.fecha_emision, p.estado, p.id_affiliate, a.affiliation_subtype
             FROM poliza p
             LEFT JOIN tipo_poliza tp ON tp.id = p.tipo_poliza
+            LEFT JOIN affiliate a ON a.id_affiliate = p.id_affiliate
             WHERE p.id_affiliate = :idAffiliate
             """, nativeQuery = true)
     List<Object[]> findByAffiliate(@Param("idAffiliate") Long idAffiliate);

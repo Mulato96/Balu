@@ -1,8 +1,16 @@
 package com.gal.afiliaciones.application.service.consultationform.impl;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.AffiliationEmployerDomesticServiceIndependentService;
 import com.gal.afiliaciones.application.service.consultationform.ConsultationFormService;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.config.ex.Error.Type;
 import com.gal.afiliaciones.config.ex.PolicyException;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
@@ -13,61 +21,54 @@ import com.gal.afiliaciones.domain.model.BillingCollectionConciliation;
 import com.gal.afiliaciones.domain.model.EconomicActivity;
 import com.gal.afiliaciones.domain.model.Occupation;
 import com.gal.afiliaciones.domain.model.Policy;
+import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliatactivityeconomic.AffiliateActivityEconomicRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.conciliationbilling.BillingCollectionConciliationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillingRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.conciliationbilling.BillingCollectionConciliationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillingRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DataDocumentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdetail.AffiliationDetailDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.ConsultUpdatesDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.DocumentsOfAffiliationDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.EmployerInfoDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.GeneralConsultDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.HistoryAffiliationsWithdrawalsDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.InfoConsultDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.JobRelationShipDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.PolicyDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.WorkerBasicInfoDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.infoworker.ContractsJobRelatedDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.infoworker.EmployeeStatistics;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.infoworker.HistoryAffiliationsWithdrawalsHistoryDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.infoworker.HistoryJobRelatedDTO;
 import com.gal.afiliaciones.infrastructure.dto.consultationform.infoworker.UpdatesWorkerHistoryDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.GeneralConsultDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.JobRelationShipDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.PolicyDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.HistoryAffiliationsWithdrawalsDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.ConsultUpdatesDTO;
 import com.gal.afiliaciones.infrastructure.dto.workerdetail.WorkerDetailDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -283,12 +284,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                 try {
                         // Buscar en affiliate_activity_economic usando el id_affiliate_domestico
                         List<AffiliateActivityEconomic> affiliateActivities = affiliateActivityEconomicRepository
-                                        .findAll()
-                                        .stream()
-                                        .filter(activity -> activity.getAffiliation() != null &&
-                                                        activity.getAffiliation().getId()
-                                                                        .equals(affiliateDomesticId))
-                                        .toList();
+                                        .findByIdAffiliateDomestico(affiliateDomesticId);
 
                         if (affiliateActivities.isEmpty()) {
                                 return null;
@@ -413,7 +409,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
         public List<JobRelationShipDTO> getJobRelatedInfo(String typeIdentification, String identification) {
 
                 List<JobRelationShipDTO> response = new ArrayList<>();
-                Specification<Affiliate> spc = AffiliateSpecification.findByIdentificationWorker(typeIdentification,
+                Specification<Affiliate> spc = AffiliateSpecification.findByIdentificationEmployer(typeIdentification,
                         identification);
                 List<Affiliate> affiliates = affiliateRepository.findAll(spc);
 
@@ -980,6 +976,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                 policyDto.setValidityTo(policy[3] != null ? LocalDate.parse(policy[3].toString()) : null);
                 policyDto.setPolicyEndDate(policy[4] != null ? policy[4].toString() : Constant.NO_INFORMATION);
                 policyDto.setState(policy[5] != null ? policy[5].toString() : Constant.NO_INFORMATION);
+                policyDto.setBonding(policy[7] != null ? policy[7].toString() : Constant.NO_INFORMATION);
                 return policyDto;
         }
 
@@ -1060,12 +1057,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                 try {
                         // Buscar en affiliate_activity_economic usando el id_affiliate_mercantile
                         List<AffiliateActivityEconomic> affiliateActivities = affiliateActivityEconomicRepository
-                                        .findAll()
-                                        .stream()
-                                        .filter(activity -> activity.getAffiliateMercantile() != null &&
-                                                        activity.getAffiliateMercantile().getId()
-                                                                        .equals(affiliateMercantileId))
-                                        .toList();
+                                        .findByIdAffiliateMercantile(affiliateMercantileId);
 
                         if (affiliateActivities.isEmpty()) {
                                 return null;
@@ -1106,10 +1098,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
         private EmployeeStatistics calculateEmployeeStatistics(String nitEmployer) {
                 try {
                         // Buscar todos los registros en affiliate por NIT
-                        List<Affiliate> allEmployees = affiliateRepository.findAll()
-                                        .stream()
-                                        .filter(affiliate -> nitEmployer.equals(affiliate.getNitCompany()))
-                                        .toList();
+                        List<Affiliate> allEmployees = affiliateRepository.findByNitCompany(nitEmployer);
 
                         // Filtrar solo trabajadores (que contengan "trabajador" en affiliation_type)
                         List<Affiliate> workers = allEmployees.stream()

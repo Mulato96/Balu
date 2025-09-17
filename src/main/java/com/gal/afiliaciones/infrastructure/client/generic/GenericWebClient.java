@@ -204,15 +204,6 @@ public class GenericWebClient {
         return getWithHeadersBytesArray(url, headers).map(bytes -> Base64.getEncoder().encodeToString(bytes));
     }
 
-    public List<RegistryOfficeDTO> searchNationalRegistry(String identificationNumber) {
-        String url = String.format(properties.getSearchNationalRegistryUrl(), identificationNumber);
-        return webClientBuilder
-                .post()
-                .uri(url)
-                .retrieve()
-                .bodyToMono(List.class).block();
-    }
-
     //TODO: No borrar porque se usara cuando se ajusten los servicios de SAT
     /*
     public EmployerTransferResponseDTO sendAffiliationDependentToSat(SendBeginningLaborRelationshipOrTrainingPracticeRequest request) {

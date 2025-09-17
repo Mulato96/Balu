@@ -14,6 +14,7 @@ public class AffiliationIndependentStep1DTO {
     private Long idAffiliation;
     private String identificationTypeEmployer;
     private String identificationNumberEmployer;
+    private Long idAffiliateEmployer;
     private Long idBondingType;
     private LocalDate coverageDate;
     private IndependentWorkerDTO worker;

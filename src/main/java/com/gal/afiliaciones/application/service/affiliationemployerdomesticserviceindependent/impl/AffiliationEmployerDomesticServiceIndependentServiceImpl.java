@@ -32,6 +32,7 @@ import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
 import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationAssignmentHistory;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.*;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
@@ -80,6 +81,11 @@ import com.gal.afiliaciones.infrastructure.enums.DocumentNameStandardization;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -90,16 +96,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.ws.rs.NotFoundException;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -137,6 +140,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     private final MessageErrorAge messageError;
     private final DocumentNameStandardizationService documentNameStandardizationService;
     private final IEconomicActivityRepository iEconomicActivityRepository;
+    private final IUserPreRegisterRepository userMainRepository;
+    private final IAffiliationAssignRepository affiliationAssignRepository;
 
     private static final String SING = "firma";
 
@@ -182,19 +187,38 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         Page<ManagementAffiliationDTO> data = affiliationsViewRepository.findAll(AffiliationsViewSpecification.filter(filter), PageRequest.of(page, size, Sort.by(Sort.Direction.fromString(sortOrder), sortBy)))
                 .map(AffiliationAdapter.entityToDto);
 
-        if (filter == null || filter.fieldValue() == null || filter.fieldValue().isBlank()) {
+        if ((filter == null)
+                || ((filter.fieldValue() == null || filter.fieldValue().isBlank())
+                && (filter.dateRequest() == null))) {
+
             totalSignature = affiliationsViewRepository.countByStageManagement(Constant.SING);
             totalInterviewing = affiliationsViewRepository.countByStageManagement(Constant.INTERVIEW_WEB);
             totalDocumentalRevision = affiliationsViewRepository.countByStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
             totalRegularization = affiliationsViewRepository.countByStageManagement(Constant.REGULARIZATION);
             totalScheduling = affiliationsViewRepository.countByStageManagement(Constant.SCHEDULING);
+
         } else {
-            totalSignature = data.stream().filter(affiliation -> affiliation.getStageManagement().equals(Constant.SING)).count();
-            totalInterviewing = data.stream().filter(affiliation -> affiliation.getStageManagement().equals(Constant.INTERVIEW_WEB)).count();
-            totalDocumentalRevision = data.stream().filter(affiliation -> affiliation.getStageManagement().equals(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW)).count();
-            totalRegularization = data.stream().filter(affiliation -> affiliation.getStageManagement().equals(Constant.REGULARIZATION)).count();
-            totalScheduling = data.stream().filter(affiliation -> affiliation.getStageManagement().equals(Constant.SCHEDULING)).count();
+            totalSignature = data.stream()
+                    .filter(affiliation -> Constant.SING.equals(affiliation.getStageManagement()))
+                    .count();
+
+            totalInterviewing = data.stream()
+                    .filter(affiliation -> Constant.INTERVIEW_WEB.equals(affiliation.getStageManagement()))
+                    .count();
+
+            totalDocumentalRevision = data.stream()
+                    .filter(affiliation -> Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW.equals(affiliation.getStageManagement()))
+                    .count();
+
+            totalRegularization = data.stream()
+                    .filter(affiliation -> Constant.REGULARIZATION.equals(affiliation.getStageManagement()))
+                    .count();
+
+            totalScheduling = data.stream()
+                    .filter(affiliation -> Constant.SCHEDULING.equals(affiliation.getStageManagement()))
+                    .count();
         }
+
 
         return ResponseManagementDTO.builder()
                 .data(data)
@@ -380,7 +404,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             MainOffice mainOffice = saveMainOffice(newAffiliation, affiliate);
 
             //Creacion de los centros de trabajo, y asocia las actividades economicas
-            List<AffiliateActivityEconomic> affiliateActivityEconomics = createAffiliateActivityEconomic(newAffiliation);
+            List<AffiliateActivityEconomic> affiliateActivityEconomics = createAffiliateActivityEconomic(newAffiliation,
+                    affiliate, mainOffice);
 
             newAffiliation.getEconomicActivity().addAll(affiliateActivityEconomics);
 
@@ -512,6 +537,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         newAffiliate.setDocumentNumber(dto.getIdentificationDocumentNumber());
         newAffiliate.setCompany(dto.getFirstName() + " " + dto.getSecondName() + " " + dto.getSurname() + " " +
                 dto.getSecondSurname());
+        newAffiliate.setDocumenTypeCompany(dto.getIdentificationDocumentType());
         newAffiliate.setNitCompany(dto.getIdentificationDocumentNumber());
         newAffiliate.setAffiliationDate(LocalDateTime.now());
         newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
@@ -977,7 +1003,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 ));
     }
 
-    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Affiliation affiliation){
+    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Affiliation affiliation, Affiliate affiliate,
+                                                                            MainOffice mainOffice){
 
         Map<String, EconomicActivity> economicActivityMap = economicActivityList(List.of("1970001", "1970002", "3970001", "3869201"))
                 .stream()
@@ -991,7 +1018,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 .map(activity -> {
 
                     EconomicActivity economicActivity =  economicActivityMap.get(activity.getKey());
-                    Long idWorkCenter = createWorkCenter(affiliation, economicActivity.getClassRisk(), counter.getAndIncrement(), economicActivity.getEconomicActivityCode());
+                    createWorkCenter(affiliation, economicActivity.getClassRisk(), counter.getAndIncrement(), economicActivity.getEconomicActivityCode(), mainOffice, affiliate.getIdAffiliate());
 
                     Boolean isPrimary = activity.getKey().equals(Constant.CODE_MAIN_ECONOMIC_ACTIVITY_DOMESTIC);
 
@@ -999,14 +1026,14 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                     affiliateActivityEconomic.setAffiliation(affiliation);
                     affiliateActivityEconomic.setIsPrimary(isPrimary);
                     affiliateActivityEconomic.setActivityEconomic(economicActivity);
-                    affiliateActivityEconomic.setIdWorkCenter(idWorkCenter);
                     return affiliateActivityEconomic;
 
                 } )
                 .toList();
     }
 
-    private Long createWorkCenter(Affiliation affiliation, String classRisk, int code, String codeActivityEconomic){
+    private void createWorkCenter(Affiliation affiliation, String classRisk, int code, String codeActivityEconomic,
+                                  MainOffice mainOffice, Long idAffiliate){
 
         Optional<UserDtoApiRegistry> userExists = webClient.getByIdentification(affiliation
                 .getIdentificationDocumentNumber());
@@ -1031,9 +1058,11 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         workCenter1.setWorkCenterCity(affiliation.getMunicipalityEmployer());
         workCenter1.setWorkCenterZone(zone);
         workCenter1.setWorkCenterManager(userMain);
-        WorkCenter saveWorkCenter1 = workCenterService.saveWorkCenter(workCenter1);
+        workCenter1.setMainOffice(mainOffice);
+        workCenter1.setIdAffiliate(idAffiliate);
+        workCenter1.setIsEnable(true);
+        workCenterService.saveWorkCenter(workCenter1);
 
-        return saveWorkCenter1.getId();
     }
 
     private List<EconomicActivity> economicActivityList(List<String> ids){
@@ -1041,4 +1070,114 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     }
 
 
+    public String generateExcel(AffiliationsFilterDTO filter) {
+        String sortBy = filter != null && filter.sortBy() != null && !filter.sortBy().isBlank() ? filter.sortBy() : "id";
+        String sortOrder = filter != null && filter.sortOrder() != null && !filter.sortOrder().isBlank() ? filter.sortOrder().toUpperCase() : "ASC";
+
+        List<ManagementAffiliationDTO> data = affiliationsViewRepository.findAll(
+                AffiliationsViewSpecification.filter(filter),
+                Sort.by(Sort.Direction.fromString(sortOrder), sortBy)
+        ).stream().map(AffiliationAdapter.entityToDto).toList();
+
+        return buildExcel(data);
+    }
+
+
+
+    private String  buildExcel(List<ManagementAffiliationDTO> data) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Afiliaciones");
+
+            createHeader(sheet);
+            fillData(sheet, data);
+            autoSizeColumns(sheet);
+
+            byte[] fileBytes = toByteArray(workbook);
+            return Base64.getEncoder().encodeToString(fileBytes);
+        } catch (IOException e) {
+            throw new RuntimeException("Error al generar Excel", e);
+        }
+    }
+
+    private void createHeader(Sheet sheet) {
+        Row headerRow = sheet.createRow(0);
+        String[] headers = {
+                "ID", "Field", "Fecha Solicitud", "Numero Documento",
+                "Nombre/Razon Social", "Tipo Afiliacion", "Etapa",
+                "Fecha Entrevista", "Asignado A", "Fecha Regularizacion"
+        };
+
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+        }
+    }
+
+    private void fillData(Sheet sheet, List<ManagementAffiliationDTO> data) {
+        int rowNum = 1;
+        for (ManagementAffiliationDTO dto : data) {
+            Row row = sheet.createRow(rowNum++);
+            row.createCell(0).setCellValue(dto.getId() != null ? dto.getId() : 0);
+            row.createCell(1).setCellValue(safeValue(dto.getField()));
+            row.createCell(2).setCellValue(safeValue(dto.getDateRequest()));
+            row.createCell(3).setCellValue(safeValue(dto.getNumberDocument()));
+            row.createCell(4).setCellValue(safeValue(dto.getNameOrSocialReason()));
+            row.createCell(5).setCellValue(safeValue(dto.getTypeAffiliation()));
+            row.createCell(6).setCellValue(safeValue(dto.getStageManagement()));
+            row.createCell(7).setCellValue(safeValue(dto.getDateInterview()));
+            row.createCell(8).setCellValue(safeValue(dto.getAssignedTo()));
+            row.createCell(9).setCellValue(safeValue(dto.getDateRegularization()));
+        }
+    }
+
+    private void autoSizeColumns(Sheet sheet) {
+        int numberOfColumns = sheet.getRow(0).getLastCellNum();
+        for (int i = 0; i < numberOfColumns; i++) {
+            sheet.autoSizeColumn(i);
+        }
+    }
+
+    private byte[] toByteArray(Workbook workbook) throws IOException {
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            workbook.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
+    private String safeValue(String value) {
+        return value != null ? value : "";
+    }
+
+    @Transactional
+    public void assignTo(String filedNumber, Long usuarioId) {
+
+        Affiliation affiliation = repositoryAffiliation.findByFiledNumber(filedNumber)
+                .orElseThrow(() -> new RuntimeException("Afiliación no encontrada"));
+
+        UserMain usuario = userMainRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // 1. Actualizar responsable actual en la afiliación
+        affiliation.setAssignTo(usuario);
+        repositoryAffiliation.save(affiliation);
+
+        // 2. Marcar anterior asignación como no actual
+        affiliationAssignRepository.findByAffiliationIdOrderByAssignmentDateDesc(affiliation.getId())
+                .stream().findFirst()
+                .ifPresent(assign -> {
+                    assign.setIsCurrent(false);
+                    affiliationAssignRepository.save(assign);
+                });
+
+        // 3. Insertar nueva asignación en el historial
+        AffiliationAssignmentHistory newAssign = AffiliationAssignmentHistory.builder()
+                .affiliation(affiliation)
+                .usuario(usuario)
+                .assignmentDate(LocalDateTime.now())
+                .isCurrent(true)
+                .build();
+
+        affiliationAssignRepository.save(newAssign);
+    }
 }
+

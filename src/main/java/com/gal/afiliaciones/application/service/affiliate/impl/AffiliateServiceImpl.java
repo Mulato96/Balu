@@ -13,39 +13,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
-import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
-import com.gal.afiliaciones.domain.model.EconomicActivity;
-import com.gal.afiliaciones.domain.model.FamilyMember;
-import com.gal.afiliaciones.domain.model.Occupation;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
-import com.gal.afiliaciones.infrastructure.client.generic.employer.ConsultEmployerClient;
-import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerResponse;
-import com.gal.afiliaciones.infrastructure.client.generic.employer.InsertEmployerClient;
-import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipClient;
-import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.InsertLegalRepresentativeClient;
-import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.LegalRepresentativeRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.person.InsertPersonClient;
-import com.gal.afiliaciones.infrastructure.client.generic.person.PersonRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.policy.InsertPolicyClient;
-import com.gal.afiliaciones.infrastructure.client.generic.policy.InsertPolicyRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.volunteer.VolunteerRelationshipClient;
-import com.gal.afiliaciones.infrastructure.client.generic.volunteer.VolunteerRelationshipRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.workcenter.InsertWorkCenterClient;
-import com.gal.afiliaciones.infrastructure.client.generic.workcenter.WorkCenterRequest;
-import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.FamilyMemberRepository;
-import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
-import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
-import com.gal.afiliaciones.infrastructure.dto.economicactivity.OccupationDecree1563DTO;
-import com.gal.afiliaciones.infrastructure.dto.employer.Employer723ClientDTO;
 import org.jetbrains.annotations.NotNull;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.resource.UserResource;
@@ -64,6 +37,7 @@ import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.KeycloakService;
 import com.gal.afiliaciones.application.service.RolesUserService;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
+import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.daily.DailyService;
@@ -87,14 +61,19 @@ import com.gal.afiliaciones.config.mapper.AffiliateMapper;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.ArlInformation;
 import com.gal.afiliaciones.domain.model.DateInterviewWeb;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.FamilyMember;
 import com.gal.afiliaciones.domain.model.Health;
 import com.gal.afiliaciones.domain.model.Municipality;
+import com.gal.afiliaciones.domain.model.Occupation;
+import com.gal.afiliaciones.domain.model.OccupationDecree1563;
 import com.gal.afiliaciones.domain.model.Policy;
 import com.gal.afiliaciones.domain.model.Role;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.EmployerSize;
 import com.gal.afiliaciones.domain.model.affiliate.RequestChannel;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
@@ -103,21 +82,40 @@ import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindep
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.client.generic.affiliatecompany.AffiliateCompanyResponse;
 import com.gal.afiliaciones.infrastructure.client.generic.affiliatecompany.ConsultAffiliateCompanyClient;
+import com.gal.afiliaciones.infrastructure.client.generic.employer.ConsultEmployerClient;
+import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerResponse;
+import com.gal.afiliaciones.infrastructure.client.generic.employer.InsertEmployerClient;
+import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipClient;
+import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.InsertLegalRepresentativeClient;
+import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.LegalRepresentativeRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.person.InsertPersonClient;
+import com.gal.afiliaciones.infrastructure.client.generic.person.PersonRequest;
 import com.gal.afiliaciones.infrastructure.client.generic.person.PersonResponse;
 import com.gal.afiliaciones.infrastructure.client.generic.person.PersonlClient;
+import com.gal.afiliaciones.infrastructure.client.generic.policy.InsertPolicyClient;
+import com.gal.afiliaciones.infrastructure.client.generic.policy.InsertPolicyRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.volunteer.VolunteerRelationshipClient;
+import com.gal.afiliaciones.infrastructure.client.generic.volunteer.VolunteerRelationshipRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.workcenter.InsertWorkCenterClient;
+import com.gal.afiliaciones.infrastructure.client.generic.workcenter.WorkCenterRequest;
 import com.gal.afiliaciones.infrastructure.dao.repository.DateInterviewWebRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.EmployerSizeRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.FamilyMemberRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.RequestChannelRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
+import com.gal.afiliaciones.infrastructure.dao.repository.decree1563.OccupationDecree1563Repository;
 import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
@@ -127,20 +125,24 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerProvisionServiceIndependentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DateInterviewWebSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
+import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.DataStatusAffiliationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.EmployerAffiliationHistoryDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationHistoryView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.RegularizationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.TemplateSendEmailsDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.UserAffiliateDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ConsultIndependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ResponseConsultWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ReplacedDocumentDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
 import com.gal.afiliaciones.infrastructure.dto.daily.DataDailyDTO;
+import com.gal.afiliaciones.infrastructure.dto.employer.Employer723ClientDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNoveltyRequest;
 import com.gal.afiliaciones.infrastructure.dto.municipality.MunicipalityDTO;
 import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
@@ -201,6 +203,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     private final InsertWorkCenterClient insertWorkCenterClient;
     private final VolunteerRelationshipClient insertVolunteerClient;
     private final FamilyMemberRepository familyMemberRepository;
+    private final OccupationDecree1563Repository occupationVolunteerRepository;
     private final KeyCloakProvider keyCloakProvider;
 
     private static final List<Long> arrayCausal = new ArrayList<>(Arrays.asList(0L, 1L, 2L));
@@ -214,7 +217,6 @@ public class AffiliateServiceImpl implements AffiliateService {
     private static final Integer PASSWORD_LENGTH = 12;
     private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[,*+\\-;()\\[\\]@#$.]).{8,}$";
     private static final String EXT = "EXT";
-    private static final DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
     private static final String USER_NOT_FOUND = "User not found";
     private static final DateTimeFormatter formatter_date = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter formatter_date_and_time = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -349,6 +351,7 @@ public class AffiliateServiceImpl implements AffiliateService {
             repositoryAffiliation.save(affiliation);
             assignRole(affiliate.getUserId(), affiliate.getAffiliationType());
             affiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_ACTIVE);
+            affiliate.setCoverageStartDate(LocalDate.now().plusDays(1));
             affiliateRepository.save(affiliate);
 
             // Enviar afiliacion de independiente voluntario a SAT -- Deja comentareado
@@ -377,7 +380,8 @@ public class AffiliateServiceImpl implements AffiliateService {
                         affiliate.getIdAffiliate(), 0L, affiliate.getCompany());
 
                 //Enviar registro de la poliza a Positiva
-                insertPolicyToClient(policy, affiliation.getIdentificationDocumentTypeContractor(), affiliation.getIdentificationDocumentNumberContractor());
+                insertPolicyToClient(policy, affiliation.getIdentificationDocumentType(),
+                            affiliation.getIdentificationDocumentNumber());
             } else {
                 generateEmployerPolicy(affiliation.getIdentificationDocumentType(),
                         affiliation.getIdentificationDocumentNumber(), affiliate.getIdAffiliate(), 0L,
@@ -719,7 +723,7 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setIdDepartamento(mercantile.getIdDepartment()!=null ? mercantile.getIdDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(mercantile.getIdCity()));
             request.setIdActEconomica(findMainEconomicActivty(mercantile.getEconomicActivity()));
-            request.setDireccionEmpresa(mercantile.getAddress());
+            request.setDireccionEmpresa(mercantile.getAddress()!=null ? mercantile.getAddress().replace('#', 'N') : "");
             request.setTelefonoEmpresa(mercantile.getPhoneOne()!=null ? mercantile.getPhoneOne().replaceAll("\\s+", "") : "");
             request.setFaxEmpresa(null);
             request.setEmailEmpresa(mercantile.getEmail());
@@ -1240,6 +1244,18 @@ public class AffiliateServiceImpl implements AffiliateService {
         return affiliateMapper.toEmployerAffiliationHistoryDTOList(affiliates);
     }
 
+    public List<EmployerAffiliationHistoryDTO> getEmployerAffiliationHistory(String nitCompany, Integer decentralizedConsecutive) {
+        String affiliationType = Constant.TYPE_AFFILLATE_EMPLOYER;
+
+        List<Affiliate> affiliates;
+        if(Objects.isNull(decentralizedConsecutive)) {
+            affiliates = affiliateRepository.findByNitCompanyAndAffiliationType(nitCompany, affiliationType);
+        } else {
+            affiliates = affiliateRepository.findToEmployerSpecialNit(nitCompany, decentralizedConsecutive);
+        }
+        return affiliateMapper.toEmployerAffiliationHistoryDTOList(affiliates);
+    }
+
     public IndividualWorkerAffiliationView getIndividualWorkerAffiliation(String nitCompany, 
                                            String documentType, String documentNumber) {
         Affiliate affiliate = Affiliate.builder().nitCompany(nitCompany)
@@ -1247,6 +1263,15 @@ public class AffiliateServiceImpl implements AffiliateService {
                               .documentNumber(documentNumber).build();
         affiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_ACTIVE);
         return affiliateRepository.findIndividualWorkerAffiliation(affiliate).orElse(null);
+    }
+
+    public List<IndividualWorkerAffiliationHistoryView> getIndividualWorkerAffiliationHistory(String documentType, String documentNumber) {
+        return affiliateRepository.findIndividualWorkerAffiliationHistory(documentType, documentNumber);
+    }
+
+    public Affiliate getAffiliateCompany(String documentType, String documentNumber) {
+        return affiliateRepository.findByNitCompanyAndDocumentType(documentType, documentNumber).orElseThrow( 
+                () -> new AffiliateNotFound("Affiliate not found"));
     }
 
     public class DateUtils {
@@ -1336,7 +1361,7 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setIndZona(null);
             request.setTelefonoPersona(user.getPhoneNumber()!=null ? user.getPhoneNumber().replaceAll("\\s+", "") : "");
             request.setFaxPersona(null);
-            request.setDireccionPersona(user.getAddress());
+            request.setDireccionPersona(user.getAddress()!=null ? user.getAddress().replace('#', 'N') : "");
             request.setEmailPersona(user.getEmail());
             request.setUsuarioAud(Constant.USER_AUD);
             request.setMaquinaAud(Constant.MAQ_AUD);
@@ -1402,7 +1427,7 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setIdDepartamento(affiliation.getDepartment()!=null ? affiliation.getDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(affiliation.getCityMunicipality()));
             request.setIdActEconomica(findMainEconomicActivty(affiliation.getEconomicActivity()));
-            request.setDireccionEmpresa(affiliation.getAddress());
+            request.setDireccionEmpresa(affiliation.getAddress()!=null ? affiliation.getAddress().replace('#', 'N') : "");
             request.setTelefonoEmpresa(affiliation.getPhone1()!=null ?  affiliation.getPhone1().replaceAll("\\s+", ""): "");
             request.setFaxEmpresa(null);
             request.setEmailEmpresa(affiliation.getEmail());
@@ -1439,6 +1464,7 @@ public class AffiliateServiceImpl implements AffiliateService {
         UserMain userIndependent = iUserPreRegisterRepository.findOne(spc).orElseThrow(() -> new UserNotFoundInDataBase(USER_NOT_FOUND));
         if(affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_VOLUNTEER)){
             // invocar el servicio de insertar voluntario
+            insertPersonToClient(userIndependent);
             insertVolunteerToClient(affiliation, affiliate.getCoverageStartDate());
         }else {
             if (affiliation.getIs723() != null && affiliation.getIs723()) {
@@ -1451,6 +1477,9 @@ public class AffiliateServiceImpl implements AffiliateService {
 
     private void insertRLIndependenteClient(UserMain user, Affiliation affiliation, String affiliationSubtype){
         try{
+            AffiliateMercantile affiliationEmployer = searchEmployer(affiliation.getIdentificationDocumentTypeContractor(),
+                    affiliation.getIdentificationDocumentNumberContractor(), affiliation.getCompanyName());
+
             IndependentContractRelationshipRequest request = new IndependentContractRelationshipRequest();
             request.setIdTipoDoc(user.getIdentificationType());
             request.setIdPersona(user.getIdentification());
@@ -1462,17 +1491,14 @@ public class AffiliateServiceImpl implements AffiliateService {
                     Integer.parseInt(affiliation.getCodeMainEconomicActivity()) : null);
             request.setIdDepartamento(affiliation.getDepartment()!=null ? affiliation.getDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(affiliation.getCityMunicipality()));
-            request.setIdSede(1); //Sede creada por defecto al crear el empleador
-            request.setIdCentroTrabajo(1); //Centro de trabajo creado por defecto al crear el empleador
             request.setFechaInicioVinculacion(affiliation.getContractStartDate()!=null ?
                     affiliation.getContractStartDate().format(formatter_date) : "");
             request.setTeletrabajo(1);
             request.setIdTipoVinculado(convertTipoVinculadoIndependent(affiliationSubtype));
-            request.setSubEmpresa(affiliation.getDv());
-            request.setClaseContrato(convertContractClass(affiliation.getContractQuality()));
-            request.setTipoContrato(convertContractType(affiliation.getContractType()));
-            request.setTipoEntidad(findEntityTypeByContractor(affiliation.getIdentificationDocumentTypeContractor(),
-                    affiliation.getIdentificationDocumentNumberContractor()));
+            request.setSubEmpresa(findIdSubEmployer(affiliationEmployer));
+            request.setClaseContrato(affiliation.getContractQuality()!=null ? convertContractClass(affiliation.getContractQuality()) : 2);
+            request.setTipoContrato(affiliation.getContractType()!= null ? convertContractType(affiliation.getContractType()) : 1);
+            request.setTipoEntidad(findEntityTypeByContractor(affiliationEmployer));
             request.setSuministraTransporte(convertTransportSupply(affiliation.getTransportSupply()));
             request.setNumeroMeses(getMonthsByDuration(affiliation.getContractDuration()));
             request.setFechaInicioContrato(affiliation.getContractStartDate()!=null ?
@@ -1546,23 +1572,43 @@ public class AffiliateServiceImpl implements AffiliateService {
         };
     }
 
-    private Integer findEntityTypeByContractor(String identificationTypeContractor, String identificationNumberContractor){
-        Specification<Affiliate> spc = AffiliateSpecification.findByEmployerAndIdentification(identificationTypeContractor,
-                identificationNumberContractor);
-        Optional<Affiliate> affiliateOpt = affiliateRepository.findOne(spc);
-        if(affiliateOpt.isPresent()){
-            Affiliate affiliate = affiliateOpt.get();
-            if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)){
-                AffiliateMercantile affiliation = affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber()).orElse(null);
-                if(affiliation!=null){
-                    return affiliation.getLegalStatus()!=null && affiliation.getLegalStatus().equals("1") ? 1 : 2;
-                }
-            }
+    private Integer findIdSubEmployer(AffiliateMercantile affiliation){
+        if(affiliation!=null){
+            return affiliation.getDecentralizedConsecutive()!=null ?
+                    affiliation.getDecentralizedConsecutive().intValue() : 0;
+        }
+        return 0;
+    }
+
+    private Integer findEntityTypeByContractor(AffiliateMercantile affiliation){
+        if(affiliation!=null){
+            return affiliation.getLegalStatus()!=null && affiliation.getLegalStatus().equals("1") ? 1 : 2;
         }
         return 2;
     }
 
-    private void insertPolicyToClient(Policy policy, String identificationTypeContractor, String identificationNumberContractor){
+    private AffiliateMercantile searchEmployer(String identificationTypeContractor, String identificationNumberContractor, String bussinesName){
+        Specification<Affiliate> spc = AffiliateSpecification.findByNitEmployer(identificationNumberContractor);
+        List<Affiliate> affiliateList = affiliateRepository.findAll(spc);
+        if (!affiliateList.isEmpty()) {
+            List<Affiliate> affiliateEmployer = affiliateList.stream().filter(affiliate ->
+                    affiliate.getCompany().equalsIgnoreCase(bussinesName)).toList();
+            if(!affiliateEmployer.isEmpty()) {
+                Affiliate affiliate = affiliateEmployer.get(0);
+                if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
+                    AffiliateMercantile affiliation = affiliateMercantileRepository.
+                            findByFiledNumber(affiliate.getFiledNumber()).orElse(null);
+                    if (affiliation != null) {
+                        return affiliation;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void insertPolicyToClient(Policy policy, String identificationTypeContractor,
+                                      String identificationNumberContractor){
         try{
             InsertPolicyRequest request = new InsertPolicyRequest();
             request.setNDocEmp(identificationNumberContractor);
@@ -1652,7 +1698,8 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setTelefonoPersona(affiliation.getPhone1WorkDataCenter()!=null ?
                     affiliation.getPhone1WorkDataCenter().replaceAll("\\s+", "") : "");
             request.setFaxPersona(null);
-            request.setDireccionPersona(affiliation.getAddressWorkDataCenter());
+            request.setDireccionPersona(affiliation.getAddressWorkDataCenter()!=null ?
+                    affiliation.getAddressWorkDataCenter().replace('#', 'N') : "");
             request.setEmailPersona(affiliation.getEmailContractor());
             request.setUsuarioAud(Constant.USER_AUD);
             request.setMaquinaAud(Constant.MAQ_AUD);
@@ -1676,7 +1723,8 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setIdActEconomica(Long.parseLong(Constant.ECONOMIC_ACTIVITY_DEFAULT));
             request.setIdDepartamento(dataEmployer.getIdDepartamento());
             request.setIdMunicipio(dataEmployer.getIdMunicipio());
-            request.setDireccionEmpresa(dataEmployer.getDireccionEmpresa());
+            request.setDireccionEmpresa(dataEmployer.getDireccionEmpresa()!=null ?
+                    dataEmployer.getDireccionEmpresa().replace('#', 'N') : "");
             request.setTelefonoEmpresa(dataEmployer.getTelefonoEmpresa());
             request.setFaxEmpresa(null);
             request.setEmailEmpresa(dataEmployer.getEmailEmpresa());
@@ -1848,10 +1896,13 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setEmailPersona(affiliation.getEmail());
             request.setIdDepartamento(affiliation.getDepartment()!=null ? affiliation.getDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(affiliation.getCityMunicipality()));
-            request.setDireccionPersona(affiliation.getAddress());
-            request.setTelefonoPersona(affiliation.getPhone1() != null ? affiliation.getPhone1().replaceAll("\\s+", "") : "");
+            request.setDireccionPersona(affiliation.getAddress()!=null ?
+                    affiliation.getAddress().replace('#', 'N') : "");
+            request.setTelefonoPersona(affiliation.getPhone1() != null ?
+                    affiliation.getPhone1().replaceAll("\\s+", "") : "");
             request.setIdEps(findEpsCode(affiliation.getHealthPromotingEntity()));
-            request.setIdAfp(affiliation.getPensionFundAdministrator()!=null ? affiliation.getPensionFundAdministrator().intValue() : 0);
+            request.setIdAfp(affiliation.getPensionFundAdministrator()!=null ?
+                    affiliation.getPensionFundAdministrator().intValue() : 0);
             request.setIbc(affiliation.getContractIbcValue().doubleValue());
             request.setIdOcupacion(findOccupationVolunteer(affiliation.getOccupation()));
             request.setFechaCobertura(coverageDate!=null ? coverageDate.atStartOfDay().format(formatter_date_and_time) :
@@ -1865,7 +1916,8 @@ public class AffiliateServiceImpl implements AffiliateService {
             request.setSegundoApellidoConyuge(familyMember.getSecondSurnameFamilyMember());
             request.setIdDepartamentoConyuge(familyMember.getDepartment()!=null ? familyMember.getDepartment().intValue() : null);
             request.setIdMunicipioConyuge(convertIdMunicipality(familyMember.getCityMunicipality()));
-            request.setTelefonoConyuge(familyMember.getPhone1FamilyMember()!=null ? familyMember.getPhone1FamilyMember().replaceAll("\\s+", "") : "");
+            request.setTelefonoConyuge(familyMember.getPhone1FamilyMember()!=null ?
+                    familyMember.getPhone1FamilyMember().replaceAll("\\s+", "") : "");
             Object response = insertVolunteerClient.insert(request);
             log.info("Se inserto el voluntario " + affiliation.getIdentificationDocumentType() + "-" +
                     affiliation.getIdentificationDocumentNumber() + RESPONSE_LABEL + response.toString());
@@ -1878,25 +1930,13 @@ public class AffiliateServiceImpl implements AffiliateService {
     private int findOccupationVolunteer(String occupationName){
         int occupationCode = 0;
         try {
-            List<OccupationDecree1563DTO> allOccupations = getAllOcuppationsDecree1563();
-            Stream<OccupationDecree1563DTO> occupationStream = allOccupations.stream().filter(occupation ->
-                    occupation.getOccupation().equals(occupationName));
-            Optional<OccupationDecree1563DTO> occupationDecree1563 = occupationStream.findFirst();
+            Optional<OccupationDecree1563> occupationDecree1563 = occupationVolunteerRepository.findByOccupation(occupationName.toUpperCase());
             if (occupationDecree1563.isPresent())
                 occupationCode = occupationDecree1563.get().getCode().intValue();
         }catch (Exception ex){
             log.error("Error consultando las ocupaciones de voluntario " + ex.getMessage());
         }
         return occupationCode;
-    }
-
-    private List<OccupationDecree1563DTO> getAllOcuppationsDecree1563(){
-        BodyResponseConfig<List<OccupationDecree1563DTO>> allOccupations = webClient.getOccupationsByVolunteer();
-
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.convertValue(allOccupations.getData(),
-                new TypeReference<>() {
-                });
     }
 
 

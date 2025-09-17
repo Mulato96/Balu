@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.time.LocalDate;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class AffiliationsViewSpecification {
 
@@ -17,6 +19,7 @@ public class AffiliationsViewSpecification {
     private static final String STAGE_SCHEDULING = "Agendamiento";
     private static final String STAGE_SIGNATURE = "firma";
     private static final String STAGE_MANAGEMENT_LABEL = "stageManagement";
+    private static final String DATE_REQUEST_LABEL = "dateRequest";
 
     public static Specification<AffiliationsView> filter(AffiliationsFilterDTO filter) {
         return (root, query, criteriaBuilder) -> {
@@ -27,20 +30,32 @@ public class AffiliationsViewSpecification {
                     .value(STAGE_SCHEDULING)
                     .value(STAGE_SIGNATURE);
 
-            if (filter != null && filter.fieldValue() != null && filter.criteria() != null) {
-                String value = "%" + filter.fieldValue().toLowerCase() + "%";
-                Predicate filterPredicate;
+            if (filter != null) {
 
-                switch (filter.criteria()) {
-                    case 1 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("filedNumber")), value);
-                    case 2 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("numberDocument")), value);
-                    case 3 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("nameOrSocialReason")), value);
-                    case 4 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("affiliationType")), value);
-                    case 5 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get(STAGE_MANAGEMENT_LABEL)), value);
-                    default -> throw new IllegalStateException("Unexpected value: " + filter.criteria());
+                if (filter.fieldValue() != null && filter.criteria() != null) {
+                    String value = "%" + filter.fieldValue().toLowerCase() + "%";
+                    Predicate filterPredicate;
+
+                    switch (filter.criteria()) {
+                        case 1 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("filedNumber")), value);
+                        case 2 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("numberDocument")), value);
+                        case 3 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("nameOrSocialReason")), value);
+                        case 4 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("affiliationType")), value);
+                        case 5 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get(STAGE_MANAGEMENT_LABEL)), value);
+                        case 6 -> filterPredicate = criteriaBuilder.like(criteriaBuilder.lower(root.get("asignadoA")), value);
+                        default -> throw new IllegalStateException("Unexpected value: " + filter.criteria());
+                    }
+
+                    predicate = criteriaBuilder.and(predicate, filterPredicate);
                 }
 
-                predicate =  criteriaBuilder.and(predicate, filterPredicate);
+                if (filter.dateRequest() != null) {
+                    Predicate datePredicate = criteriaBuilder.equal(
+                            criteriaBuilder.function("DATE", LocalDate.class, root.get(DATE_REQUEST_LABEL)),
+                            filter.dateRequest()
+                    );
+                    predicate = criteriaBuilder.and(predicate, datePredicate);
+                }
             }
 
             return predicate;

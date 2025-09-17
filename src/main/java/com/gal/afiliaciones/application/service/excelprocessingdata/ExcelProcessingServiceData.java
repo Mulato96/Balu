@@ -16,7 +16,7 @@ import java.util.function.ToIntFunction;
 
 public interface ExcelProcessingServiceData {
 
-    List<Map<String, Object>> converterExcelToMap(MultipartFile excel, List<String> listColumns, int numberFile) throws IOException;
+    List<Map<String, Object>> converterExcelToMap(MultipartFile excel, List<String> listColumns) throws IOException;
     <T> List<T> converterMapToClass(List<Map<String, Object>> data, Class<T> clazz) throws IOException;
     <T> List<Integer> findDataDuplicate(List<T> elementos, Function<T, String> getAttribute, ToIntFunction<T> getId);
     <T> ExportDocumentsDTO createDocumentExcelErrors(List<T> listErrors);

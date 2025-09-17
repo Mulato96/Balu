@@ -1,17 +1,18 @@
 package com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent;
 
-import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.infrastructure.dto.certificate.AffiliationCertificate;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.infrastructure.dto.certificate.AffiliationCertificate;
 
 public interface AffiliationDependentRepository extends JpaRepository<AffiliationDependent, Long>,
         JpaSpecificationExecutor<AffiliationDependent> {
@@ -162,7 +163,7 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
                 ad.identification_type as identificationType,
                 ad.identification_number as identificationNumber,
                 ad.coverage_date as coverageDate,
-                ad.risk as risk,
+                ad.risk::text as risk,
                 ad.end_date as endDate,
                 o.nombre_ocupacion as occupationName,
                 COALESCE((
@@ -175,7 +176,33 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
             join tmp_ocupaciones o on o.id_ocupacion = ad.id_occupation
             where a.nit_company = :numberDocument
               and a.document_number in (:numberDocuments)
-              and a.affiliation_type != 'Empleador';
+              and a.affiliation_type != 'Empleador'
+            union all
+            select
+                a.company as company,
+                a.nit_company as nitCompany,
+                a.affiliation_status as affiliationStatus,
+                COALESCE(TO_CHAR(a.retirement_date, 'YYYY-MM-DD'), 'Sin retiro') as retirementDate,
+                a.affiliation_subtype as affiliationSubtype,
+                TRIM(
+                    COALESCE(ad.first_name, '') || ' ' ||
+                    COALESCE(ad.second_name, '') || ' ' ||
+                    COALESCE(ad.surname, '') || ' ' ||
+                    COALESCE(ad.second_surname, '')
+                ) as fullName,
+                ad.identification_document_type as identificationType,
+                ad.identification_document_number as identificationNumber,
+                COALESCE(ad.contract_start_date) as coverageDate,
+                ad.risk as risk,
+                ad.contract_end_date as endDate,
+                COALESCE(o.nombre_ocupacion, ad.occupation) as occupationName,
+                ad.identification_document_type as identificationDocumentType
+            from affiliation_detail ad
+            join affiliate a on a.filed_number = ad.filed_number
+            left join tmp_ocupaciones o on UPPER(o.nombre_ocupacion) = UPPER(ad.occupation)
+            where a.nit_company = :numberDocument
+            and a.document_number in (:numberDocuments)
+            and a.affiliation_type != 'Empleador'
             """, nativeQuery = true)
     List<AffiliationCertificate> findAffiliateCertificate(@Param("numberDocuments")Set<String> identificationDocumentNumber, @Param("numberDocument")String numberDocument);
 

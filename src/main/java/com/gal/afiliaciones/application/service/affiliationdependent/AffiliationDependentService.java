@@ -10,6 +10,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWor
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.HeadquarterDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.RequestSearchEconomicActivitiesDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
+import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityHeadquarterDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
 
 import java.util.List;
@@ -19,11 +20,12 @@ public interface AffiliationDependentService {
     List<BondingTypeDependent> findAll();
     DependentWorkerDTO consultUser(ValidateContributorRequest request);
     DependentWorkerDTO preloadUserNotExists(ValidateContributorRequest request);
-    HeadquarterDataDTO consultHeadquarters(String documentType, String documentNumber, String affiliationSubtype);
+    HeadquarterDataDTO consultHeadquarters(Long idAffiliate);
     AffiliationDependent createAffiliation(AffiliationDependentDTO dto);
     List<WorkModality> findAlllWorkModalities();
     AffiliationDependent createAffiliationIndependentStep1(AffiliationIndependentStep1DTO dto);
     AffiliationDependent createAffiliationIndependentStep2(AffiliationIndependentStep2DTO dto);
-    List<EconomicActivityDTO> findEconomicActivitiesByEmployer(RequestSearchEconomicActivitiesDTO request);
+    List<EconomicActivityDTO> findEconomicActivitiesByEmployer(Long idAffiliateEmployer);
+    List<EconomicActivityHeadquarterDTO> findEconomicActivitiesByHeadquarter(Long idHeadquarter);
 
 }

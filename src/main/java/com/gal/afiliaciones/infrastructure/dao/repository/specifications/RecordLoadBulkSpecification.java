@@ -18,12 +18,13 @@ public class RecordLoadBulkSpecification {
         });
     }
 
-    public static Specification<RecordLoadBulk> findByIdUser(Long id){
+    public static Specification<RecordLoadBulk> findByUserAndEmployer(Long idUser, Long idAffiliateEmployer){
         return ((root, query, criteriaBuilder) -> {
 
-            Predicate idRecordLoadBulkPredicate = criteriaBuilder.equal(root.get("idUserLoad"), id);
+            Predicate iduserPredicate = criteriaBuilder.equal(root.get("idUserLoad"), idUser);
+            Predicate idAffiliateEmployerPredicate = criteriaBuilder.equal(root.get("idAffiliateEmployer"), idAffiliateEmployer);
 
-            return criteriaBuilder.and(idRecordLoadBulkPredicate);
+            return criteriaBuilder.and(iduserPredicate, idAffiliateEmployerPredicate);
         });
     }
 }

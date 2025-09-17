@@ -2,6 +2,9 @@ package com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticservi
 
 import lombok.Builder;
 
+import java.time.LocalDate;
+
 @Builder
-public record AffiliationsFilterDTO(Integer criteria, String fieldValue, String sortBy, String sortOrder) {
+public record AffiliationsFilterDTO(Integer criteria, String fieldValue, String sortBy, String sortOrder,
+                                    LocalDate dateRequest) {
 }

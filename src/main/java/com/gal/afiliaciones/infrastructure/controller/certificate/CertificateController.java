@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.gal.afiliaciones.domain.model.UserMain;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.gal.afiliaciones.application.service.CertificateBulkService;
 import com.gal.afiliaciones.application.service.CertificateBulkService;
 import com.gal.afiliaciones.application.service.CertificateNoAffiliateService;
 import com.gal.afiliaciones.application.service.CertificateService;
@@ -45,19 +45,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/certificates")
@@ -189,8 +177,8 @@ public class CertificateController {
 
     @PostMapping("/create-all-certificates")
     public ResponseEntity<String> createAllCertificate(@RequestParam String type, @RequestParam(required = false) LocalDate date){
-
-        certificateBulkService.createCertificatesMassive(type, date);
+        UserMain userMain = certificateBulkService.getUserPreRegister();
+        certificateBulkService.createCertificatesMassive(type, date, userMain);
         return ResponseEntity.ok().body("OK");
     }
 

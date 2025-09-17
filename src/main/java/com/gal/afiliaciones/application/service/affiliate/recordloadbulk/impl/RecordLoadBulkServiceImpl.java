@@ -32,9 +32,8 @@ public class RecordLoadBulkServiceImpl implements RecordLoadBulkService {
     }
 
     @Override
-    public List<RecordLoadBulk> findAllByIdUser(Long idUser) {
-
-        Specification<RecordLoadBulk> spec = RecordLoadBulkSpecification.findByIdUser(idUser);
+    public List<RecordLoadBulk> findAllByIdUser(Long idUser, Long idAffiliateEmployer) {
+        Specification<RecordLoadBulk> spec = RecordLoadBulkSpecification.findByUserAndEmployer(idUser, idAffiliateEmployer);
         return recordLoadBulkRepository.findAll(spec).stream().sorted((o1, o2) -> o2.getDateLoad().compareTo(o1.getDateLoad())).toList();
     }
 

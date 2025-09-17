@@ -26,11 +26,13 @@ import com.gal.afiliaciones.config.BodyResponseConfig;
 import com.gal.afiliaciones.config.ex.Error.Type;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RequestChannel;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.DataStatusAffiliationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.EmployerAffiliationHistoryDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationHistoryView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.RegularizationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.RequestSignatureDTO;
@@ -42,6 +44,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
+import jakarta.ws.rs.QueryParam;
 import lombok.RequiredArgsConstructor;
 
 
@@ -177,11 +180,30 @@ public class AffiliateController {
         return affiliateService.getEmployerAffiliationHistory(nitCompany, documentType, documentNumber);
     }
 
+    @GetMapping("/internal-staff-employer-affiliation-history/{nitCompany}")
+    public List<EmployerAffiliationHistoryDTO> employerAffiliationHistory(@PathVariable String nitCompany,
+                                               @QueryParam(value = "decentralizedNumber") Integer decentralizedNumber) {
+        return affiliateService.getEmployerAffiliationHistory(nitCompany, decentralizedNumber);
+    }
+
     @GetMapping("/individual-worker-affiliation/{nitCompany}/{documentType}/{documentNumber}")
     public IndividualWorkerAffiliationView individualWorkerAffiliation(@PathVariable String nitCompany, 
                                                @PathVariable String documentType, 
                                                @PathVariable String documentNumber) {
         return affiliateService.getIndividualWorkerAffiliation(nitCompany, documentType, documentNumber);
+    }
+
+    @GetMapping("/individual-worker-affiliation-history/{documentType}/{documentNumber}")
+    public List<IndividualWorkerAffiliationHistoryView> individualWorkerAffiliationHistory(
+                                                    @PathVariable String documentType, 
+                                                    @PathVariable String documentNumber) {
+        return affiliateService.getIndividualWorkerAffiliationHistory(documentType, documentNumber);
+    }
+
+    @GetMapping("/affiliate-company/{documentType}/{documentNumber}")
+    public Affiliate affiliateCompany(@PathVariable String documentType, 
+                                                    @PathVariable String documentNumber) {
+        return affiliateService.getAffiliateCompany(documentType, documentNumber);
     }
     
 }

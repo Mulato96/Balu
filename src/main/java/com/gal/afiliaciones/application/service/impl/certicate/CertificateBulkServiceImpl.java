@@ -2,12 +2,14 @@ package com.gal.afiliaciones.application.service.impl.certicate;
 
 import com.gal.afiliaciones.application.service.CertificateBulkService;
 import com.gal.afiliaciones.application.service.CodeValidCertificationService;
+import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
 import com.gal.afiliaciones.application.service.filed.FiledService;
 import com.gal.afiliaciones.application.service.helper.CertificateServiceHelper;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.Certificate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
@@ -71,6 +73,7 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
     private final ExcelProcessingServiceData excelProcessingServiceData;
     private final CodeValidCertificationService codeValidCertificationService;
     private final AffiliationDependentRepository affiliationDependentRepository;
+    private final SendEmails sendEmails;
 
     private static final String FORMAT_DATE_TEXT = "yyyy-MM-dd";
     private static final String STUDENT = "Estudiante Decreto 055 de 2015";
@@ -95,7 +98,7 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
             List<Map<String, Object>> listDataMap;
             ResponseBulkDTO responseBulkDTO = new ResponseBulkDTO();
 
-            listDataMap = excelProcessingServiceData.converterExcelToMap(file, FieldsExcelLoadCertificates.getDescription(), 0);
+            listDataMap = excelProcessingServiceData.converterExcelToMap(file, FieldsExcelLoadCertificates.getDescription());
 
             if(listDataMap.size() > properties.getMaximumRecordsConsultCertificate())
                 throw new AffiliationError("Se excedio el limite de registros por archivo, la cantidad maxima debe ser " + properties.getMaximumRecordsConsultCertificate());
@@ -190,11 +193,12 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
 
     @Async
     @Override
-    public void createCertificatesMassive(String type, LocalDate date) {
+    public void createCertificatesMassive(String type, LocalDate date, UserMain userMain) {
 
         log.info("Start method createCertificatesMassive");
         DataFileCertificateBulkDTO certificateBulkDTO = new DataFileCertificateBulkDTO();
         String idDocument =  UUID.randomUUID().toString();
+        LocalDateTime dateRequest = LocalDateTime.now();
 
         try{
 
@@ -206,9 +210,7 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
 
             List<FileBase64DTO> certificates = new ArrayList<>();
 
-            String numberDocument = getEmailUserPreRegister();
-
-            Affiliate affiliate = affiliateRepository.findAll(AffiliateSpecification.findMercantileByLegalRepresentative(numberDocument))
+            Affiliate affiliate = affiliateRepository.findAll(AffiliateSpecification.findMercantileByLegalRepresentative(userMain.getIdentification()))
                     .stream().findFirst().orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
 
             List<Certificate> affiliationCertificates =  affiliationCertificate(affiliate.getNitCompany(), type, date).stream()
@@ -231,6 +233,7 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
             certificateBulkDTO.setDocumentNumberEmployer(affiliate.getDocumentNumber());
             certificateBulkDTO.createBulkMassive(idDocumentAlfresco, date, certificates.size(), type);
             listRecordBulkCertificate.put(idDocument, certificateBulkDTO);
+            sendEmails.emailCertificateMassive(dateRequest, userMain.getEmail());
             log.info("end method createCertificatesMassive, document id {}",idDocument);
         }catch (Exception e){
             log.error("Error method createCertificatesMassive, {}", e.getMessage());
@@ -277,6 +280,17 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
         }
 
         throw new AffiliationError("Error, no se pudo descargar el documento");
+    }
+
+    @Override
+    public UserMain getUserPreRegister() {
+        try{
+            Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return iUserPreRegisterRepository.findByEmail(jwt.getClaim("email")).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND));
+        }catch (Exception e){
+            log.error("Error method getEmailUserPreRegister : {}", e.getMessage());
+            throw new AffiliationError(Constant.USER_NOT_FOUND);
+        }
     }
 
     private boolean validTypeNumberIdentification(String typeNumber){
@@ -403,17 +417,6 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
         );
     }
 
-    private String getEmailUserPreRegister() {
-        try{
-            Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            return iUserPreRegisterRepository.findByEmail(jwt.getClaim("email")).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND))
-                    .getIdentification();
-        }catch (Exception e){
-            log.error("Error method getEmailUserPreRegister : {}", e.getMessage());
-            throw new AffiliationError(Constant.USER_NOT_FOUND);
-        }
-    }
-
     private String uploadAlfrescoFile(String fileName, MultipartFile file, String idFolderAlfresco) throws IOException {
 
         List<MultipartFile> documentList = new ArrayList<>();
@@ -455,6 +458,17 @@ public class CertificateBulkServiceImpl implements CertificateBulkService {
     @Async
     public void saveCertificates(List<Certificate> certificates){
         certificateRepository.saveAll(certificates);
+    }
+
+    public String getEmailUserPreRegister() {
+        try{
+            Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            return iUserPreRegisterRepository.findByEmail(jwt.getClaim("email")).orElseThrow(() -> new AffiliationError(Constant.USER_NOT_FOUND))
+                    .getIdentification();
+        }catch (Exception e){
+            log.error("Error method getEmailUserPreRegister : {}", e.getMessage());
+            throw new AffiliationError(Constant.USER_NOT_FOUND);
+        }
     }
 
 

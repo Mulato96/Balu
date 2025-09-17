@@ -8,6 +8,7 @@ import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.R
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementPaginatedResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -15,8 +16,9 @@ import java.util.List;
 public interface WorkerManagementService {
 
     List<WorkerManagementDTO> findWorkersByEmployer(FiltersWorkerManagementDTO filters);
+    WorkerManagementPaginatedResponseDTO findWorkersByEmployerPaginated(FiltersWorkerManagementDTO filters);
     BodyResponseConfig<AffiliationDependent> findDataDependentById(String filedNumber);
-    ResponseServiceDTO massiveUpdateWorkers(MultipartFile file, String documentType, String documentNumber);
+    ResponseServiceDTO massiveUpdateWorkers(MultipartFile file, Long idUser, Long idAffiliateEmployer);
     String downloadTemplateMassiveUpdate();
     String downloadTemplateGuide();
     List<RecordMassiveUpdateWorker> findAllByIdUser(Long idUser);

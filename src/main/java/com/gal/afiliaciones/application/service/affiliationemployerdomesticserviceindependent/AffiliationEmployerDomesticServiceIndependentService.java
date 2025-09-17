@@ -20,5 +20,7 @@ public interface AffiliationEmployerDomesticServiceIndependentService {
     void stateAffiliation(StateAffiliation stateAffiliation) ;
     void stateDocuments(List<DocumentsDTO> listDocumentsDTOS, Long idAffiliate);
     List<DataDocumentAffiliate> findDocuments(Long idAffiliate);
+    String generateExcel(AffiliationsFilterDTO filter);
+    void assignTo(String filedNumber, Long usuarioId);
 
 }

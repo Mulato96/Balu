@@ -24,15 +24,15 @@ public class CancelAffiliateController {
 
     private final ICancelAffiliationService iCancelAffiliationService;
 
-    @GetMapping("/findBy/type/number/document/idUser/subType")
+    @GetMapping("/findByIdAffiliateEmployer")
     @Operation(summary = "find affiliate by document type and document number")
-    public ResponseEntity<CancelAffiliateDTO> findEconomicActivityByCodeCIIU(@RequestParam String documentType, @RequestParam String documentNumber, @RequestParam Long idUser, @RequestParam String subType) {
-        return ResponseEntity.ok(iCancelAffiliationService.consultAffiliation(documentType, documentNumber, idUser, subType));
+    public ResponseEntity<CancelAffiliateDTO> findEconomicActivityByCodeCIIU(@RequestParam String documentType, @RequestParam String documentNumber, @RequestParam Long idAffiliateEmployer) {
+        return ResponseEntity.ok(iCancelAffiliationService.consultAffiliation(documentType, documentNumber, idAffiliateEmployer));
     }
 
-    @PutMapping("/update-status/{identification}")
-    public ResponseEntity<ResponseStatusAffiliate> updateAffiliateStatus(@PathVariable String identification, @RequestParam String newObservation) {
-        iCancelAffiliationService.updateStatusCanceledAffiliate(identification, newObservation);
+    @PutMapping("/update-status/{filedNumber}")
+    public ResponseEntity<ResponseStatusAffiliate> updateAffiliateStatus(@PathVariable String filedNumber, @RequestParam String newObservation) {
+        iCancelAffiliationService.updateStatusCanceledAffiliate(filedNumber, newObservation);
         ResponseStatusAffiliate response = new ResponseStatusAffiliate();
         response.setStatus("Affiliate status updated successfully.");
         return ResponseEntity.ok(response);

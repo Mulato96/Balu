@@ -113,4 +113,21 @@ public class AffiliationEmployerDomesticServiceIndependentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(alfrescoService.createFolder(idParent, nameFile));
     }
 
+    @PostMapping("/managementaffiliation/download")
+    public ResponseEntity<String> downloadExcel(@RequestBody(required = false) AffiliationsFilterDTO filter) {
+        String excel = affiliationEmployerDomesticServiceIndependentService.generateExcel(filter);
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/json")
+                .body(excel);
+    }
+
+    @PostMapping("managementaffiliation/{filedNumber}/asignar/{usuarioId}")
+    public ResponseEntity<String> assignTo(
+            @PathVariable String filedNumber,
+            @PathVariable Long usuarioId
+    ) {
+        affiliationEmployerDomesticServiceIndependentService.assignTo(filedNumber, usuarioId);
+        return ResponseEntity.ok("Afiliacion asignada correctamente");
+    }
 }

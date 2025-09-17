@@ -11,6 +11,7 @@ import com.gal.afiliaciones.domain.model.affiliate.RequestChannel;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.DataStatusAffiliationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.EmployerAffiliationHistoryDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationHistoryView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.RegularizationDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.UserAffiliateDTO;
@@ -36,5 +37,8 @@ public interface AffiliateService {
     BigDecimal calculateIbcAmount(BigDecimal monthlyContractValue, BigDecimal ibcPercentage);
     Boolean affiliateBUs(String idTipoDoc, String idAfiliado) throws MessagingException, IOException, IllegalAccessException;
     List<EmployerAffiliationHistoryDTO> getEmployerAffiliationHistory(String nitCompany, String documentType, String documentNumber);
+    List<EmployerAffiliationHistoryDTO> getEmployerAffiliationHistory(String nitCompany, Integer decentralizedNumber);
     IndividualWorkerAffiliationView getIndividualWorkerAffiliation(String nitCompany, String documentType, String documentNumber);
+    List<IndividualWorkerAffiliationHistoryView> getIndividualWorkerAffiliationHistory(String documentType, String documentNumber);
+    Affiliate getAffiliateCompany(String documentType, String documentNumber);
 }
