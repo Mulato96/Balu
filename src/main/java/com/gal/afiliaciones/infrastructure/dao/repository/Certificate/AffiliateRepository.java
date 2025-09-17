@@ -396,4 +396,6 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
             @Param("documentNumber") String documentNumber
     );
 
+    @Query("SELECT MIN(ad.coverageDate) FROM AffiliationDependent ad WHERE ad.idAffiliateEmployer = :idAffiliateEmployer")
+    Optional<LocalDate> findMinCoverageDateOfDependents(@Param("idAffiliateEmployer") Long idAffiliateEmployer);
 }
