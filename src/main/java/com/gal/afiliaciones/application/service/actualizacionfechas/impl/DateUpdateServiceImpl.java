@@ -15,6 +15,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.observationsaffiliatio
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.SubEmpresaDto;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.UpdateCoverageDateDto;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionDto;
+import com.gal.afiliaciones.config.ex.DateUpdateException;
+import com.gal.afiliaciones.config.ex.Error;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionQueryDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,7 +25,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
     @Override
     public List<VinculacionDto> consultarVinculaciones(VinculacionQueryDto query) {
         if (query.getTipoIdentificacion() == null || query.getNumeroIdentificacion() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo y número de identificación son requeridos.");
+            throw new DateUpdateException(Error.Type.INVALID_ARGUMENT, "Tipo y número de identificación son requeridos.");
         }
 
         List<Affiliate> affiliates = affiliateRepository.findAllByDocumentTypeAndDocumentNumber(
@@ -87,7 +88,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
 
         if (vinculaciones.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No se encontraron vinculaciones para la identificación proporcionada.");
+            throw new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "No se encontraron vinculaciones para la identificación proporcionada.");
         }
 
         return vinculaciones;
@@ -138,7 +139,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
                 updateEmployerCoverageDate(updateDto);
                 break;
             default:
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de vinculación no válido: " + updateDto.getTipoVinculacion());
+                throw new DateUpdateException(Error.Type.INVALID_ARGUMENT, "Tipo de vinculación no válido: " + updateDto.getTipoVinculacion());
         }
 
         // Registrar causal y observaciones
@@ -147,23 +148,23 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
     private void updateDependentCoverageDate(UpdateCoverageDateDto dto) {
         AffiliationDependent dependent = affiliationDependentRepository.findById(dto.getIdVinculacion())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Dependiente no encontrado con ID: " + dto.getIdVinculacion()));
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "Dependiente no encontrado con ID: " + dto.getIdVinculacion()));
 
         // Validar que el funcionario no actualice sus propios datos
         validateNotSelfUpdate(dependent.getIdentificationDocumentNumber());
 
         Affiliate employer = affiliateRepository.findById(dependent.getIdAffiliateEmployer())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleador del dependiente no encontrado."));
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "Empleador del dependiente no encontrado."));
 
         // Lógica de validación para dependientes:
         // 1. Relación activa (asumimos que si se encuentra, está activa, podría requerir chequeo de estado)
         // 2. Fecha >= ingreso empleador
         if (employer.getAffiliationDate() != null && dto.getNuevaFechaCobertura().isBefore(employer.getAffiliationDate().toLocalDate())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser anterior a la fecha de ingreso del empleador.");
+            throw new DateUpdateException(Error.Type.FECHA_INVALIDA_ANTERIOR_INGRESO, "La nueva fecha no puede ser anterior a la fecha de ingreso del empleador.");
         }
         // 3. Fecha <= fecha novedad (fecha actual)
         if (dto.getNuevaFechaCobertura().isAfter(java.time.LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser futura.");
+            throw new DateUpdateException(Error.Type.FECHA_INVALIDA_FUTURA, "La nueva fecha no puede ser futura.");
         }
 
         dependent.setCoverageDate(dto.getNuevaFechaCobertura());
@@ -172,22 +173,22 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
     private void updateIndependentCoverageDate(UpdateCoverageDateDto dto) {
         Affiliate independent = affiliateRepository.findById(dto.getIdVinculacion())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Independiente no encontrado con ID: " + dto.getIdVinculacion()));
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "Independiente no encontrado con ID: " + dto.getIdVinculacion()));
 
         validateNotSelfUpdate(independent.getDocumentNumber());
 
         // Lógica de validación para independientes:
         // 1. Contrato activo (chequeo de estado)
         if (!"ACTIVO".equalsIgnoreCase(independent.getAffiliationStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La vinculación del independiente no está activa.");
+            throw new DateUpdateException(Error.Type.VINCULACION_NO_ACTIVA, "La vinculación del independiente no está activa.");
         }
         // 2. Fecha >= inicio contrato (affiliationDate)
         if (independent.getAffiliationDate() != null && dto.getNuevaFechaCobertura().isBefore(independent.getAffiliationDate().toLocalDate())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser anterior al inicio del contrato.");
+            throw new DateUpdateException(Error.Type.FECHA_INVALIDA_ANTERIOR_INGRESO, "La nueva fecha no puede ser anterior al inicio del contrato.");
         }
         // 3. Fecha <= fecha novedad (fecha actual)
         if (dto.getNuevaFechaCobertura().isAfter(java.time.LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser futura.");
+            throw new DateUpdateException(Error.Type.FECHA_INVALIDA_FUTURA, "La nueva fecha no puede ser futura.");
         }
 
         independent.setCoverageStartDate(dto.getNuevaFechaCobertura());
@@ -196,27 +197,27 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
     private void updateEmployerCoverageDate(UpdateCoverageDateDto dto) {
         Affiliate employer = affiliateRepository.findById(dto.getIdVinculacion())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empleador no encontrado con ID: " + dto.getIdVinculacion()));
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "Empleador no encontrado con ID: " + dto.getIdVinculacion()));
 
         validateNotSelfUpdate(employer.getDocumentNumber());
 
         // Lógica de validación para empleadores:
         // 1. Relación activa
         if (!"ACTIVO".equalsIgnoreCase(employer.getAffiliationStatus())) {
-             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La vinculación del empleador no está activa.");
+             throw new DateUpdateException(Error.Type.VINCULACION_NO_ACTIVA, "La vinculación del empleador no está activa.");
         }
         // 2. Fecha <= fecha novedad (fecha actual)
         if (dto.getNuevaFechaCobertura().isAfter(java.time.LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser futura.");
+            throw new DateUpdateException(Error.Type.FECHA_INVALIDA_FUTURA, "La nueva fecha no puede ser futura.");
         }
         // 3. Si empresa inactiva -> nueva fecha <= inactivación (asumiendo que retirementDate es la fecha de inactivación)
         if (employer.getRetirementDate() != null && dto.getNuevaFechaCobertura().isAfter(employer.getRetirementDate())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Si la empresa está inactiva, la nueva fecha no puede ser posterior a la fecha de inactivación.");
+            throw new DateUpdateException(Error.Type.FECHA_POSTERIOR_INACTIVACION, "Si la empresa está inactiva, la nueva fecha no puede ser posterior a la fecha de inactivación.");
         }
         // 4. Si nueva fecha > menor fecha de cobertura de sus dependientes -> rechazar
         affiliateRepository.findMinCoverageDateOfDependents(employer.getIdAffiliate()).ifPresent(minDate -> {
             if (dto.getNuevaFechaCobertura().isAfter(minDate)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha no puede ser posterior a la menor fecha de cobertura de sus dependientes (" + minDate + ").");
+                throw new DateUpdateException(Error.Type.FECHA_POSTERIOR_DEPENDIENTE, "La nueva fecha no puede ser posterior a la menor fecha de cobertura de sus dependientes (" + minDate + ").");
             }
         });
 
@@ -232,7 +233,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
     private void validateRequest(UpdateCoverageDateDto dto) {
         if (dto.getIdVinculacion() == null || dto.getTipoVinculacion() == null || dto.getNuevaFechaCobertura() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "idVinculacion, tipoVinculacion y nuevaFechaCobertura son requeridos.");
+            throw new DateUpdateException(Error.Type.INVALID_ARGUMENT, "idVinculacion, tipoVinculacion y nuevaFechaCobertura son requeridos.");
         }
     }
 
@@ -267,11 +268,11 @@ public class DateUpdateServiceImpl implements DateUpdateService {
         if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof Jwt jwt) {
             String loggedInUserDocument = jwt.getClaimAsString("document_number");
             if (documentNumberToUpdate != null && documentNumberToUpdate.equals(loggedInUserDocument)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Un funcionario no puede actualizar sus propios datos.");
+                throw new DateUpdateException(Error.Type.FUNCIONARIO_NO_AUTORIZADO, "Un funcionario no puede actualizar sus propios datos.");
             }
         } else {
             // Fail closed if security context is not as expected
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No se puede verificar la identidad del funcionario.");
+            throw new DateUpdateException(Error.Type.AUTHENTICATION_FAILED, "No se puede verificar la identidad del funcionario.");
         }
     }
 
