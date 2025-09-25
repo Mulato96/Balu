@@ -3,16 +3,12 @@ package com.gal.afiliaciones.infrastructure.controller.actualizacionfechas;
 import com.gal.afiliaciones.application.service.actualizacionfechas.DateUpdateService;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.ApiResponse;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.UpdateCoverageDateDto;
-import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionDto;
-import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionQueryDto;
+import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -36,5 +32,14 @@ public class DateUpdateController {
     public ResponseEntity<ApiResponse<String>> actualizarFechaCobertura(@RequestBody UpdateCoverageDateDto updateDto) {
         dateUpdateService.actualizarFechaCobertura(updateDto);
         return ResponseEntity.ok(new ApiResponse<>("Fecha de cobertura actualizada exitosamente.", null));
+    }
+
+    @GetMapping("/detalle/{tipo}/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_FECHAS_UPDATER')")
+    public ResponseEntity<ApiResponse<VinculacionDetalleDto>> getVinculacionDetalle(
+            @PathVariable String tipo,
+            @PathVariable Long id) {
+        VinculacionDetalleDto detalle = dateUpdateService.getVinculacionDetalle(tipo, id);
+        return ResponseEntity.ok(new ApiResponse<>("Detalle de vinculación obtenido exitosamente.", detalle));
     }
 }

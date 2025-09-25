@@ -9,6 +9,8 @@ import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.infrastructure.client.generic.employer.ConsultEmployerClient;
 import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerResponse;
+import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.ConsultLegalRepresentativeClient;
+import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.LegalRepresentativeResponse;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.observationsaffiliation.ObservationsAffiliationRepository;
@@ -16,6 +18,7 @@ import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.SubEmpresaDto
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.UpdateCoverageDateDto;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionDto;
 import com.gal.afiliaciones.config.ex.DateUpdateException;
+import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionDetalleDto;
 import com.gal.afiliaciones.config.ex.Error;
 import com.gal.afiliaciones.infrastructure.dto.actualizacionfechas.VinculacionQueryDto;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +47,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
     private final AffiliationDependentRepository affiliationDependentRepository;
     private final ObservationsAffiliationRepository observationsRepository;
     private final ConsultEmployerClient consultEmployerClient;
+    private final ConsultLegalRepresentativeClient consultLegalRepresentativeClient;
 
     @Override
     public List<VinculacionDto> consultarVinculaciones(VinculacionQueryDto query) {
@@ -283,5 +287,69 @@ public class DateUpdateServiceImpl implements DateUpdateService {
             return Optional.ofNullable(jwt.getClaimAsString("official_id")).map(Long::parseLong);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public VinculacionDetalleDto getVinculacionDetalle(String tipo, Long id) {
+        return switch (tipo.toUpperCase()) {
+            case "EMPLEADOR", "INDEPENDIENTE" -> createDetalleFromAffiliate(id, tipo);
+            case "DEPENDIENTE" -> createDetalleFromDependent(id);
+            default -> throw new DateUpdateException(Error.Type.INVALID_ARGUMENT, "Tipo de vinculación no válido: " + tipo);
+        };
+    }
+
+    private VinculacionDetalleDto createDetalleFromAffiliate(Long id, String tipo) {
+        Affiliate affiliate = affiliateRepository.findById(id)
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, tipo + " no encontrado con ID: " + id));
+
+        VinculacionDetalleDto dto = new VinculacionDetalleDto();
+        dto.setTipoDocumentoIdentificacion(affiliate.getDocumentType());
+        dto.setNumeroIdentificacion(affiliate.getDocumentNumber());
+        dto.setNombreCompletoORazonSocial(affiliate.getCompany()); // Para empleador e independiente, el nombre está en 'company'
+        dto.setCorreoElectronico(null); // Campo no disponible directamente en Affiliate
+        dto.setFechaAfiliacion(affiliate.getAffiliationDate() != null ? affiliate.getAffiliationDate().toLocalDate() : null);
+        dto.setFechaInicioCobertura(affiliate.getCoverageStartDate());
+
+        // El teléfono y la dirección no están en la entidad Affiliate, se requeriría otra fuente de datos.
+        // Se dejan en null por ahora.
+        dto.setDireccionCompleta(null);
+        dto.setTelefono1(null);
+        dto.setTelefono2(null);
+
+        if ("EMPLEADOR".equalsIgnoreCase(tipo)) {
+            // Suponiendo que el DV no está en la tabla, se deja null.
+            dto.setDigitoVerificacion(null);
+
+            // Llamada al servicio del representante legal
+            List<LegalRepresentativeResponse> repResponses = consultLegalRepresentativeClient.consult(
+                    affiliate.getDocumenTypeCompany(), affiliate.getNitCompany(), null).block();
+
+            if (repResponses != null && !repResponses.isEmpty()) {
+                LegalRepresentativeResponse rep = repResponses.get(0); // Tomar el primero
+                dto.setTipoDocumentoRepLegal(rep.getIdTipoDoc());
+                dto.setNumeroIdentificacionRepLegal(rep.getIdPersona());
+                dto.setNombreCompletoRepLegal(String.join(" ", rep.getNombre1(), rep.getNombre2(), rep.getApellido1(), rep.getApellido2()).replaceAll("\\s+", " ").trim());
+            }
+        }
+
+        return dto;
+    }
+
+    private VinculacionDetalleDto createDetalleFromDependent(Long id) {
+        AffiliationDependent dependent = affiliationDependentRepository.findById(id)
+                .orElseThrow(() -> new DateUpdateException(Error.Type.VINCULACION_NOT_FOUND, "Dependiente no encontrado con ID: " + id));
+
+        VinculacionDetalleDto dto = new VinculacionDetalleDto();
+        dto.setTipoDocumentoIdentificacion(dependent.getIdentificationDocumentType());
+        dto.setNumeroIdentificacion(dependent.getIdentificationDocumentNumber());
+        dto.setNombreCompletoORazonSocial(String.join(" ", dependent.getFirstName(), dependent.getSecondName(), dependent.getSurname(), dependent.getSecondSurname()).replaceAll("\\s+", " ").trim());
+        dto.setDireccionCompleta(dependent.getAddress());
+        dto.setTelefono1(dependent.getPhone1());
+        dto.setTelefono2(dependent.getPhone2());
+        dto.setCorreoElectronico(dependent.getEmail());
+        dto.setFechaAfiliacion(dependent.getStartDate());
+        dto.setFechaInicioCobertura(dependent.getCoverageDate());
+
+        return dto;
     }
 }
