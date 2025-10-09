@@ -59,9 +59,12 @@ public class CertificateServiceHelper {
     public CertificateReportRequestDTO transformIndependentWorkerAffiliationCertificateOpsAnd723(
             Certificate certificate) {
         CertificateReportRequestDTO reportRequestDTO = new CertificateReportRequestDTO();
-        reportRequestDTO.setReportName("certificado basico afiliacion trabajador independiente voluntario, ops y 723");
-        reportRequestDTO.setIdReport(CERTIFICATEOPSAND723);
-
+        if(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_VOLUNTEER.equals(certificate.getVinculationSubType())) {
+            reportRequestDTO.setReportName(Constant.TYPE_CERTIFICATE_INDEPENDENT_VOLUNTEER);
+        } else {
+            reportRequestDTO.setReportName("certificado basico afiliacion trabajador independiente voluntario, ops y 723");
+            reportRequestDTO.setIdReport(CERTIFICATEOPSAND723);
+        }
         Map<String, Object> parameters = new HashMap<>();
 
         if(Constant.TYPE_AFFILLATE_INDEPENDENT.equals(certificate.getVinculationType()) ||
@@ -91,7 +94,7 @@ public class CertificateServiceHelper {
         parameters.put(Constant.ECONOMY_ACTIVITY, String.valueOf(certificate.getCodeActivityEconomicPrimary()));
 
         if(certificate.getEndContractDate() == null)
-            parameters.put(Constant.END_CONTRACT_DATE, "Sin fecha");
+            parameters.put(Constant.END_CONTRACT_DATE, Constant.NO_RECORD_LABEL);
         else
             parameters.put(Constant.END_CONTRACT_DATE, stringToDateFormatter(certificate.getEndContractDate()));
 
@@ -179,7 +182,7 @@ public class CertificateServiceHelper {
         }
 
         if (certificate.getEndContractDate() == null)
-            parameters.put(Constant.INACTIVATION_DATE, "No registra");
+            parameters.put(Constant.INACTIVATION_DATE, Constant.NO_RECORD_LABEL);
         else
             parameters.put(Constant.INACTIVATION_DATE, stringToDateFormatter(certificate.getEndContractDate()));
 
@@ -219,7 +222,7 @@ public class CertificateServiceHelper {
             LocalDate endContractDate = LocalDate.parse(certificate.getEndContractDate());
             parameters.put(Constant.INACTIVATION_DATE, endContractDate.format(formatter));
         }else{
-            parameters.put(Constant.INACTIVATION_DATE, "No registra");
+            parameters.put(Constant.INACTIVATION_DATE, Constant.NO_RECORD_LABEL);
         }
         parameters.put(Constant.CITY, certificate.getCity());
         parameters.put(Constant.EXPEDITION_DATE, certificate.getExpeditionDate());
@@ -274,7 +277,7 @@ public class CertificateServiceHelper {
     }
 
     private String stringToDateFormatter(String originalDate) {
-        if(originalDate.equals("Sin retiro"))
+        if(originalDate.equals(Constant.NO_RECORD_LABEL))
             return originalDate;
         
         LocalDate localDate = LocalDate.parse(originalDate);

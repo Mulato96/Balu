@@ -64,6 +64,9 @@ public class Certificate {
     @Column(name = "vinculation_type")
     private String vinculationType;
 
+    @Column(name = "vinculation_subtype")
+    private String vinculationSubType;
+
     @Column(name = "position")
     private String position;
 

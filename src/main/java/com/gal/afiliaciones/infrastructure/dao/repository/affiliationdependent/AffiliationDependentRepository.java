@@ -241,4 +241,8 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
     List<AffiliationCertificate> findAffiliateCertificate(@Param("numberDocument")String numberDocument, @Param("type")String type, @Param("date")LocalDate date);
 
     Optional<AffiliationDependent> findByIdentificationDocumentNumber(String identificationDocumentNumber);
+
+    @Query("SELECT ad FROM AffiliationDependent ad JOIN Affiliate a ON ad.idAffiliateEmployer = a.idAffiliate " +
+            "WHERE a.documentType = :docType AND a.documentNumber = :docNumber")
+    List<AffiliationDependent> findByMainAffiliateIdentification(@Param("docType") String docType, @Param("docNumber") String docNumber);
 }

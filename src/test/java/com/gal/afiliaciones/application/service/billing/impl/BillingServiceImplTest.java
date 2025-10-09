@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.gal.afiliaciones.config.util.CollectProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -64,6 +65,8 @@ class BillingServiceImplTest {
     private BillDetailRepository billDetailRepository;
     @Mock
     private BillDetailHistoryRepository billDetailHistoryRepository;
+    @Mock
+    private CollectProperties collectProperties;
 
     @InjectMocks
     private BillingServiceImpl billingService;
@@ -104,6 +107,7 @@ class BillingServiceImplTest {
 
         when(billingRepository.findAll()).thenReturn(currentBills);
         when(billDetailRepository.findAll()).thenReturn(currentBillDetails);
+        when(collectProperties.getCutSettlementOne()).thenReturn(13);
 
         // Prepare active affiliates
         Affiliate affiliate = Affiliate.builder()

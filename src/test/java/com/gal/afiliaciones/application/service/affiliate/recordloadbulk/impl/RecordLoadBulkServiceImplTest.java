@@ -94,7 +94,17 @@ class RecordLoadBulkServiceImplTest {
         recordLoadBulk.setState(false);
         recordLoadBulk.setFileName("file.xlsx");
 
-        List<DetailRecordLoadBulk> detailList = List.of(org.mockito.Mockito.mock(DetailRecordLoadBulk.class));
+        DetailRecordLoadBulk recordLoadBulk1 = new DetailRecordLoadBulk();
+        recordLoadBulk1.setIdRecordLoadBulk(1L);
+        recordLoadBulk1.setId(1L);
+        recordLoadBulk1.setIdRecordLoadBulk(1L);
+        recordLoadBulk1.setError("");
+        recordLoadBulk1.setIdRecord("");
+        recordLoadBulk1.setColumn("e");
+        recordLoadBulk1.setLetterColumn("");
+
+
+        List<DetailRecordLoadBulk> detailList = List.of(recordLoadBulk1);
         ExportDocumentsDTO exportDTO = new ExportDocumentsDTO();
 
         when(recordLoadBulkRepository.findById(id)).thenReturn(Optional.of(recordLoadBulk));

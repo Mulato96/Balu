@@ -355,7 +355,7 @@ class CertificateServiceHelperTest {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        assertEquals("Sin retiro", formattedDate);
+        assertNull(formattedDate);
     }
 
     @Test

@@ -35,5 +35,7 @@ public class DependentWorkerDTO {
     private BigDecimal salary;
     private Long idOccupation;
     private Boolean userFromRegistry;
+    private String idStatus;
+    private int errorCode;
 
 }

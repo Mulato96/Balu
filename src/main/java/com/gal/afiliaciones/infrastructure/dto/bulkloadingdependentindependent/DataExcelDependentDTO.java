@@ -13,13 +13,10 @@ public class DataExcelDependentDTO{
     @JsonProperty("ID REGISTRO")
     private Integer idRecord;
 
-    @JsonProperty("CÓDIGO TIPO DE VINCULACIÓN")
-    private String idBondingType;
-
     @JsonProperty("FECHA INICIO COBERTURA")
     private String coverageDate;
 
-    @JsonProperty("CÓDIGO TIPO DOCUMENTO DE IDENTIFICACIÓN")
+    @JsonProperty("TIPO DOCUMENTO DE IDENTIFICACIÓN")
     private String identificationDocumentType;
 
     @JsonProperty("NÚMERO DOCUMENTO IDENTIFICACIÓN")
@@ -40,54 +37,54 @@ public class DataExcelDependentDTO{
     @JsonProperty("FECHA DE NACIMIENTO")
     private String dateOfBirth;
 
-    @JsonProperty("CÓDIGO SEXO")
+    @JsonProperty("SEXO")
     private String gender;
 
-    @JsonProperty("SEXO")
-    private String otherGender;
-
-    @JsonProperty("CÓDIGO NACIONALIDAD")
-    private String nationality;
-
-    @JsonProperty("CÓDIGO EPS TRABAJADOR")
+    @JsonProperty("EPS TRABAJADOR")
     private String healthPromotingEntity;
 
-    @JsonProperty("CÓDIGO AFP TRABAJADOR")
+    @JsonProperty("AFP TRABAJADOR")
     private String pensionFundAdministrator;
 
-    @JsonProperty("CÓDIGO ARL ACTUAL")
-    private String occupationalRiskManager;
-
-    @JsonProperty("CÓDIGO DEPARTAMENTO TRABAJADOR")
+    @JsonProperty("DEPARTAMENTO TRABAJADOR")
     private String idDepartment;
 
-    @JsonProperty("CÓDIGO MUNICIPIO RESIDENCIA TRABAJADOR")
+    @JsonProperty("MUNICIPIO RESIDENCIA TRABAJADOR")
     private String idCity;
 
     @JsonProperty("CELULAR O TELÉFONO")
     private String phone1;
 
-    @JsonProperty("CÓDIGO MODALIDAD DE TRABAJO")
+    @JsonProperty("MODALIDAD DE TRABAJO")
     private String idWorkModality;
+
+    @JsonProperty("DIRECCION")
+    private String address;
 
     @JsonProperty("SALARIO")
     private String salary;
 
-    @JsonProperty("CÓDIGO CARGO U OCUPACIÓN")
+    @JsonProperty("CARGO U OCUPACIÓN")
     private String idOccupation;
-
-    @JsonProperty("FECHA FIN DE CONTRATO")
-    private String endDate;
 
     @JsonProperty("CÓDIGO ACTIVIDAD ECONOMICA")
     private String economicActivityCode;
 
-    @JsonProperty("CÓDIGO SEDE")
-    private String idHeadquarter;
-
-    @JsonProperty("CÓDIGO TIPO DOCUMENTO EMPLEADOR")
+    @JsonProperty("TIPO DOCUMENTO EMPLEADOR")
     private String employerDocumentTypeCodeContractor;
 
-    @JsonProperty("DOCUMENTO EMPLEADOR")
-    private String employerDocumentNumber;
+    @JsonProperty("NÚMERO DOCUMENTO EMPLEADOR")
+    private String identificationDocumentNumberContractor;
+
+    @JsonProperty("SUB EMPRESA")
+    private String subCompany;
+
+    @JsonProperty("DEPARTAMENTO DONDE LABORA")
+    private String departmentWork;
+
+    @JsonProperty("MUNICIPIO DONDE LABORA")
+    private String municipalityWork;
+
+    @JsonProperty("ERROR")
+    private String error;
 }

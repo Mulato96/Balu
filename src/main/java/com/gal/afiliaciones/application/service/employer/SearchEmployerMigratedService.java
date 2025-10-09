@@ -5,5 +5,5 @@ import com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigrate
 import java.util.List;
 
 public interface SearchEmployerMigratedService {
-    List<DataBasicEmployerMigratedDTO> searchEmployerDataBasic(String documentType, String documentNumber);
+    List<DataBasicEmployerMigratedDTO> searchEmployerDataBasic(String documentType, String documentNumber, String userType);
 }

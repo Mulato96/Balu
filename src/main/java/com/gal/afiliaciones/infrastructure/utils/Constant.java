@@ -79,6 +79,7 @@ public class Constant {
     public static final String TYPE_AFFILIATE_EMPLOYER = "certificado afiliaciones empleador";
     public static final String TYPE_AFFILIATE_EMPLOYER_OPS = "certificado afiliaciones trabajador ops";
     public static final String TYPE_CERTIFICATE_SINGLE_MEMBERSHIP = "certificado unico afiliacion";
+    public static final String TYPE_CERTIFICATE_INDEPENDENT_VOLUNTEER = "certificado independiente voluntario";
     public static final String DATE_FORMAT_CERTIFICATE_EXPEDITION = "d 'días del mes de' MMMM 'del' yyyy";
     public static final String DATE_FORMAT_SHORT_LATIN = "dd/MM/yyyy";
     public static final String USER_NOT_AFFILIATE_CARD = "Señor documento, no presentas información en nuestra ARL";
@@ -97,6 +98,7 @@ public class Constant {
     public static final String DOCUMENTS_NOT_FOUND_MESSAGE = "No se encontraron documentos asociados a la afiliación";
     public static final String ERROR_AGE = "El usuario con Tipo documento está fuera del rango de afiliación.Si es un error, contáctanos: link | TeléfonoARL";
     public static final String NO_INFORMATION = "Sin información";
+    public static final String NO_RECORD_LABEL = "No registra";
     /*-----------------------Type Certificate------------------------------*/
     public static final String NIT = "nit";
     public static final String VALIDATOR_CODE = "validatorCode";
@@ -329,6 +331,7 @@ public class Constant {
     public static final String BONDING_TYPE_DEPENDENT = "Dependiente";
     public static final String BONDING_TYPE_INDEPENDENT = "Independiente";
     public static final String BONDING_TYPE_STUDENT = "Estudiante en práctica";
+    public static final String BONDING_TYPE_STUDENT_DECREE = "Estudiante Decreto 055";
     public static final String BONDING_TYPE_APPRENTICE = "Aprendiz SENA";
 
     public static final String PREFIX_RETIREMENT = "RET";

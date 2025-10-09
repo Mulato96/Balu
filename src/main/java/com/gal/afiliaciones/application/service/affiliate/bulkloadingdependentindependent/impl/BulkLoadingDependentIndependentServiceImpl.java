@@ -74,7 +74,6 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor
 public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDependentIndependentService {
 
-    private final SendEmails sendEmails;
     private final CollectProperties properties;
     private final BulkLoadingHelp bulkLoadingHelp;
     private final MessageErrorAge messageErrorAge;
@@ -229,6 +228,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
             log.info("Start method validGeneral");
             long startTime = System.currentTimeMillis();
+
             findDataAfp();
             findDataEps();
             findDataRisk();
@@ -238,61 +238,78 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
             SalaryDTO salaryDTO = salary();
 
-            List<ErrorFileExcelDTO> listErrors =  new ArrayList<>();
+            List<String> listDataError;
             List<Map<String, Object>> listDataMap;
             List<DataExcelDependentDTO> listDataExcelDependentDTO;
             List<DataExcelIndependentDTO> listDataExcelIndependentDTO;
+            ResponseServiceDTO responseServiceDTO =  new ResponseServiceDTO();
             Object affiliation = findAffiliation(affiliate.getFiledNumber());
+            ExportDocumentsDTO  document = null;
+            String documentError = "";
 
             if(type.equals(Constant.TYPE_AFFILLATE_INDEPENDENT)){
 
                 listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadIndependent.getDescripcion());
                 listDataExcelIndependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelIndependentDTO.class);
-                listDataExcelIndependentDTO.forEach(independent -> listErrors.addAll(validStructDataIndependent(independent, affiliate, affiliation)));
-                listErrors.addAll(findDuplicateNumberIdentification(null, listDataExcelIndependentDTO));
-                listErrors.addAll(compareNumberDocumentsToDb(null, listDataExcelIndependentDTO));
+                listDataExcelIndependentDTO.forEach(this::validStructDataIndependent);
+                findDuplicateNumberIdentification(listDataExcelIndependentDTO, null);
+                compareNumberDocumentsToDb(null, listDataExcelIndependentDTO);
 
-                if(listErrors.isEmpty())
-                    bulkLoadingHelp.affiliateData(null, listDataExcelIndependentDTO, type, affiliate);
+                bulkLoadingHelp.affiliateData(null, listDataExcelIndependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), type, affiliate);
+
+                listDataError = listDataExcelIndependentDTO
+                        .stream()
+                        .filter(data -> data.getError() != null && !data.getError().isBlank())
+                        .map(excelProcessingServiceData::converterClassToString)
+                        .toList();
+
+                documentError =  excelProcessingServiceData.createDocumentError(
+                        getTemplateByBondingType(type),
+                        listDataExcelIndependentDTO.stream().filter(data -> data.getError() != null && !data.getError().isBlank()).toList(),
+                        type);
+
 
             }else{
 
                 listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadDependent.getDescripcion());
                 listDataExcelDependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelDependentDTO.class);
-                listDataExcelDependentDTO.forEach(dependent -> listErrors.addAll(validStructDataDependent(dependent, salaryDTO, affiliate, affiliation)));
-                listErrors.addAll(findDuplicateNumberIdentification(listDataExcelDependentDTO, null));
-                listErrors.addAll(compareNumberDocumentsToDb(listDataExcelDependentDTO, null));
+                listDataExcelDependentDTO.forEach(dependent -> validStructDataDependent(dependent, salaryDTO, affiliation));
 
-                if(listErrors.isEmpty())
-                    bulkLoadingHelp.affiliateData(listDataExcelDependentDTO, null, type, affiliate);
+                findDuplicateNumberIdentification(null, listDataExcelDependentDTO);
+                compareNumberDocumentsToDb(listDataExcelDependentDTO, null);
+
+                bulkLoadingHelp.affiliateData(listDataExcelDependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), null, type, affiliate);
+
+                listDataError = listDataExcelDependentDTO
+                        .stream()
+                        .filter(data -> data.getError() != null && !data.getError().isBlank())
+                        .map(excelProcessingServiceData::converterClassToString)
+                        .toList();
+
+                documentError =  excelProcessingServiceData.createDocumentError(
+                        getTemplateByBondingType(type),
+                        listDataExcelDependentDTO.stream().filter(data -> data.getError() != null && !data.getError().isBlank()).toList(),
+                        type);
 
             }
 
-            ResponseServiceDTO responseServiceDTO =  new ResponseServiceDTO();
-            ExportDocumentsDTO  document = null;
-
-            boolean state = listErrors.isEmpty();
-
+            boolean state = listDataError.isEmpty();
             Long idRecordLoadBulk = bulkCargoTraceability(idUser, affiliate, type, state, file.getOriginalFilename());
 
-
-            if(!state){
-
-                excelProcessingServiceData.saveDetailRecordLoadBulk(listErrors, idRecordLoadBulk);
-                document = excelProcessingServiceData.createDocumentExcelErrors(listErrors);
-                document.setNombre(file.getOriginalFilename());
+            if(!listDataError.isEmpty()){
+                excelProcessingServiceData.saveDetailRecordLoadBulk(listDataError, idRecordLoadBulk);
+                document = new ExportDocumentsDTO();
+                document.setArchivo(documentError);
+                document.setNombre("Errores_"+file.getOriginalFilename());
             }
 
             if(document == null) {
-
                 ExportDocumentsDTO exportDocumentsDTO = new ExportDocumentsDTO();
                 exportDocumentsDTO.setNombre(file.getOriginalFilename());
                 document = exportDocumentsDTO;
-                sendEmail(affiliate, file);
-
             }
 
-            long recordError = listErrors.stream().map(ErrorFileExcelDTO::getIdRecord).distinct().count();
+            long recordError = listDataError.size();
 
             responseServiceDTO.setTotalRecord(String.valueOf(listDataMap.size()));
             responseServiceDTO.setDocument(document);
@@ -312,358 +329,176 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-    private List<ErrorFileExcelDTO> validStructDataDependent( DataExcelDependentDTO dependent, SalaryDTO salary, Affiliate affiliate, Object affiliation) {
-        List<ErrorFileExcelDTO> listErrors =  new ArrayList<>();
-        String idRecord = (String.valueOf(dependent.getIdRecord()));
+    private void validStructDataDependent(DataExcelDependentDTO dependent, SalaryDTO salary, Object affiliation) {
+
+        StringBuilder messagesError =  new StringBuilder();
+
+        dependent.setError(null);
 
         dependent.setHealthPromotingEntity(validEps(dependent.getHealthPromotingEntity()));
         dependent.setPensionFundAdministrator(validAFP(dependent.getPensionFundAdministrator()));
 
-        EconomicActivityDTO economicActivityDTO =  findActivityEconomic(dependent.getIdHeadquarter());
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getCoverageDate()) , validDateStartCoverage(dependent.getCoverageDate())),"O"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdentificationDocumentType()) , validTypeNumberIdentification(dependent.getIdentificationDocumentType())),"A"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdentificationDocumentNumber()) , validNumberIdentification(dependent.getIdentificationDocumentNumber(), dependent.getIdentificationDocumentType())),"B"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getFirstName()) , validName(dependent.getFirstName(), 50)),"E"));
+        errorDependent(messagesError,
+                validLetter(List.of(validOptional(dependent.getSecondName(), 50)),"F"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getSurname())  , validName(dependent.getSurname(), 50)),"C"));
+        errorDependent(messagesError,
+                validLetter(List.of(validOptional(dependent.getSecondSurname(), 50)),"D"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getDateOfBirth()) , validDateBirtDate(dependent.getDateOfBirth(), dependent.getIdentificationDocumentType())),"G"));
+        errorDependent(messagesError,
+                (validAge(dependent.getDateOfBirth())) ? null : messageErrorAge(dependent.getIdentificationDocumentType(), dependent.getIdentificationDocumentNumber()));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getGender()) , List.of("F", "M", "T", "N", "O").contains(dependent.getGender())),"H"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getHealthPromotingEntity())),"M"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getPensionFundAdministrator())),"N"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdDepartment()) , validDepartment(dependent.getIdDepartment())),"I"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdCity()) ,  validMunicipality(dependent.getIdCity())),"J"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getPhone1()) , dependent.getPhone1().length() == 10 , validNumberPhone(dependent.getPhone1().substring(0, 3))),"L"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdWorkModality()) , List.of("0", "1", "2", "3").contains(dependent.getIdWorkModality())),"X"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getAddress())),"K"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getSalary()) , validSalary(dependent.getSalary(), salary)),"Q"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdOccupation())),"P"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getEconomicActivityCode()) , validActivityEconomicDependent(dependent.getEconomicActivityCode(), affiliation)),"R"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getEmployerDocumentTypeCodeContractor()) , validTypeNumberIdentification(dependent.getEmployerDocumentTypeCodeContractor())) ,"U"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getIdentificationDocumentNumberContractor())),"V"));
+        errorDependent(messagesError,
+                (dependent.getIdentificationDocumentNumberContractor().equals("899999061") && !isRequested(dependent.getSubCompany()) ? "W" : null));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getDepartmentWork())),"S"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getMunicipalityWork())),"T"));
 
-        if(economicActivityDTO != null)
-            dependent.setIdHeadquarter(String.valueOf(economicActivityDTO.getId()));
+        if (!messagesError.isEmpty())
+            dependent.setError(messagesError.toString());
 
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdBondingType()) && List.of("1", "2", "3", "4").contains(dependent.getIdBondingType())) ? null :  "A"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getCoverageDate()) &&  validDateStartCoverage(dependent.getCoverageDate())) ? null :  "B"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdentificationDocumentType()) && validTypeNumberIdentification(dependent.getIdentificationDocumentType())) ? null :  "C"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdentificationDocumentNumber()) && validNumberIdentification(dependent.getIdentificationDocumentNumber(), dependent.getIdentificationDocumentType())) ? null :  "D"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getFirstName()) && validName(dependent.getFirstName(), 50)) ? null :  "E"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (validOptional(dependent.getSecondName(), 50)) ? null :  "F"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getSurname())  && validName(dependent.getSurname(), 50)) ? null :  "G"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (validOptional(dependent.getSecondSurname(), 50)) ? null :  "H"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getDateOfBirth()) && validDateBirtDate(dependent.getDateOfBirth(), dependent.getIdentificationDocumentType())) ? null :  "I"));
-
-        listErrors.add(errorIndependent(idRecord, (validAge(dependent.getDateOfBirth())) ? null : messageErrorAge(dependent.getIdentificationDocumentType(), dependent.getIdentificationDocumentNumber())));
-
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getGender()) && List.of("F", "M", "T", "N", "O").contains(dependent.getGender())) ? null :  "J"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (!(dependent.getGender().equals("O") && isRequested(dependent.getOtherGender()))) ? null :  "K"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getNationality()) && List.of("1", "2").contains(dependent.getNationality())) ? null :  "L"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getHealthPromotingEntity())) ? null :  "M"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getPensionFundAdministrator())) ? null :  "N"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getOccupationalRiskManager()) && (validRisk(dependent.getOccupationalRiskManager(), "codeARL", "codeARL") != null || dependent.getOccupationalRiskManager().equals("0"))) ? null :  "O"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdDepartment()) && validDepartment(dependent.getIdDepartment())) ? null :  "P"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdCity()) &&  validMunicipality(dependent.getIdCity())) ? null :  "Q"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getPhone1()) && dependent.getPhone1().length() == 10 && validNumberPhone(dependent.getPhone1().substring(0, 3))) ? null :  "R"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdWorkModality()) && List.of("0", "1", "2", "3").contains(dependent.getIdWorkModality())) ? null :  "S"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getSalary()) && validSalary(dependent.getSalary(), salary)) ? null :  "T"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdOccupation())) ? null :  "U"));
-        String letterV = isRequested(dependent.getEndDate()) ? null : "V";
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (dependent.getIdBondingType().equals("2") ? letterV : null)));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getEconomicActivityCode()) && validActivityEconomicDependent(dependent.getEconomicActivityCode(), affiliation)) ? null :  "W"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getIdHeadquarter()) && validCodeHeadquarter(dependent.getIdHeadquarter(), affiliate, affiliation)) ? null : "X"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getEmployerDocumentTypeCodeContractor()) && validTypeNumberIdentification(dependent.getEmployerDocumentTypeCodeContractor())) ? null :  "Y"));
-        listErrors.add(
-                errorDependent(
-                        idRecord,
-                        (isRequested(dependent.getEmployerDocumentNumber())) ? null :  "Z"));
-
-        return listErrors.stream().filter(Objects::nonNull).toList();
     }
 
-    private List<ErrorFileExcelDTO> validStructDataIndependent(DataExcelIndependentDTO independent, Affiliate affiliate, Object affiliation){
+    private void validStructDataIndependent(DataExcelIndependentDTO independent){
 
-        List<ErrorFileExcelDTO> listError =  new ArrayList<>();
-        String idRecord = (String.valueOf(independent.getIdRecord()));
+        independent.setError(null);
+        StringBuilder messagesError =  new StringBuilder();
 
         independent.setHealthPromotingEntity(validEps(independent.getHealthPromotingEntity()));
         independent.setPensionFundAdministrator(validAFP(independent.getPensionFundAdministrator()));
 
-        EconomicActivityDTO economicActivityDTO =  findActivityEconomic(independent.getIdHeadquarter());
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCoverageDate()) , validDateStartCoverage(independent.getCoverageDate())),"B"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdentificationDocumentType()) , validTypeNumberIdentification(independent.getIdentificationDocumentType())),"C"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdentificationDocumentNumber()) , validNumberIdentification(independent.getIdentificationDocumentNumber(), independent.getIdentificationDocumentType())),"D"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getFirstName()) , validName(independent.getFirstName(), 50)),"E"));
+        errorIndependent(messagesError,
+                validLetter(List.of(validOptional(independent.getSecondName(), 50)), "F"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getSurname()) , validName(independent.getSurname(), 100)),"G"));
+        errorIndependent(messagesError,
+                validLetter(List.of(validOptional(independent.getSecondSurname(), 100)),"H"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getDateOfBirth()) , validDateBirtDate(independent.getDateOfBirth(), independent.getIdentificationDocumentType())),"I"));
+        errorIndependent(messagesError,
+                (validAge(independent.getDateOfBirth())) ? null : messageErrorAge(independent.getIdentificationDocumentType(), independent.getIdentificationDocumentNumber()));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getGender()) , List.of("F", "M", "T", "N", "O").contains(independent.getGender())),"J"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getHealthPromotingEntity())),"M"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getPensionFundAdministrator())),"N"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdDepartment()) , validDepartment(independent.getIdDepartment())),"O"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdCity()) , validMunicipality(independent.getIdCity())),"P"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getPhone1()) , independent.getPhone1().length() == 10 , validNumberPhone(independent.getPhone1().substring(0, 3))),"Q"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEmail()) , validEmail(independent.getEmail())),"R"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdOccupation())),"S"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getContractType())),"U"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getTransportSupply())), "V"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getStartDate())  , converterDate(independent.getStartDate()) != null), "W"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEndDate()) ,  converterDate(independent.getEndDate()) != null),"X"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getContractTotalValue())),"Z"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCodeActivityContract()) ,  validActivityEconomicIndependent(independent.getCodeActivityContract())) , "AA"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCodeActivityEmployer())),"AB"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEmployerDocumentTypeCodeContractor()) , validTypeNumberIdentification(independent.getEmployerDocumentTypeCodeContractor())),"AD"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEmployerDocumentNumber())),"AE"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getAddress())),"L"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getNatureContract())),"R"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getDepartmentWork())),"X"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getMunicipalityWork())),"Y"));
 
-        if(economicActivityDTO != null)
-            independent.setIdHeadquarter(String.valueOf(economicActivityDTO.getId()));
+        if (!messagesError.isEmpty())
+            independent.setError(messagesError.toString());
 
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdBondingType()) && independent.getIdBondingType().equals("1")) ? null : "A"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getCoverageDate()) && validDateStartCoverage(independent.getCoverageDate())) ? null : "B"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdentificationDocumentType()) && validTypeNumberIdentification(independent.getIdentificationDocumentType())) ? null : "C"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdentificationDocumentNumber()) && validNumberIdentification(independent.getIdentificationDocumentNumber(), independent.getIdentificationDocumentType())) ? null : "D"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getFirstName()) && validName(independent.getFirstName(), 50)) ? null : "E"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (validOptional(independent.getSecondName(), 50)) ? null : "F"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getSurname()) && validName(independent.getSurname(), 100)) ? null : "G"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (validOptional(independent.getSecondSurname(), 100)) ? null : "H"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getDateOfBirth()) && validDateBirtDate(independent.getDateOfBirth(), independent.getIdentificationDocumentType())) ? null : "I"));
-
-        listError.add(errorIndependent(idRecord, (validAge(independent.getDateOfBirth())) ? null : messageErrorAge(independent.getIdentificationDocumentType(), independent.getIdentificationDocumentNumber())));
-
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getGender()) && List.of("F", "M", "T", "N", "O").contains(independent.getGender())) ? null : "J"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (!(independent.getGender().equals("O") && isRequested(independent.getOtherGender()))) ? null : "K"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getNationality())&& List.of("1", "1.0", "2").contains(independent.getNationality())) ? null : "L"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getHealthPromotingEntity())) ? null : "M"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getPensionFundAdministrator())) ? null : "N"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdDepartment()) && validDepartment(independent.getIdDepartment())) ? null : "O"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdCity()) && validMunicipality(independent.getIdCity())) ? null : "P"));
-
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getPhone1()) && independent.getPhone1().length() == 10 && validNumberPhone(independent.getPhone1().substring(0, 3))) ? null : "Q"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getEmail()) && validEmail(independent.getEmail())) ? null : "R"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdOccupation())) ? null : "S"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getContractQuality())) ? null : "T"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getContractType())) ? null : "U"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getTransportSupply())) ? null : "V"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getStartDate())  && converterDate(independent.getStartDate()) != null) ? null : "W"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getEndDate()) &&  converterDate(independent.getEndDate()) != null) ? null : "X"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getJourneyEstablished())) ? null : "Y"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getContractTotalValue())) ? null : "Z"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getCodeActivityContract()) &&  validActivityEconomicIndependent(independent.getCodeActivityContract())) ? null : "AA"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getCodeActivityEmployer())) ? null : "AB"));
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getIdHeadquarter()) && validCodeHeadquarter(independent.getIdHeadquarter(), affiliate, affiliation)) ? null : "AC"));
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getEmployerDocumentTypeCodeContractor()) && validTypeNumberIdentification(independent.getEmployerDocumentTypeCodeContractor())) ? null : "AD"));
-
-        listError.add(
-                errorIndependent(
-                        idRecord,
-                        (isRequested(independent.getEmployerDocumentNumber())) ? null : "AE"));
-
-        return listError.stream().filter(Objects::nonNull).toList();
     }
 
-    private ErrorFileExcelDTO errorDependent(String id, String letter){
+    private void errorDependent(StringBuilder sb, String letter){
 
         if(letter == null)
-            return null;
+            return;
 
-        ErrorFileExcelDTO errorFileExcelDTO = new ErrorFileExcelDTO();
+        if(letter.contains("usuario")){
+            sb.append("- FECHA DE NACIMIENTO").append(System.lineSeparator());
+            return;
+        }
+
         FieldsExcelLoadDependent filedDependent = FieldsExcelLoadDependent.findByLetter(letter);
 
-        if(filedDependent == null && letter.contains("usuario")){
-
-            errorFileExcelDTO.setColumn("FECHA DE NACIMIENTO");
-            errorFileExcelDTO.setLetterColumn("I");
-            errorFileExcelDTO.setError(letter);
-            errorFileExcelDTO.setIdRecord(String.valueOf(id));
-            return errorFileExcelDTO;
-        }
-
-        if(filedDependent == null)
-            return null;
-
-        errorFileExcelDTO.setColumn(filedDependent.getDescription());
-        errorFileExcelDTO.setLetterColumn(filedDependent.getLetter());
-        errorFileExcelDTO.setError(filedDependent.getError());
-        errorFileExcelDTO.setIdRecord(String.valueOf(id));
-
-        return errorFileExcelDTO;
+        if(filedDependent != null)
+            sb.append("- ").append(letter).append(": ").append(filedDependent.getError()).append(System.lineSeparator());
 
     }
 
-    private ErrorFileExcelDTO errorIndependent(String id, String letter){
+    private void errorIndependent(StringBuilder sb, String letter){
 
         if(letter == null)
-            return null;
+            return;
 
-        ErrorFileExcelDTO errorFileExcelDTO = new ErrorFileExcelDTO();
-        FieldsExcelLoadIndependent filedIndependent = FieldsExcelLoadIndependent.findByLetter(letter);
-
-        if(filedIndependent == null && letter.contains("usuario")){
-
-            errorFileExcelDTO.setColumn("FECHA DE NACIMIENTO");
-            errorFileExcelDTO.setLetterColumn("I");
-            errorFileExcelDTO.setError(letter);
-            errorFileExcelDTO.setIdRecord(String.valueOf(id));
-            return errorFileExcelDTO;
+        if(letter.contains("usuario")){
+            sb.append("- FECHA DE NACIMIENTO");
+            return;
         }
 
-        if(filedIndependent == null)
-            return null;
+        FieldsExcelLoadIndependent filedIndependent = FieldsExcelLoadIndependent.findByLetter(letter);
 
-        errorFileExcelDTO.setColumn(filedIndependent.getDescription());
-        errorFileExcelDTO.setLetterColumn(filedIndependent.getLetter());
-        errorFileExcelDTO.setError(filedIndependent.getError());
-        errorFileExcelDTO.setIdRecord(String.valueOf(id));
-
-        return errorFileExcelDTO;
+        if(filedIndependent != null)
+            sb.append("- ").append(letter).append(" : ").append(filedIndependent.getError()).append(System.lineSeparator());
 
     }
 
@@ -769,31 +604,28 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         return iUserPreRegisterRepository.findOne(spec);
     }
 
-    private List<ErrorFileExcelDTO> findDuplicateNumberIdentification(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent){
+    private void findDuplicateNumberIdentification(List<DataExcelIndependentDTO> dataIndependent, List<DataExcelDependentDTO> dataDependent){
 
-        if(dataDependent != null) {
+        StringBuilder messageError =  new StringBuilder();
+        errorIndependent(messageError, "C");
 
-            return excelProcessingServiceData.findDataDuplicate(dataDependent, DataExcelDependentDTO::getIdentificationDocumentNumber, DataExcelDependentDTO::getIdRecord)
-                    .stream()
-                    .map(id -> dataDependent
-                            .stream()
-                            .filter(recordData -> recordData.getIdRecord().equals(id))
-                            .findFirst()
-                            .orElse(null) != null ? errorDependent(String.valueOf(id), "D") : null
-                    )
-                    .toList();
+        if(dataDependent != null){
+            List<Integer> listIds = excelProcessingServiceData.findDataDuplicate(dataDependent, DataExcelDependentDTO::getIdentificationDocumentNumber, DataExcelDependentDTO::getIdRecord);
+
+            dataDependent.forEach(data -> {
+                if (listIds.contains(data.getIdRecord()))
+                    data.setError(messageError.toString());
+            });
         }
 
-        return excelProcessingServiceData.findDataDuplicate(dataIndependent, DataExcelIndependentDTO::getIdentificationDocumentNumber, DataExcelIndependentDTO::getIdRecord)
-                .stream()
-                .map(id -> dataIndependent
-                        .stream()
-                        .filter(recordData -> recordData.getIdRecord().equals(id))
-                        .findFirst()
-                        .orElse(null) != null ? errorIndependent(String.valueOf(id), "D") : null
-                )
-                .toList();
+        if(dataIndependent != null){
+            List<Integer> listIds =  excelProcessingServiceData.findDataDuplicate(dataIndependent, DataExcelIndependentDTO::getIdentificationDocumentNumber, DataExcelIndependentDTO::getIdRecord);
 
+            dataIndependent.forEach(data -> {
+                if (listIds.contains(data.getIdRecord()))
+                    data.setError(messageError.toString());
+            });
+        }
 
     }
 
@@ -829,14 +661,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
                 .orElse(null);
     }
 
-    private String validRisk(String code, String codeKey, String nameKey){
-        return  findDataRisk.stream()
-                .filter(map -> code.equals(map.get(codeKey).toString()))
-                .map(map -> (String) map.get(nameKey))
-                .findFirst()
-                .orElse(null);
-    }
-
     private void findDataRisk(){
         this.findDataRisk = excelProcessingServiceData.findByPensionOrEpsOrArl("occupationriskadministrator/findAll");
     }
@@ -849,25 +673,30 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         this.findAfpDTOS = excelProcessingServiceData.findByAfp("WS_Parametrica_AFP/fondoPensiones");
     }
 
-    private List<ErrorFileExcelDTO> compareNumberDocumentsToDb(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent){
+    private void compareNumberDocumentsToDb(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent){
+
+        StringBuilder messageError = new StringBuilder();
+        errorDependent(messageError, "C");
+
+        if(dataIndependent != null){
+
+            //Realiza una consulta a la bd, teniendo como argumento una lista con los numeros de documento
+            List<String> listDocumentAffiliationBD =  dependentRepository.findByIdentificationDocumentNumberIn(dataIndependent.stream().map(DataExcelIndependentDTO::getIdentificationDocumentNumber).toList());
+            dataIndependent.forEach(data -> {
+                if(listDocumentAffiliationBD.contains(data.getIdentificationDocumentNumber()))
+                    data.setError(messageError.toString());
+                    });
+        }
 
         if(dataDependent != null){
 
             //Realiza una consulta a la bd, teniendo como argumento una lista con los numeros de documento
             List<String> listDocumentAffiliationBD =  dependentRepository.findByIdentificationDocumentNumberIn(dataDependent.stream().map(DataExcelDependentDTO::getIdentificationDocumentNumber).toList());
-            return dataDependent
-                    .stream()
-                    .filter(filter -> listDocumentAffiliationBD.contains(filter.getIdentificationDocumentNumber()))
-                    .map(document ->  errorDependent(String.valueOf(document.getIdRecord()), "D")).toList();
-
+            dataDependent.forEach(data ->{
+                if(listDocumentAffiliationBD.contains(data.getIdentificationDocumentNumber()))
+                    data.setError(messageError.toString());
+            });
         }
-
-        //Realiza una consulta a la bd, teniendo como argumento una lista con los numeros de documento
-        List<String> listDocumentAffiliationBD =  dependentRepository.findByIdentificationDocumentNumberIn(dataIndependent.stream().map(DataExcelIndependentDTO::getIdentificationDocumentNumber).toList());
-        return dataIndependent
-                .stream()
-                .filter(filter -> listDocumentAffiliationBD.contains(filter.getIdentificationDocumentNumber()))
-                .map(document ->  errorDependent(String.valueOf(document.getIdRecord()), "D")).toList();
 
     }
 
@@ -1044,23 +873,6 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         this.allMunicipality = municipalityRepository.findAll();
     }
 
-    private void sendEmail(Affiliate affiliate, MultipartFile file){
-
-        String email = null;
-
-        Object affiliation = findAffiliation(affiliate.getFiledNumber());
-
-        if(affiliation instanceof AffiliateMercantile affiliateMercantile)
-            email = affiliateMercantile.getEmail();
-        if(affiliation instanceof Affiliation affiliation1)
-            email = affiliation1.getEmail();
-
-        if(email != null){
-            sendEmails.emailBulkLoad(affiliate.getCompany(), email, file);
-        }
-
-    }
-
     private boolean validAge(String dateAge){
 
         try {
@@ -1081,6 +893,12 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     private void findMainOffice(Long idAffiliateEmployer){
         this.allMainOffice = mainOfficeRepository.findAll(MainOfficeSpecification.findAllByIdAffiliate(idAffiliateEmployer));
+    }
+
+    private String  validLetter(List<Boolean> conditions, String letter){
+
+        return conditions.stream().anyMatch(condition -> condition.equals(false)) ? letter : null;
+
     }
 
 }

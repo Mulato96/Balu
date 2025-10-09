@@ -26,7 +26,7 @@ public class DetailRecordLoadBulk {
     @Column(name = "id_record_load_bulk")
     private Long idRecordLoadBulk;
 
-    @Column(name = "error")
+    @Column(name = "error", columnDefinition = "TEXT")
     private String error;
 
     @Column(name = "id_record")

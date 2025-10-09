@@ -106,7 +106,7 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                 dataDependent.forEach(data -> {
 
                     //crea la clase AffiliationDependent y la llena con la informacion de data
-                    AffiliationDependent affiliationDependent =  convertDataAffiliationDependent(data, user);
+                    AffiliationDependent affiliationDependent =  convertDataAffiliationDependent(data, user, affiliate.getIdAffiliate());
 
                     affiliationDependent.setBulkUploadAffiliation(true);
                     affiliationDependent = dependentRepository.save(affiliationDependent);
@@ -122,10 +122,19 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                     dto.setWorker(dependentWorkerDTO);
                     dto.setCoverageDate(affiliationDependent.getCoverageDate());
 
-                    Affiliate affiliateDependent = saveAffiliate(dto, affiliationDependent.getFiledNumber(), data.getIdBondingType(), Constant.TYPE_AFFILLATE_DEPENDENT, affiliateEmployer);
+                    String subType = "1";
+
+                    if(data.getIdOccupation().equals("1654"))
+                        subType = "5";
+
+                    if(data.getIdOccupation().equals("1078"))
+                        subType = "3";
+
+
+                    Affiliate affiliateDependent = saveAffiliate(dto, affiliationDependent.getFiledNumber(), subType, Constant.TYPE_AFFILLATE_DEPENDENT, affiliateEmployer);
 
                     //Asignar poliza empleador
-                    assignPolicy(affiliate.getIdAffiliate(), affiliate.getNitCompany(), affiliationDependent.getIdentificationDocumentType(),
+                    assignPolicy(affiliate.getIdAffiliate(), affiliationDependent.getIdentificationDocumentType(),
                             affiliationDependent.getIdentificationDocumentNumber(), Constant.ID_EMPLOYER_POLICY, affiliateEmployer.getCompany());
 
 
@@ -145,7 +154,7 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                 dataIndependent.forEach(data -> {
 
                     //crea la clase AffiliationDependent y la llena con la informacion de data
-                    AffiliationDependent affiliationDependent =  convertDataAffiliationIndependent(data, user);
+                    AffiliationDependent affiliationDependent =  convertDataAffiliationIndependent(data, user, affiliate.getIdAffiliate());
 
                     affiliationDependent.setBulkUploadAffiliation(true);
                     affiliationDependent = dependentRepository.save(affiliationDependent);
@@ -161,10 +170,10 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                     dto.setWorker(dependentWorkerDTO);
                     dto.setCoverageDate(affiliationDependent.getCoverageDate());
 
-                    Affiliate affiliateIndependent  = saveAffiliate(dto, affiliationDependent.getFiledNumber(), data.getIdBondingType(), Constant.TYPE_AFFILLATE_INDEPENDENT, affiliateEmployer);
+                    Affiliate affiliateIndependent  = saveAffiliate(dto, affiliationDependent.getFiledNumber(), null, Constant.TYPE_AFFILLATE_INDEPENDENT, affiliateEmployer);
 
                     //Asignar poliza empleador
-                    assignPolicy(affiliate.getIdAffiliate(), affiliate.getNitCompany(), affiliationDependent.getIdentificationDocumentType(),
+                    assignPolicy(affiliate.getIdAffiliate(), affiliationDependent.getIdentificationDocumentType(),
                             affiliationDependent.getIdentificationDocumentNumber(), Constant.ID_CONTRACTOR_POLICY, affiliate.getCompany());
 
                     cardAffiliatedService.createCardDependent(affiliateIndependent, affiliationDependent.getFirstName(),
@@ -209,11 +218,10 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                 .orElseThrow(() -> new AffiliationError("Se encontro informacion del empleador"));
     }
 
-    private AffiliationDependent convertDataAffiliationDependent( DataExcelDependentDTO data, UserMain user){
+    private AffiliationDependent convertDataAffiliationDependent( DataExcelDependentDTO data, UserMain user, Long iaAffiliate){
 
         EconomicActivityDTO economicActivityDTO = findActivityEconomic(data.getEconomicActivityCode());
         Integer codeEconomic = null;
-        MainOffice mainOffice = mainOfficeService.getMainOfficeByCode(data.getIdHeadquarter());
 
         if(economicActivityDTO != null)
             codeEconomic = Integer.parseInt(economicActivityDTO.getClassRisk());
@@ -223,8 +231,7 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         BeanUtils.copyProperties(data, affiliationDependent);
 
         LocalDate dateCoverageDate = converterDate(data.getCoverageDate());
-
-        affiliationDependent.setIdBondingType(Long.valueOf(data.getIdBondingType()));
+        affiliationDependent.setIdAffiliateEmployer(iaAffiliate);
         affiliationDependent.setCoverageDate(dateCoverageDate);
         affiliationDependent.setDateOfBirth(converterDate(data.getDateOfBirth()));
         affiliationDependent.setIdDepartment(Long.valueOf(data.getIdDepartment()));
@@ -232,9 +239,7 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         affiliationDependent.setIdOccupation(findIdOccupation(data.getIdOccupation()));
         affiliationDependent.setIdWorkModality(Long.valueOf(data.getIdWorkModality()));
         affiliationDependent.setSalary(new BigDecimal(data.getSalary()));
-        affiliationDependent.setEndDate(converterDate(data.getEndDate()));
         affiliationDependent.setRisk(codeEconomic);
-        affiliationDependent.setIdHeadquarter(mainOffice.getId());
         affiliationDependent.setIdentificationDocumentTypeSignatory(user.getIdentificationType());
         affiliationDependent.setIdentificationDocumentNumberSignatory(user.getIdentification());
         affiliationDependent.setFirstNameSignatory(user.getFirstName());
@@ -242,7 +247,6 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         affiliationDependent.setSurnameSignatory(user.getSurname());
         affiliationDependent.setSecondSurnameSignatory(user.getSecondSurname());
         affiliationDependent.setAge(calculateAge(formatDate(data.getDateOfBirth())));
-        affiliationDependent.setNationality(data.getNationality()!=null ? Long.parseLong(data.getNationality()) : null);
         affiliationDependent.setOccupationalRiskManager(Constant.CODE_ARL);
         affiliationDependent.setPriceRisk(riskFeeService.getFeeByRisk(String.valueOf(affiliationDependent.getRisk())).multiply(new BigDecimal(100)));
         affiliationDependent.setContractIbcValue(affiliationDependent.getSalary());
@@ -257,17 +261,16 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         return affiliationDependent;
     }
 
-    private AffiliationDependent convertDataAffiliationIndependent( DataExcelIndependentDTO data, UserMain user){
+    private AffiliationDependent convertDataAffiliationIndependent( DataExcelIndependentDTO data, UserMain user, Long iaAffiliate){
 
         AffiliationDependent affiliationDependent = new AffiliationDependent();
 
-        MainOffice mainOffice = mainOfficeService.getMainOfficeByCode(data.getIdHeadquarter());
 
         BeanUtils.copyProperties(data, affiliationDependent);
 
         LocalDate dateCoverageDate = converterDate(data.getCoverageDate());
 
-        affiliationDependent.setIdBondingType(Long.valueOf(data.getIdBondingType()));
+        affiliationDependent.setIdAffiliateEmployer(iaAffiliate);
         affiliationDependent.setCoverageDate(dateCoverageDate);
         affiliationDependent.setDateOfBirth(converterDate(data.getDateOfBirth()));
         affiliationDependent.setIdDepartment(Long.valueOf(data.getIdDepartment()));
@@ -280,8 +283,6 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         affiliationDependent.setSalary(calculateSalaryMouth(data.getContractTotalValue(), data.getEndDate(), data.getStartDate()));
         affiliationDependent.setRisk(calculateRisk(data.getCodeActivityEmployer(), data.getCodeActivityContract()));
         affiliationDependent.setEconomicActivityCode(data.getCodeActivityEmployer());
-        affiliationDependent.setIdHeadquarter(mainOffice.getId());
-        affiliationDependent.setJourneyEstablished(findNameWorkingDayByCode(Long.valueOf(data.getJourneyEstablished())));
         affiliationDependent.setIdentificationDocumentTypeSignatory(user.getIdentificationType());
         affiliationDependent.setIdentificationDocumentNumberSignatory(user.getIdentification());
         affiliationDependent.setFirstNameSignatory(user.getFirstName());
@@ -289,7 +290,6 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         affiliationDependent.setSurnameSignatory(user.getSurname());
         affiliationDependent.setSecondSurnameSignatory(user.getSecondSurname());
         affiliationDependent.setAge(calculateAge(formatDate(data.getDateOfBirth())));
-        affiliationDependent.setNationality(data.getNationality()!=null ? Long.parseLong(data.getNationality()) : null);
         affiliationDependent.setOccupationalRiskManager(Constant.CODE_ARL);
         affiliationDependent.setPriceRisk(riskFeeService.getFeeByRisk(String.valueOf(affiliationDependent.getRisk())).multiply(new BigDecimal(100)));
         affiliationDependent.setHealthPromotingEntity(Long.parseLong(data.getHealthPromotingEntity()));
@@ -334,9 +334,9 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         return affiliateService.createAffiliate(newAffiliate);
     }
 
-    private void assignPolicy(Long idAffiliate, String nitEmployer, String identificationTypeDependent, String identificationNumberDependent, Long idPolicyType, String nameCompany){
-        Specification<Affiliate> spc = AffiliateSpecification.findByNitEmployer(nitEmployer);
-        Affiliate affiliateEmployer = affiliateRepository.findOne(spc)
+    private void assignPolicy(Long idAffiliate, String identificationTypeDependent, String identificationNumberDependent, Long idPolicyType, String nameCompany){
+
+        Affiliate affiliateEmployer = affiliateRepository.findById(idAffiliate)
                 .orElseThrow(() -> new AffiliateNotFound("Employer affiliate not found"));
 
         List<Policy> policyList = policyRepository.findByIdAffiliate(affiliateEmployer.getIdAffiliate());
@@ -472,15 +472,6 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
         return Math.max(riskOne, riskTwo);
     }
 
-    private String findNameWorkingDayByCode(Long code){
-
-        WorkingDay workingDay = workingDayService.findByCode(code);
-
-        if(workingDay != null)
-            return workingDay.getNameWorking();
-
-        return null;
-    }
 
     private String findSubType(String number, String type){
 
@@ -490,6 +481,7 @@ public class BulkLoadingHelpImpl implements BulkLoadingHelp {
                 case "2" -> Constant.BONDING_TYPE_STUDENT;
                 case "3" -> Constant.BONDING_TYPE_APPRENTICE;
                 case "4" -> Constant.BONDING_TYPE_INDEPENDENT;
+                case "5" -> Constant.BONDING_TYPE_STUDENT_DECREE;
                 default -> "";
             };
         }

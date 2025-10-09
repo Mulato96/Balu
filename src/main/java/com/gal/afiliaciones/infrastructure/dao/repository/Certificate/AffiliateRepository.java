@@ -396,4 +396,34 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
             @Param("documentNumber") String documentNumber
     );
 
+    @Query("SELECT MIN(ad.coverageDate) FROM AffiliationDependent ad WHERE ad.idAffiliateEmployer = :idAffiliateEmployer")
+    Optional<LocalDate> findMinCoverageDateOfDependents(@Param("idAffiliateEmployer") Long idAffiliateEmployer);
+
+    @Query("""
+            SELECT new com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO(
+                a.documenTypeCompany,
+                a.nitCompany,
+                CASE 
+                    WHEN a.affiliationSubType = 'Actividades mercantiles' 
+                    THEN COALESCE(am.digitVerificationDV, 0) 
+                    ELSE 0 
+                END,
+                a.company,
+                CASE 
+                    WHEN a.affiliationSubType = 'Actividades mercantiles' 
+                    THEN am.decentralizedConsecutive 
+                    ELSE 0 
+                END,
+                a.affiliationSubType,
+                a.filedNumber,
+                a.idAffiliate
+            )
+            FROM UserAffiliateDelegate uad 
+            LEFT JOIN Affiliate a on uad.idAffiliateEmployer = a.idAffiliate 
+            LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber 
+            WHERE uad.userId = :userId 
+            ORDER BY a.filedNumber DESC
+    """)
+    List<DataBasicEmployerMigratedDTO> findEmployerDataByDelegate(@Param("userId") Long userId);
+
 }

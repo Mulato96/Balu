@@ -22,10 +22,12 @@ public class SearchEmployerController {
 
     private final SearchEmployerMigratedService service;
 
-    @GetMapping("/searchEmployer/{identificationType}/{identification}")
+    @GetMapping("/searchEmployer/{identificationType}/{identification}/{typeUser}")
     public ResponseEntity<List<DataBasicEmployerMigratedDTO>> searchEmployer(@PathVariable String identificationType,
-                                                                             @PathVariable String identification) {
-        List<DataBasicEmployerMigratedDTO> employerList = service.searchEmployerDataBasic(identificationType, identification);
+                                                                             @PathVariable String identification,
+                                                                             @PathVariable String typeUser) {
+        List<DataBasicEmployerMigratedDTO> employerList = service.searchEmployerDataBasic(identificationType,
+                identification, typeUser);
         return ResponseEntity.ok(employerList);
     }
 

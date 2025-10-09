@@ -1,5 +1,8 @@
 package com.gal.afiliaciones.domain.model;
 
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.TypeCompanySettlementConverter;
+import com.gal.afiliaciones.infrastructure.enums.TypeCompanySettlement;
+import com.gal.afiliaciones.infrastructure.enums.TypeCutSettlement;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -73,4 +76,23 @@ public class Billing {
     //Cantidad de cotizantes
     @Column(name = "cotizantes_liquidados")
     private Integer liquidatedContributors;
+
+    //tipo de corte
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tipo_corte")
+    private TypeCutSettlement typeSettlementCut;
+
+    //Primera liquidacion
+    @Convert(converter = TypeCompanySettlementConverter.class)
+    @Column(name = "vieja")
+    private TypeCompanySettlement old;
+
+    //consecutivo de trabajador
+    @Column(name = "consecutivo_empleador")
+    private Long consecutiveEmployer;
+
+    //consecutivo del empleador
+    @Column(name = "consecutivo_trabajador")
+    private Long consecutiveWorker;
+
 }

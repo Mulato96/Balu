@@ -536,4 +536,11 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
                 exception.getHttpStatus());
     }
 
+    @ExceptionHandler(value = {DateUpdateException.class})
+    public ResponseEntity<ErrorResponse> handlerDateUpdateEx(DateUpdateException exception) {
+        log.error("date update employee exception {}", exception.getError().getMessage());
+        return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
+                exception.getHttpStatus());
+    }
+
 }

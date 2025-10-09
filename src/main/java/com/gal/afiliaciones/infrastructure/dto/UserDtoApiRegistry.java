@@ -33,4 +33,16 @@ public class UserDtoApiRegistry {
     private String gender;
     private String idStatus;
     private int errorCode;
+
+    //Campos Missings
+    private String issuingMunicipality;
+    private String issuingDepartment;
+    private String expeditionDate;
+    private String resolutionNumber;
+    private String resolutionYear;
+    private String informate;
+    private String serialNumber;
+    private String deathDate;
+    private String referenceDate;
+    private String affectingDate;
 }

@@ -1,13 +1,17 @@
 package com.gal.afiliaciones.application.service.affiliate.recordloadbulk.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.DetailRecordLoadBulkService;
 import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.RecordLoadBulkService;
 import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.domain.model.affiliate.DetailRecordLoadBulk;
 import com.gal.afiliaciones.domain.model.affiliate.RecordLoadBulk;
 import com.gal.afiliaciones.infrastructure.dao.repository.recordloadbulk.RecordLoadBulkRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.RecordLoadBulkSpecification;
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -47,17 +51,42 @@ public class RecordLoadBulkServiceImpl implements RecordLoadBulkService {
     public ExportDocumentsDTO createDocument(Long id) {
 
         RecordLoadBulk recordLoadBulk = recordLoadBulkRepository.findById(id).orElseThrow(() -> new AffiliationError("No se encontro el registro"));
-        ExportDocumentsDTO exportDocumentsDTO;
+        ExportDocumentsDTO exportDocumentsDTO = new ExportDocumentsDTO();
 
         if(Boolean.FALSE.equals(recordLoadBulk.getState())){
 
-            List<ErrorFileExcelDTO> dataDetail = recordLoadBulkService.findByIdRecordLoadBulk(recordLoadBulk.getId()).stream().map(data -> {
-                ErrorFileExcelDTO errorFileExcelDTO = new ErrorFileExcelDTO();
-                BeanUtils.copyProperties(data, errorFileExcelDTO);
-                return errorFileExcelDTO;
-            }).toList();
+            ObjectMapper mapper = new ObjectMapper();
+            List<DetailRecordLoadBulk> dataDetailRecord = recordLoadBulkService.findByIdRecordLoadBulk(recordLoadBulk.getId());
+            List<DetailRecordLoadBulk> recodOld = dataDetailRecord.stream()
+                    .filter(data -> data.getColumn() != null)
+                    .toList();
 
-            exportDocumentsDTO = excelProcessingServiceData.createDocumentExcelErrors(dataDetail);
+            if(!recodOld.isEmpty()){
+                List<ErrorFileExcelDTO> dataDetail = recodOld.stream().map(data -> {
+                    ErrorFileExcelDTO errorFileExcelDTO = new ErrorFileExcelDTO();
+                    BeanUtils.copyProperties(data, errorFileExcelDTO);
+                    return errorFileExcelDTO;
+                }).toList();
+
+                if(!dataDetail.isEmpty())
+                    exportDocumentsDTO = excelProcessingServiceData.createDocumentExcelErrors(dataDetail);
+            }else{
+                List<DataExcelDependentDTO> dataDetail = dataDetailRecord
+                        .stream()
+                        .map(data -> {
+                            try {
+                                ErrorFileExcelDTO errorFileExcelDTO = new ErrorFileExcelDTO();
+                                BeanUtils.copyProperties(data, errorFileExcelDTO);
+                                return mapper.readValue(data.getError(), DataExcelDependentDTO.class);
+                            } catch (JsonProcessingException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }).toList();
+
+                if(!dataDetail.isEmpty())
+                    exportDocumentsDTO = excelProcessingServiceData.createDocumentExcelErrors(dataDetail);
+            }
+
         }else{
             exportDocumentsDTO = excelProcessingServiceData.createDocumentExcelErrors(List.of(Map.of("Detalle", "No encontraron errores en la carga del documento consultado")));
         }

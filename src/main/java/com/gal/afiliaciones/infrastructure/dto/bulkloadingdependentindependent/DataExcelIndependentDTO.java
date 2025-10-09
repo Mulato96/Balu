@@ -13,13 +13,10 @@ public class DataExcelIndependentDTO {
     @JsonProperty("ID REGISTRO")
     private Integer idRecord;
 
-    @JsonProperty("CÓDIGO TIPO DE VINCULACIÓN")
-    private String idBondingType;
-
     @JsonProperty("FECHA INICIO COBERTURA")
     private String coverageDate;
 
-    @JsonProperty("CÓDIGO TIPO DOCUMENTO DE IDENTIFICACIÓN")
+    @JsonProperty("TIPO DOCUMENTO DE IDENTIFICACIÓN")
     private String identificationDocumentType;
 
     @JsonProperty("NÚMERO DOCUMENTO IDENTIFICACIÓN")
@@ -40,70 +37,76 @@ public class DataExcelIndependentDTO {
     @JsonProperty("FECHA DE NACIMIENTO")
     private String dateOfBirth;
 
-    @JsonProperty("CÓDIGO SEXO")
+    @JsonProperty("SEXO")
     private String gender;
 
-    @JsonProperty("SEXO")
-    private String otherGender;
-
-    @JsonProperty("CÓDIGO NACIONALIDAD")
-    private String nationality;
-
-    @JsonProperty("CÓDIGO EPS TRABAJADOR")
+    @JsonProperty("EPS TRABAJADOR")
     private String healthPromotingEntity;
 
-    @JsonProperty("CÓDIGO AFP TRABAJADOR")
+    @JsonProperty("AFP TRABAJADOR")
     private String pensionFundAdministrator;
 
-    @JsonProperty("CÓDIGO DEPARTAMENTO TRABAJADOR")
+    @JsonProperty("DEPARTAMENTO TRABAJADOR")
     private String idDepartment;
 
-    @JsonProperty("CÓDIGO MUNICIPIO RESIDENCIA TRABAJADOR")
+    @JsonProperty("MUNICIPIO RESIDENCIA TRABAJADOR")
     private String idCity;
 
     @JsonProperty("CELULAR O TELÉFONO")
     private String phone1;
 
-    @JsonProperty("CORREO ELECTRÓNICO")
+    @JsonProperty("CORREO ELECTRÓNICO INDEPENDIENTE")
     private String email;
 
-    @JsonProperty("CÓDIGO CARGO U OCUPACIÓN")
+    @JsonProperty("CARGO U OCUPACIÓN")
     private String idOccupation;
 
-    @JsonProperty("CÓDIGO CALIDAD DEL CONTRATO")
-    private String contractQuality;
-
-    @JsonProperty("CÓDIGO TIPO DE CONTRATO")
+    @JsonProperty("TIPO DE CONTRATO")
     private String contractType;
 
-    @JsonProperty("CODIGO SUMINISTRA TRANSPORTE")
+    @JsonProperty("SUMINISTRA TRANSPORTE")
     private String transportSupply;
 
-    @JsonProperty("FECHA DE INICIO")
+    @JsonProperty("FECHA DE INICIO CONTRATO")
     private String startDate;
 
-    @JsonProperty("FECHA DE TERMINACIÓN")
+    @JsonProperty("FECHA DE TERMINACION CONTRATO")
     private String endDate;
-
-    @JsonProperty("CÓDIGO JORNADA ESTABLECIDA")
-    private String journeyEstablished;
 
     @JsonProperty("VALOR TOTAL DEL CONTRATO")
     private String contractTotalValue;
 
-    @JsonProperty("CÓDIGO DE ACTIVIDAD ECONÓMICA  DEL CONTRATO")
+    @JsonProperty("CÓDIGO DE ACTIVIDAD ECONÓMICA DEL CONTRATO")
     private String codeActivityContract;
 
-    @JsonProperty("CÓDIGO ACTIVIDAD ECONÓMICA CONTRATANTE")
+    @JsonProperty("ACTIVIDAD ECONOMICA CENTRO DE TRABAJO DEL CONTRATANTE")
     private String codeActivityEmployer;
 
-    @JsonProperty("CÓDIGO SEDE")
-    private String idHeadquarter;
-
-    @JsonProperty("CÓDIGO TIPO DOCUMENTO EMPLEADOR")
+    @JsonProperty("TIPO DOCUMENTO CONTRATANTE")
     private String employerDocumentTypeCodeContractor;
 
-    @JsonProperty("DOCUMENTO EMPLEADOR")
+    @JsonProperty("NÚMERO DOCUMENTO CONTRATANTE")
     private String employerDocumentNumber;
+
+    @JsonProperty("DIRECCION")
+    private String address;
+
+    @JsonProperty("SUB EMPRESA")
+    private String subCompany;
+
+    @JsonProperty("LA AFILIACION ES DE TAXISTA")
+    private String isTaxi;
+
+    @JsonProperty("NATURALEZA DEL CONTRATO")
+    private String natureContract;
+
+    @JsonProperty("DEPARTAMENTO DONDE LABORA")
+    private String departmentWork;
+
+    @JsonProperty("MUNICIPIO DONDE LABORA")
+    private String municipalityWork;
+
+    @JsonProperty("ERROR")
+    private String error;
 
 }

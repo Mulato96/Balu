@@ -566,10 +566,21 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
             userRegistry.setSecondName(capitalize(registry.getSecondName()));
             userRegistry.setSurname(capitalize(registry.getFirstLastName()));
             userRegistry.setSecondSurname(capitalize(registry.getSecondLastName()));
+            userRegistry.setIssuingMunicipality(registry.getIssuingMunicipality());
+            userRegistry.setIssuingDepartment(registry.getIssuingDepartment());
+            userRegistry.setExpeditionDate(registry.getExpeditionDate());
+            userRegistry.setIdStatus(registry.getIdStatus());
+            userRegistry.setResolutionNumber(registry.getResolutionNumber());
+            userRegistry.setResolutionYear(registry.getResolutionYear());
+            userRegistry.setGender(registry.getGender());
+            userRegistry.setDateBirth(LocalDate.parse(registry.getBirthDate()));
+            userRegistry.setInformate(registry.getInformate());
+            userRegistry.setSerialNumber(registry.getSerialNumber());
+            userRegistry.setDeathDate(registry.getDeathDate());
+            userRegistry.setReferenceDate(registry.getReferenceDate());
+            userRegistry.setAffectingDate(registry.getAffectingDate());
             userRegistry.setPhoneNumber("");
             userRegistry.setEmail("");
-            userRegistry.setDateBirth(LocalDate.parse(registry.getBirthDate()));
-            userRegistry.setGender(RegistraduriaUnifiedService.mapGender(registry.getGender()));
         }
 
         return userRegistry;

@@ -549,6 +549,8 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             userRegistry.setGender(RegistraduriaUnifiedService.mapGender(registry.getGender()));
             userRegistry.setNationality(1L);
             userRegistry.setUserFromRegistry(true);
+            userRegistry.setErrorCode(registry.getErrorCode());
+            userRegistry.setIdStatus(registry.getIdStatus());
         }
 
         return userRegistry;

@@ -2,6 +2,7 @@ package com.gal.afiliaciones.application.service.billing.impl;
 
 import com.gal.afiliaciones.application.service.billing.BillingService;
 import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.*;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
@@ -17,7 +18,11 @@ import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillingReposito
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
 import com.gal.afiliaciones.infrastructure.dto.billing.AffiliationBillingDataDTO;
+import com.gal.afiliaciones.infrastructure.enums.TypeCompanySettlement;
+import com.gal.afiliaciones.infrastructure.enums.TypeCutSettlement;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +31,19 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static com.gal.afiliaciones.infrastructure.utils.Constant.AFFILIATION_STATUS_ACTIVE;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BillingServiceImpl implements BillingService {
@@ -47,6 +57,12 @@ public class BillingServiceImpl implements BillingService {
     private final AffiliationDependentRepository dependentRepository;
     private final BillDetailRepository billDetailRepository;
     private final BillDetailHistoryRepository billDetailHistoryRepository;
+    private final CollectProperties collectProperties;
+
+    private Long consecutiveEmployer;
+    private Long consecutiveWorker;
+    private Map<String, List<Long>> listConsecutiveEmployer = new HashMap<>();
+
 
     /**
      * Generar la facturación mensual moviendo las facturas actuales al historial
@@ -61,8 +77,11 @@ public class BillingServiceImpl implements BillingService {
         // Mover detalles de facturas actuales al historial antes de reemplazarlas
         moveCurrentBillDetailHistory();
 
+        //asigna los consecutivos de la bd a las variables locales
+        consecutive();
+
         // Consultar las afiliaciones activas hasta el último día del mes anterior
-        List<Affiliate> activeAffiliations = affiliationRepository.findAllByAffiliationStatusAndFiledNumberIsNotNull(AFFILIATION_STATUS_ACTIVE);
+        List<Affiliate> activeAffiliations = findAffiliateByCut(affiliationRepository.findAllByAffiliationStatusAndFiledNumberIsNotNull(AFFILIATION_STATUS_ACTIVE));
 
         // Generar nueva facturación para cada afiliación activa
         List<Billing> billingList = activeAffiliations.stream().map(this::generateBill).filter(Objects::nonNull).toList();
@@ -154,6 +173,11 @@ public class BillingServiceImpl implements BillingService {
         // Lógica de negocio para generar la factura basada en la afiliación activa
         List<Policy> policyList = policyRepository.findByIdAffiliate(affiliate.getIdAffiliate());
 
+        //consecutivos
+        Long employer = consecutiveEmployer;
+        Long worker = consecutiveWorker;
+
+
         if(policyList.isEmpty())
                 return null;
 
@@ -198,6 +222,25 @@ public class BillingServiceImpl implements BillingService {
             );
         }
 
+        if(affiliation != null
+                && affiliation.getTypeAffiliation() != null
+                && affiliation.getTypeAffiliation().contains(Constant.NAME_CONTRIBUTOR_TYPE_EMPLOYER)){
+            worker = null;
+            employer++;
+            consecutiveEmployer = employer;
+            //guarda los consecutivos del empleador
+            listConsecutiveEmployer.computeIfAbsent(affiliate.getNitCompany(), k -> new ArrayList<>()).add(employer);
+        }else{
+            worker++;
+            //se le asigna el consecutivo del empleador
+            employer = listConsecutiveEmployer.get(affiliate.getNitCompany())
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+            consecutiveWorker = worker;
+        }
+
+
         return Billing.builder()
                 .policy(policy)
                 .branch("90")
@@ -212,6 +255,10 @@ public class BillingServiceImpl implements BillingService {
                 .billingAmount(calculateBillingAmount)
                 .paymentPeriod(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMM")))
                 .liquidatedContributors(entry.getKey() == 0 ? 1 : entry.getKey())
+                .old(isFirsBilling(affiliate.getDocumentNumber()))
+                .typeSettlementCut(typeCut())
+                .consecutiveEmployer(employer)
+                .consecutiveWorker(worker)
                 .build();
     }
 
@@ -308,4 +355,52 @@ public class BillingServiceImpl implements BillingService {
 
         return Map.of(count.get(), calculateBillingAmount);
     }
+
+    //agrupa las afiliaciones por numero de documento y hace la validacion si es primer o segundo corte
+    private List<Affiliate> findAffiliateByCut(List<Affiliate> affiliateList){
+
+        int day = LocalDate.now().getDayOfMonth();
+
+        Map<String, List<Affiliate>> listAffiliate = affiliateList.stream()
+                .collect(Collectors.groupingBy(Affiliate::getDocumentNumber));
+
+            return listAffiliate.entrySet()
+                            .stream()
+                            .filter(e -> {
+                                if(day == collectProperties.getCutSettlementOne())
+                                    return e.getValue().size() <= collectProperties.getNumberMaxLaborRelation();
+                                if(day == collectProperties.getCutSettlementTwo())
+                                    return e.getValue().size() > collectProperties.getNumberMaxLaborRelation();
+                                return false;
+                            })
+                            .flatMap(e -> e.getValue().stream())
+                            .sorted(Comparator.comparing(affiliate -> affiliate.getAffiliationType().contains(Constant.NAME_CONTRIBUTOR_TYPE_EMPLOYER)))
+                            .toList();
+
+    }
+
+    //calcula el consecutivo para empleador y trabajador
+    private void consecutive(){
+
+        consecutiveEmployer = billingRepository.findConsecutiveEmployer().orElse(1L);
+        consecutiveWorker = billingRepository.findConsecutiveWorker().orElse(1L);
+
+    }
+
+    //valida si es la primera liquidacion
+    private TypeCompanySettlement isFirsBilling(String contributorId){
+        return billingRepository.existsByContributorId(contributorId)
+                ? TypeCompanySettlement.A
+                : TypeCompanySettlement.N;
+    }
+
+    //calcula el tipo de corte(primero o segundo)
+    private TypeCutSettlement typeCut(){
+        int day = LocalDate.now().getDayOfMonth();
+        return day == collectProperties.getCutSettlementOne()
+                ? TypeCutSettlement.FIRST_CUT
+                : TypeCutSettlement.SECOND_CUT;
+    }
+
+
 }

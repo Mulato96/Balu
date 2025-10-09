@@ -23,8 +23,10 @@ public interface ExcelProcessingServiceData {
     List<LinkedHashMap<String, Object>> findByPensionOrEpsOrArl(String url);
     List<FundEpsDTO> findByEps(String url);
     List<FundAfpDTO> findByAfp(String url);
-    void saveDetailRecordLoadBulk(List<ErrorFileExcelDTO> dataDetail, Long idRecordLoadBulk);
+    void saveDetailRecordLoadBulk(List<String> dataDetail, Long idRecordLoadBulk);
     void saveDetailRecordMassiveUpdate(List<ErrorFileExcelDTO> dataDetail, Long idRecodLoadBulk);
     ExportDocumentsDTO exportDataGrid(RequestExportDTO requestExportDTO);
+    String converterClassToString(Object data);
+    <T> String createDocumentError(String base64, List<T> dataExcelIndependentDTOS, String type) throws IOException;
 
 }

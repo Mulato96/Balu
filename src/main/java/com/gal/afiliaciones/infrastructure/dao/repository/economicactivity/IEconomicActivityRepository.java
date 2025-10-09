@@ -28,6 +28,8 @@ public interface IEconomicActivityRepository extends JpaRepository<EconomicActiv
 
     List<EconomicActivity> findByEconomicActivityCode(String economicActivityCode);
 
+    Optional<EconomicActivity> findFirstByEconomicActivityCode(String economicActivityCode);
+
     List<EconomicActivity> findAllByEconomicActivityCodeIn(List<String> list);
 
     List<EconomicActivity> findByIdEconomicSector(Long idEconomicSector);

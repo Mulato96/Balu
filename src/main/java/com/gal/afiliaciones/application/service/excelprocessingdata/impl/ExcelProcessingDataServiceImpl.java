@@ -1,5 +1,7 @@
 package com.gal.afiliaciones.application.service.excelprocessingdata.impl;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.DetailRecordLoadBulkService;
 import com.gal.afiliaciones.application.service.employer.DetailRecordMassiveUpdateWorkerService;
@@ -13,7 +15,11 @@ import com.gal.afiliaciones.infrastructure.dto.afpeps.FundAfpDTO;
 import com.gal.afiliaciones.infrastructure.dto.afpeps.FundEpsDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RequestExportDTO;
+import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadDependent;
+import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadIndependent;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -30,8 +36,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -41,10 +50,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
+import java.util.Base64;
 
+@Slf4j
 @Service
 @AllArgsConstructor
 public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceData {
@@ -55,7 +67,58 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     private final DetailRecordMassiveUpdateWorkerService recordMassiveUpdateWorkerService;
 
     @Override
-    public  List<Map<String, Object>> converterExcelToMap(MultipartFile excel,List<String> listColumn) throws IOException {
+    public <T> String createDocumentError(String base64, List<T> dataExcelIndependentDTOS, String type) throws IOException {
+
+        if (base64.contains(",")) {
+            base64 = base64.split(",")[1];
+        }
+
+        byte[] decodedBytes = Base64.getDecoder().decode(base64);
+
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(decodedBytes);
+             Workbook workbook = new XSSFWorkbook(inputStream)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+
+            AtomicInteger lastRowNum = new AtomicInteger(0);
+
+            Row rowHeader = sheet.getRow(0);
+            rowHeader.createCell(rowHeader.getLastCellNum()).setCellValue("ERROR");
+
+            List<Map<Integer, String>> listMap = toMapWithJsonProperty(dataExcelIndependentDTOS, type);
+
+            listMap.forEach(data -> {
+                Row row = sheet.createRow(lastRowNum.incrementAndGet());
+
+                String error = "";
+                for (Map.Entry<Integer, String> entry : data.entrySet()){
+
+                    if(entry.getKey() < 0){
+                        error = entry.getValue();
+                        continue;
+                    }
+
+                    row.createCell(entry.getKey()-1).setCellValue(entry.getValue());
+                }
+
+                int lastColumn = row.getLastCellNum();
+
+                if(lastColumn >= 0)
+                    row.createCell(lastColumn).setCellValue(error);
+
+            });
+
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+
+            byte[] fileBytes = outputStream.toByteArray();
+            return  Base64.getEncoder().encodeToString(fileBytes);
+        }
+    }
+
+    @Override
+    public  List<Map<String, Object>> converterExcelToMap(MultipartFile excel, List<String> listColumn) throws IOException {
 
         List<Map<String, Object>> dataList = new ArrayList<>();
         InputStream is = excel.getInputStream();
@@ -63,7 +126,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
         try(Workbook workbook = new XSSFWorkbook(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
-            int counterRow = countRow(sheet, 1, sheet.getLastRowNum());
+            int counterRow = countRow(sheet, 0, sheet.getLastRowNum());
 
             if(counterRow <= -1)
                 throw new AffiliationError("Error al leer el documento cargado.");
@@ -87,14 +150,14 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
                 for (int j = 0; j < headerRow.getLastCellNum(); j++) {
 
-                    String record = getCellValue(row.getCell(j));
+                    String value = getCellValue(row.getCell(j));
 
-                    if(headerRow.getCell(j).getStringCellValue().equals(record)){
+                    if(headerRow.getCell(j).getStringCellValue().equals(value)){
                         break;
                     }
 
                     String columnName = columnName(headerRow.getCell(j).getStringCellValue());
-                    data.put(columnName, record.replaceAll("^\\s+|\\s+$", ""));
+                    data.put(columnName, value.replaceAll("^\\s+|\\s+$", ""));
                 }
 
                 if(!data.isEmpty()){
@@ -186,6 +249,17 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     }
 
     @Override
+    public String converterClassToString(Object data) {
+        ObjectMapper mapper = new ObjectMapper();
+        try{
+            return mapper.writeValueAsString(data);
+        } catch (JsonProcessingException e) {
+            throw new AffiliationError("Error procesando el documento");
+        }
+
+    }
+
+    @Override
     public List<LinkedHashMap<String, Object>> findByPensionOrEpsOrArl(String url){
 
         url = properties.getUrlTransversal().concat(url);
@@ -228,13 +302,14 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
     @Async
     @Override
-    public void saveDetailRecordLoadBulk(List<ErrorFileExcelDTO> dataDetail, Long idRecodLoadBulk) {
+    public void saveDetailRecordLoadBulk(List<String> dataDetail, Long idRecordLoadBulk) {
 
         List<DetailRecordLoadBulk> detail = dataDetail.stream()
                 .map(data -> {
-                    DetailRecordLoadBulk recordLoadBulk = new DetailRecordLoadBulk();
-                    BeanUtils.copyProperties(data, recordLoadBulk);
-                    return recordLoadBulk;
+                        DetailRecordLoadBulk recordLoadBulk = new DetailRecordLoadBulk();
+                        recordLoadBulk.setError(data);
+                        recordLoadBulk.setIdRecordLoadBulk(idRecordLoadBulk);
+                        return recordLoadBulk;
                 })
                 .toList();
 
@@ -244,7 +319,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
     private String columnName(String name){
 
-        name = name.replaceAll("\\(.*?\\)","");
+        name = name.replace("(DD/MM/AAA)", "").replace("(AAAA/MM/DD)", "").replaceAll("[^\\p{L}\\s]", "") .trim();
         String[] vec = name.split("\\n");
         return ((vec.length >= 3) ? vec[0].concat(vec[1]) : vec[0]).replace("Obligatorio", "").trim();
 
@@ -286,7 +361,10 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
     private boolean validColumns(List<String> listColumns, Row headerColumns){
 
-        List<String> nameColumns =  listColumns(headerColumns);
+        List<String> nameColumns = new ArrayList<>(listColumns(headerColumns)
+                .stream()
+                .filter(name -> !name.equalsIgnoreCase("error"))
+                .toList());
         Collections.sort(nameColumns);
         Collections.sort(listColumns);
 
@@ -338,6 +416,58 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
             }
         }
         return true;
+    }
+
+    private <T> List<Map<Integer, String>> toMapWithJsonProperty(List<T> list, String type) {
+
+       return  list.stream().map(data -> {
+
+            Class<?> clazz = data.getClass();
+            Map<String,Integer> mapHeader = (type.equals(Constant.TYPE_AFFILLATE_INDEPENDENT))
+                    ? FieldsExcelLoadIndependent.map()
+                    : FieldsExcelLoadDependent.map();
+
+            Map<Integer, String> map =  new HashMap<>();
+
+            for (Field field : clazz.getDeclaredFields()) {
+                field.setAccessible(true);
+
+                JsonProperty annotation = field.getAnnotation(JsonProperty.class);
+                if (annotation != null) {
+                    try {
+
+                        map.putAll(createMap(field.get(data), annotation.value(), mapHeader));
+
+                    } catch (IllegalAccessException e) {
+                        log.error("Error in the method toMapWithJsonProperty, record: {}, error: {}", data, e.getMessage());
+                    }
+                }
+            }
+
+           return map;
+       }).toList();
+
+    }
+
+    private Map<Integer, String> createMap(Object value, String header, Map<String, Integer> map){
+
+        Map<Integer, String> mapValue = new HashMap<>();
+        String data = (value != null)
+                ? value.toString()
+                : "";
+
+        if(header.equalsIgnoreCase("error")){
+            mapValue.put(-1, data);
+            return mapValue;
+        }
+
+        Integer key = map.get(header);
+
+        if(key != null)
+          mapValue.put(key, data);
+
+        return mapValue;
+
     }
 
 }

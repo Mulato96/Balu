@@ -16,7 +16,8 @@ public class SubCompanyDTO {
     @Schema(description = "Sub-company unique identifier", example = "sub-001")
     private String subCompanyId;
 
-    @Schema(description = "Sub-company name", example = "SECRETARÍA DE EDUCACIÓN")
+    @Schema(description = "Sub-company name", example = "SECRETARÍ" +
+            "A DE EDUCACIÓN")
     private String subCompanyName;
 
     @Schema(description = "Sub-company code", example = "SEDU")

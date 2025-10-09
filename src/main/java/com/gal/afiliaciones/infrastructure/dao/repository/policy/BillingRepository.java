@@ -14,4 +14,12 @@ public interface BillingRepository extends JpaRepository<Billing, Long> {
 
     List<Billing> findByContributorId(String contributorIdNumber);
     List<Billing> findByBillingEffectiveDateFromLessThanEqualAndBillingEffectiveDateToGreaterThanEqual(LocalDate startDate, LocalDate endDate);
+    boolean existsByContributorId(String contributorId);
+
+    @Query("SELECT MAX(b.consecutiveEmployer) FROM Billing b")
+    Optional<Long> findConsecutiveEmployer();
+
+    @Query("SELECT MAX(b.consecutiveWorker) FROM Billing b")
+    Optional<Long> findConsecutiveWorker();
+
 }

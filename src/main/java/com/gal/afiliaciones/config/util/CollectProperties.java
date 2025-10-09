@@ -216,4 +216,16 @@ public class CollectProperties {
     @Value("${id.plantilla.certificado.masivo.trabajador}")
     private String workerMassiveCertificateTemplateId;
 
+    @Value("${number.max.labor.relation}")
+    private int numberMaxLaborRelation;
+
+    @Value("${cut.one}")
+    private int cutSettlementOne;
+
+    @Value("${cut.two}")
+    private int cutSettlementTwo;
+
+    @Value("${cut.three}")
+    private int cutSettlementThree;
+
 }

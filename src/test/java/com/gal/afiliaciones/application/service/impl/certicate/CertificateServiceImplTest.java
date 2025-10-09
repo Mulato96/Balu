@@ -377,7 +377,7 @@ public class CertificateServiceImplTest {
         assertEquals("Mercantil", result.getVinculationType());
         assertEquals("Test Company", result.getCompany());
         assertEquals("900123456-1", result.getNitContrator());
-        assertEquals("Sin retiro", result.getRetirementDate());
+        assertEquals("No registra", result.getRetirementDate());
         assertEquals("Activo", result.getStatus());
         assertEquals("IV", result.getRisk());
         assertEquals("Test Activity", result.getNameActivityEconomic());

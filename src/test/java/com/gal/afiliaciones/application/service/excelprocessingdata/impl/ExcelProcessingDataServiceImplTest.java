@@ -213,14 +213,6 @@ class ExcelProcessingDataServiceImplTest {
         assertEquals(ArrayList.class, result.getClass());
     }
 
-    @Test
-    void saveDetailRecordLoadBulk_Success() {
-        List<ErrorFileExcelDTO> dataDetail = new ArrayList<>();
-        dataDetail.add(new ErrorFileExcelDTO());
-        Long idRecodLoadBulk = 1L;
-
-        excelProcessingDataService.saveDetailRecordLoadBulk(dataDetail, idRecodLoadBulk);
-    }
 
     @Test
     void saveDetailRecordMassiveUpdate_Success() {
