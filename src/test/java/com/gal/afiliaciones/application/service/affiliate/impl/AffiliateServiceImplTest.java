@@ -455,7 +455,7 @@ class AffiliateServiceImplTest {
         Policy policy = new Policy();
         policy.setCode("POLICY123");
         when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
         when(rolesUserService.findByName(anyString())).thenReturn(role);
         when(policyService.createPolicy(any(), any(), any(), any(), any(), any(), any())).thenReturn(policy);
         when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(new UserMain()));
@@ -469,7 +469,35 @@ class AffiliateServiceImplTest {
         verify(affiliateRepository).save(affiliate);
         verify(rolesUserService).updateRoleUser(anyLong(), anyLong());
         verify(policyService).createPolicy(any(), any(), any(), any(), any(), any(), any());
-        verify(timerRepository, atLeastOnce()).delete(any());
+        verify(timerRepository, atLeastOnce()).delete(any(com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer.class));
+    }
+
+    @Test
+    void sing_DomesticAffiliation_Success() {
+        // Arrange
+        Role role = new Role();
+        role.setId(1L);
+        Policy policy = new Policy();
+        policy.setCode("POLICY123");
+        affiliation.setTypeAffiliation(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
+        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
+
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(rolesUserService.findByName(anyString())).thenReturn(role);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(new UserMain()));
+
+        // Act
+        affiliateService.sing(FILED_NUMBER);
+
+        // Assert
+        verify(repositoryAffiliation).save(affiliation);
+        verify(affiliateRepository).save(affiliate);
+        verify(rolesUserService).updateRoleUser(anyLong(), anyLong());
+        verify(policyService).createPolicy(any(), any(), any(), any(), any(), any(), any());
+        verify(timerRepository, atLeastOnce()).delete(any(com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer.class));
+        verify(generalNoveltyServiceImpl).saveGeneralNovelty(any(SaveGeneralNoveltyRequest.class));
+        verify(sendEmails).welcome(any(), any(), any(), any());
         verify(generalNoveltyServiceImpl).saveGeneralNovelty(any(SaveGeneralNoveltyRequest.class));
         verify(sendEmails).welcome(any(), any(), any(), any());
         verify(cardAffiliatedService).createCardWithoutOtp(FILED_NUMBER);
@@ -480,7 +508,7 @@ class AffiliateServiceImplTest {
         // Arrange
         affiliate.setAffiliationCancelled(true);
         when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         // Act & Assert
         assertThrows(AffiliationError.class, () -> affiliateService.sing(FILED_NUMBER));
@@ -491,7 +519,7 @@ class AffiliateServiceImplTest {
         // Arrange
         affiliation.setStageManagement(Constant.REGULARIZATION);
         when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         // Act & Assert
         assertThrows(AffiliationError.class, () -> affiliateService.sing(FILED_NUMBER));
@@ -505,8 +533,8 @@ class AffiliateServiceImplTest {
         responseAlfresco.setIdNewFolder("newFolderId");
         responseAlfresco.setDocuments(new ArrayList<>());
 
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
-        doReturn(Optional.of(affiliation)).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(properties.getAffiliationProvisionServicesFolderId()).thenReturn("folderId");
         when(alfrescoService.uploadAffiliationDocuments(anyString(), anyString(), anyList())).thenReturn(responseAlfresco);
 
@@ -518,7 +546,7 @@ class AffiliateServiceImplTest {
         assertEquals("newFolderId", result.getIdFolderAlfresco());
         verify(repositoryAffiliation).save(affiliation);
         verify(affiliateRepository).save(affiliate);
-        verify(timerRepository, atLeastOnce()).delete(any());
+        verify(timerRepository, atLeastOnce()).delete(any(com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer.class));
         verify(alfrescoService).uploadAffiliationDocuments("folderId", FILED_NUMBER, documents);
     }
 
@@ -526,7 +554,7 @@ class AffiliateServiceImplTest {
     void regularizationDocuments_AffiliationCancelled_ShouldThrowError() {
         // Arrange
         affiliate.setAffiliationCancelled(true);
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         // Act & Assert
         assertThrows(AffiliationError.class, () -> affiliateService.regularizationDocuments(FILED_NUMBER, new ArrayList<>()));
@@ -535,8 +563,8 @@ class AffiliateServiceImplTest {
     @Test
     void regularizationDocuments_AffiliationNotFound_ShouldThrowError() {
         // Arrange
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
-        doReturn(Optional.empty()).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(AffiliationError.class, () -> affiliateService.regularizationDocuments(FILED_NUMBER, new ArrayList<>()));
@@ -546,8 +574,8 @@ class AffiliateServiceImplTest {
     void regularizationDocuments_AlfrescoFolderNotFound_ShouldThrowError() {
         // Arrange
         affiliate.setAffiliationSubType("UNKNOWN_TYPE");
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
-        doReturn(Optional.of(affiliation)).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
 
         // Act & Assert
         assertThrows(ErrorFindDocumentsAlfresco.class, () -> affiliateService.regularizationDocuments(FILED_NUMBER, new ArrayList<>()));
@@ -556,8 +584,8 @@ class AffiliateServiceImplTest {
     @Test
     void regularizationDocuments_IOException_ShouldThrowError() throws IOException {
         // Arrange
-        doReturn(affiliate).when(affiliateService).findByFieldAffiliate(FILED_NUMBER);
-        doReturn(Optional.of(affiliation)).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(properties.getAffiliationProvisionServicesFolderId()).thenReturn("folderId");
         when(alfrescoService.uploadAffiliationDocuments(anyString(), anyString(), anyList())).thenThrow(new IOException());
 
@@ -605,7 +633,7 @@ class AffiliateServiceImplTest {
     void getForeignPension_AffiliationFound_ShouldReturnPensionStatus() {
         // Arrange
         affiliation.setIsForeignPension(true);
-        doReturn(Optional.of(affiliation)).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
 
         // Act
         Boolean result = affiliateService.getForeignPension(FILED_NUMBER);
@@ -617,7 +645,7 @@ class AffiliateServiceImplTest {
     @Test
     void getForeignPension_AffiliationNotFound_ShouldThrowError() {
         // Arrange
-        doReturn(Optional.empty()).when(affiliateService).findByFieldAffiliation(FILED_NUMBER);
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(AffiliationError.class, () -> affiliateService.getForeignPension(FILED_NUMBER));
@@ -647,7 +675,7 @@ class AffiliateServiceImplTest {
         long result = (long) method.invoke(affiliateService, "SOL_AFI_2025000001450");
 
         // Assert
-        assertEquals(1450, result);
+        assertEquals(1450L, result);
     }
 
     @Test
@@ -726,7 +754,7 @@ class AffiliateServiceImplTest {
         Long result = affiliateService.getEmployerSize(5);
 
         // Assert
-        assertEquals(1L, result);
+        assertEquals(1L, result.longValue());
     }
 
     @Test
@@ -763,6 +791,7 @@ class AffiliateServiceImplTest {
         assertEquals(new BigDecimal("1200000.00"), result);
     }
 
+
     @Test
     void affiliateBUs_NoAffiliateInfo_ShouldReturnFalse() throws IOException {
         // Arrange
@@ -774,6 +803,29 @@ class AffiliateServiceImplTest {
         // Assert
         assertFalse(result);
         verify(consult).consultAffiliate(DOCUMENT_TYPE, DOCUMENT_NUMBER);
+    }
+
+    @Test
+    void getDataStatusAffiliations_WithOfficial_ShouldReturnDataWithName() {
+        // Arrange
+        affiliate.setIdOfficial(1L);
+        List<Affiliate> affiliateList = Collections.singletonList(affiliate);
+        Affiliation affiliation = new Affiliation();
+        affiliation.setStageManagement("Some Stage");
+        UserMain userMain = new UserMain();
+        userMain.setFirstName("John");
+        userMain.setSurname("Doe");
+
+        doReturn(affiliateList).when(affiliateService).findAffiliatesByTypeAndNumber(DOCUMENT_TYPE, DOCUMENT_NUMBER);
+        when(repositoryAffiliation.findByFiledNumber(affiliate.getFiledNumber())).thenReturn(Optional.of(affiliation));
+        when(iUserPreRegisterRepository.findById(1L)).thenReturn(Optional.of(userMain));
+
+        // Act
+        List<DataStatusAffiliationDTO> result = affiliateService.getDataStatusAffiliations(DOCUMENT_NUMBER, DOCUMENT_TYPE);
+
+        // Assert
+        assertFalse(result.isEmpty());
+        assertEquals("John Doe", result.get(0).getNameOfficial());
     }
 
     @Test
@@ -792,7 +844,7 @@ class AffiliateServiceImplTest {
     @Test
     void dateUtils_safeParse_ValidDate() {
         // Act
-        LocalDate result = new AffiliateServiceImpl().new DateUtils().safeParse("2023-01-01 10:00:00");
+        LocalDate result = affiliateService.new DateUtils().safeParse("2023-01-01 10:00:00");
         // Assert
         assertEquals(LocalDate.of(2023, 1, 1), result);
     }
@@ -800,7 +852,7 @@ class AffiliateServiceImplTest {
     @Test
     void ageCalculator_calculate_ValidDate() {
         // Act
-        String result = new AffiliateServiceImpl().new AgeCalculator().calculate(LocalDate.of(1990, 1, 1));
+        String result = affiliateService.new AgeCalculator().calculate(LocalDate.of(1990, 1, 1));
         // Assert
         assertNotNull(result);
     }
@@ -808,7 +860,7 @@ class AffiliateServiceImplTest {
     @Test
     void ageCalculatorInt_calculate_ValidDate() {
         // Act
-        Integer result = new AffiliateServiceImpl().new AgeCalculatorInt().calculate(LocalDate.of(1990, 1, 1));
+        Integer result = affiliateService.new AgeCalculatorInt().calculate(LocalDate.of(1990, 1, 1));
         // Assert
         assertNotNull(result);
     }
