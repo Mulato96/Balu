@@ -1,6 +1,10 @@
 package com.gal.afiliaciones.domain.model.affiliationdependent;
 
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,9 +17,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 
 @Data
 @Entity
@@ -162,10 +163,12 @@ public class AffiliationDependent {
     private String secondSurnameSignatory;
     @Column(name = "occupation_signatory")
     private String occupationSignatory;
-    @Column(name = "code_activity_employer")
-    private String codeActivityEmployer;
     @Column(name = "code_activity_contract")
     private String codeActivityContract;
+    @Column(name = "code_activity_employer")
+    private String codeActivityEmployer;
+    @Column(name = "id_employer")
+    private Long idEmployer;
     @Column(name = "bulk_upload_affiliation")
     private Boolean bulkUploadAffiliation;
 
@@ -179,11 +182,19 @@ public class AffiliationDependent {
 
     @Column(name = "ibc_percentage")
     private BigDecimal ibcPercentage;
-
-    @Column(name = "id_affiliate_employer")
-    private Long idAffiliateEmployer;
+    
+    @Column(name = "fecha_registro")
+    private LocalDateTime fechaRegistro;
 
     @Column(name = "id_work_center")
     private Long idWorkCenter;
 
+    @Column(name = "id_affiliate_employer")
+    private Long idAffiliateEmployer;
+
+    @Column(name = "id_affiliate", nullable = false)
+    private Long idAffiliate;
+
+
 }
+

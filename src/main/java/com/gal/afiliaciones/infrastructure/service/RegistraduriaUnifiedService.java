@@ -5,6 +5,7 @@ import com.gal.afiliaciones.infrastructure.dto.registraduria.RegistraduriaRespon
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -28,28 +29,29 @@ public class RegistraduriaUnifiedService {
     public List<RegistryOfficeDTO> searchUserInNationalRegistry(String identificationNumber) {
         log.info("Searching user in national registry using new Registraduria service for document: {}", identificationNumber);
 
+        
         try {
             // Get access token using the unified service
             String token = registraduriaKeycloakTokenService.getAccessToken();
             log.debug("Access token obtained successfully for document: {}", identificationNumber);
-
+            
             // Consult identity card using the new service
             RegistraduriaResponseDTO response = identityCardConsultationService.consultIdentityCard(identificationNumber)
                     .block(); // Convert Mono to blocking call for compatibility
-
+            
             if (response == null || response.getIdentityCardData() == null) {
                 log.warn("No data found for document: {}", identificationNumber);
                 return new ArrayList<>();
             }
-
+            
             // Map the new response to the expected RegistryOfficeDTO structure
             RegistryOfficeDTO registryOfficeDTO = mapToRegistryOfficeDTO(response, identificationNumber);
             List<RegistryOfficeDTO> result = new ArrayList<>();
             result.add(registryOfficeDTO);
-
+            
             log.info("Successfully retrieved data for document: {}", identificationNumber);
             return result;
-
+            
         } catch (Exception e) {
             log.error("Error searching user in national registry for document {}: {}", identificationNumber, e.getMessage());
             return new ArrayList<>();
@@ -61,30 +63,30 @@ public class RegistraduriaUnifiedService {
      */
     private RegistryOfficeDTO mapToRegistryOfficeDTO(RegistraduriaResponseDTO response, String identificationNumber) {
         RegistraduriaResponseDTO.IdentityCardDataDTO data = response.getIdentityCardData();
-
+        
         RegistryOfficeDTO registryOfficeDTO = new RegistryOfficeDTO();
-
+        
         // Map basic identification data
         mapBasicIdentificationData(registryOfficeDTO, identificationNumber);
-
+        
         // Map personal data
         mapPersonalData(registryOfficeDTO, data);
-
+        
         // Map expedition data
         mapExpeditionData(registryOfficeDTO, data);
-
+        
         // Map resolution data
         mapResolutionData(registryOfficeDTO, data);
-
+        
         // Map status and other data
         mapStatusAndOtherData(registryOfficeDTO, data);
-
+        
         // Map dates
         mapDates(registryOfficeDTO, data);
-
+        
         // Set error code based on consultation status
         mapErrorCode(registryOfficeDTO, response);
-
+        
         return registryOfficeDTO;
     }
 
@@ -105,6 +107,23 @@ public class RegistraduriaUnifiedService {
         registryOfficeDTO.setFirstLastName(getSafeString(data.getFirstSurname()));
         registryOfficeDTO.setSecondLastName(getSafeString(data.getSecondSurname()));
 
+
+        
+        // Map birth date
+        mapBirthDate(registryOfficeDTO, data);
+        
+        // Map gender with proper mapping
+        log.debug("Raw gender from Registraduria service: '{}'", data.getGender());
+        String mappedGender = mapGender(data.getGender());
+        log.debug("Mapped gender result: '{}'", mappedGender);
+        registryOfficeDTO.setGender(mappedGender);
+    }
+
+    /**
+     * Map birth date with proper parsing
+     */
+    private void mapBirthDate(RegistryOfficeDTO registryOfficeDTO, RegistraduriaResponseDTO.IdentityCardDataDTO data) {
+
         if (data.getBirthDate() != null && !data.getBirthDate().trim().isEmpty()) {
             try {
                 DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -117,6 +136,7 @@ public class RegistraduriaUnifiedService {
         } else {
             registryOfficeDTO.setBirthDate("");
         }
+
 
         // Map gender with proper mapping
         log.debug("Raw gender from Registraduria service: '{}'", data.getGender());
@@ -195,8 +215,10 @@ public class RegistraduriaUnifiedService {
             return "";
         }
 
+
         String normalizedGender = gender.trim().toUpperCase();
         log.debug("Normalized gender: '{}'", normalizedGender);
+
 
         switch (normalizedGender) {
             case "MASCULINO":
@@ -210,5 +232,4 @@ public class RegistraduriaUnifiedService {
                 return gender;
         }
     }
-
-}
+} 

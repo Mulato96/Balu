@@ -6,7 +6,7 @@ import lombok.Data;
 @Data
 public class BusinessGroupResponse {
     @JsonProperty("id")
-    private Integer id;
+    private Long id;
 
     @JsonProperty("nombre")
     private String name;

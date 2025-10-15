@@ -25,7 +25,6 @@ import java.util.List;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "AddOption", description = "Add option in space official, and list module of news and reports.")
-@CrossOrigin(origins = "*")
 public class AddOptionController {
     private final AddOptionService addOptionService;
 

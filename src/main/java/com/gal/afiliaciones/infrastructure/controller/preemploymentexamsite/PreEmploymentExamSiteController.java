@@ -29,7 +29,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/preemploymentexamsite")
 @Tag(name = "Entidades examen pre-ocupacional")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class PreEmploymentExamSiteController {
 

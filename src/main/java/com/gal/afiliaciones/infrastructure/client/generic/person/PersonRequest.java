@@ -16,6 +16,7 @@ public class PersonRequest {
     private String apellido1;
     private String apellido2;
     private String fechaNacimiento;
+    private String fechaFallecimiento;
     private String sexo;
     private String indZona;
     private String telefonoPersona;

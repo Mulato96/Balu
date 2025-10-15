@@ -117,6 +117,10 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
             if(Boolean.TRUE.equals(dto.getIs723()))
                 affiliation.setSpecialTaxIdentificationNumber(Constant.NIT_CONTRACT_723);
 
+            // Crear afiliado preliminar en paso 1 para satisfacer NOT NULL (id_affiliate)
+            Affiliate draftAffiliate = saveAffiliate(affiliation, user.getId(), null);
+            affiliation.setIdAffiliate(draftAffiliate.getIdAffiliate());
+
             Affiliation newAffiliation = repositoryAffiliation.save(affiliation);
 
             dto.setId(newAffiliation.getId());
@@ -202,13 +206,15 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
         }
 
         BigDecimal smlmv = new BigDecimal(salaryDTO.getValue());
-        BigDecimal maxValue = smlmv.multiply(new BigDecimal(25));  // 25 veces el salario mínimo
+
+        // Calcular el valor máximo permitido (25 veces el salario mínimo)
+        BigDecimal maxValue = smlmv.multiply(BigDecimal.valueOf(25));
 
         // Validar que el valor mensual del contrato (monthlyContractValue) esté dentro del rango permitido
-        if (dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(smlmv) < 0 || dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(maxValue) > 0) {
+        if (dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(smlmv) < 0 ||
+            dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
-
 
     }
 
@@ -233,7 +239,28 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
         Long idUser = findUser(affiliation);
 
         // Asociar a la tabla de afiliaciones
-        Affiliate affiliate = saveAffiliate(affiliation, idUser, filedNumber);
+        Affiliate affiliate;
+        if (affiliation.getIdAffiliate() != null && affiliation.getIdAffiliate() > 0) {
+            affiliate = affiliateRepository.findById(affiliation.getIdAffiliate())
+                    .orElseGet(() -> saveAffiliate(affiliation, idUser, filedNumber));
+
+            // Actualizar datos clave del afiliado y radicado
+            affiliate.setDocumentType(affiliation.getIdentificationDocumentType());
+            affiliate.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
+            affiliate.setCompany(affiliation.getCompanyName());
+            affiliate.setNitCompany(affiliation.getIdentificationDocumentNumberContractor());
+            affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+            affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_COUNCILLOR);
+            affiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
+            affiliate.setUserId(idUser);
+            affiliate.setFiledNumber(filedNumber);
+            affiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
+            affiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
+            affiliate = affiliateRepository.save(affiliate);
+        } else {
+            affiliate = saveAffiliate(affiliation, idUser, filedNumber);
+            affiliation.setIdAffiliate(affiliate.getIdAffiliate());
+        }
 
         // Guardar documentos en alfresco
         String idFolderByEmployer = saveDocuments(affiliation.getIdentificationDocumentNumber(), documents,

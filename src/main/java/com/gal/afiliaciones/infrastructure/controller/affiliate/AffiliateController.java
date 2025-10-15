@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,10 +46,8 @@ import jakarta.mail.MessagingException;
 import jakarta.ws.rs.QueryParam;
 import lombok.RequiredArgsConstructor;
 
-
 @RestController
 @RequestMapping("/api/affiliates")
-@CrossOrigin(origins = "*")
 @Tag(name = "Affiliate", description = "Affiliate Management API")
 @RequiredArgsConstructor
 public class AffiliateController {

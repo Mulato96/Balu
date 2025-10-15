@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/contractextension")
 @Tag(name = "contract-extension", description = "PRORROGA DE CONTRATO")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class ContractExtensionController {
 

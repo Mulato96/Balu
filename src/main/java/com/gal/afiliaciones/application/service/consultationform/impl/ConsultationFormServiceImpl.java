@@ -24,6 +24,7 @@ import com.gal.afiliaciones.domain.model.Policy;
 import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliate.EmployerSize;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
@@ -37,6 +38,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliatactivityeconomic.AffiliateActivityEconomicRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.EmployerSizeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.conciliationbilling.BillingCollectionConciliationRepository;
@@ -78,6 +80,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
         private final AffiliateRepository affiliateRepository;
         private final IUserPreRegisterRepository userPreRegisterRepository;
         private final AffiliateMercantileRepository affiliateMercantileRepository;
+        private final EmployerSizeRepository employerSizeRepository;
         private final AffiliationDependentRepository affiliationDependentRepository;
         private final IAffiliationEmployerDomesticServiceIndependentRepository affiliationRepository; // NOSONAR
         private final AffiliationEmployerDomesticServiceIndependentService affiliationEmployerDomesticServiceIndependentService;
@@ -97,7 +100,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
         private static final String PORTAL_CHANNEL = "Portal";
 
         @Override
-        public InfoConsultDTO getInfo(String typeIdentification, String identification, String affiliationType) {
+        public InfoConsultDTO getInfo(String typeIdentification, String identification, String affiliationType,
+                        String idAffiliate) {
 
                 List<Affiliate> affiliateList;
 
@@ -133,16 +137,17 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                         }
                         throw new UserNotFoundInDataBase("User not found");
                 } else if (affiliationType.contains(Constant.TYPE_AFFILLATE_EMPLOYER)) {
-                        return processEmployerAffiliation(affiliateList);
+                        return processEmployerAffiliation(affiliateList, idAffiliate);
                 } else {
                         return new EmployerInfoDTO(); // Tipo de afiliación no reconocido
                 }
         }
 
-        private InfoConsultDTO processEmployerAffiliation(List<Affiliate> affiliateList) {
+        private InfoConsultDTO processEmployerAffiliation(List<Affiliate> affiliateList, String idAffiliate) {
                 for (Affiliate affiliate : affiliateList) {
                         if (affiliate.getAffiliationType() != null && affiliate.getAffiliationType()
-                                        .equals(Constant.TYPE_AFFILLATE_EMPLOYER)) {
+                                        .equals(Constant.TYPE_AFFILLATE_EMPLOYER)
+                                        && affiliate.getIdAffiliate().toString().equals(idAffiliate)) {
 
                                 Optional<AffiliateMercantile> affiliationMercantile = affiliateMercantileRepository
                                                 .findByFiledNumber(affiliate.getFiledNumber());
@@ -166,6 +171,27 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                 }
 
                 return new EmployerInfoDTO(); // No se encontró afiliado empleador válido
+        }
+
+        /**
+         * Obtiene la descripción del tamaño del empleador basado en el ID
+         * 
+         * @param employerSizeId ID del tamaño del empleador
+         * @return Descripción del tamaño del empleador o null si no se encuentra
+         */
+        private String getEmployerSizeDescription(Long employerSizeId) {
+                if (employerSizeId == null) {
+                        return null;
+                }
+
+                try {
+                        Optional<EmployerSize> employerSize = employerSizeRepository.findById(employerSizeId);
+                        return employerSize.map(EmployerSize::getDescription).orElse(null);
+                } catch (Exception e) {
+                        log.error("Error obteniendo descripción del tamaño del empleador para ID: {}", employerSizeId,
+                                        e);
+                        return null;
+                }
         }
 
         private EmployerInfoDTO buildEmployerInfoDTO(Affiliate affiliate,
@@ -220,6 +246,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                 .typeInfo(affiliate.getAffiliationType())
                                 .isActive("Activa".equalsIgnoreCase(affiliate.getAffiliationStatus()))
                                 .filedNumber(affiliate.getFiledNumber())
+                                .id_employer_size(getEmployerSizeDescription(affiliateMercantile.getIdEmployerSize()))
                                 .build();
         }
 
@@ -277,6 +304,7 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                 .typeInfo(affiliate.getAffiliationType())
                                 .isActive("Activa".equalsIgnoreCase(affiliate.getAffiliationStatus()))
                                 .filedNumber(affiliate.getFiledNumber())
+                                .id_employer_size(getEmployerSizeDescription(affiliationDomestic.getIdEmployerSize()))
                                 .build();
         }
 
@@ -820,7 +848,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                                 Type.AFFILIATION_NOT_FOUND));
                                 GeneralConsultDTO generalConsultDTO = new GeneralConsultDTO(
                                                 affiliation.getBusinessName(),
-                                                Constant.TYPE_AFFILLATE_EMPLOYER);
+                                                Constant.TYPE_AFFILLATE_EMPLOYER,
+                                                affiliate.getIdAffiliate().toString());
                                 response.add(generalConsultDTO);
                         }
                 });
@@ -843,7 +872,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                                 affiliation.getSecondName(),
                                                                 affiliation.getSurname(),
                                                                 affiliation.getSecondSurname()),
-                                                Constant.TYPE_AFFILLATE_EMPLOYER);
+                                                Constant.TYPE_AFFILLATE_EMPLOYER,
+                                                affiliate.getIdAffiliate().toString());
                                 response.add(generalConsultDTO);
                         } else if (affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_EMPLOYER)
                                         && affiliate.getDocumentNumber().equals(affiliate.getNitCompany())) {
@@ -853,7 +883,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                                 Type.AFFILIATION_NOT_FOUND));
                                 GeneralConsultDTO generalConsultDTO = new GeneralConsultDTO(
                                                 affiliation.getBusinessName(),
-                                                Constant.TYPE_AFFILLATE_EMPLOYER);
+                                                Constant.TYPE_AFFILLATE_EMPLOYER,
+                                                affiliate.getIdAffiliate().toString());
                                 response.add(generalConsultDTO);
                         } else if (affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_INDEPENDENT)) {
                                 Affiliation affiliation = affiliationRepository
@@ -865,7 +896,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                                 affiliation.getSecondName(),
                                                                 affiliation.getSurname(),
                                                                 affiliation.getSecondSurname()),
-                                                Constant.EMPLOYEE);
+                                                Constant.EMPLOYEE,
+                                                affiliate.getIdAffiliate().toString());
                                 if (!response.contains(generalConsultDTO))
                                         response.add(generalConsultDTO);
                         } else if (affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_DEPENDENT)) {
@@ -878,7 +910,8 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                                 affiliation.getSecondName(),
                                                                 affiliation.getSurname(),
                                                                 affiliation.getSecondSurname()),
-                                                Constant.EMPLOYEE);
+                                                Constant.EMPLOYEE,
+                                                affiliate.getIdAffiliate().toString());
                                 if (!response.contains(generalConsultDTO))
                                         response.add(generalConsultDTO);
                         }

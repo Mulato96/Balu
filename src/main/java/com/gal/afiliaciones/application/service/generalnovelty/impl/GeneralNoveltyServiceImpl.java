@@ -108,11 +108,6 @@ public class GeneralNoveltyServiceImpl implements GeneralNoveltyService {
 
     List<PermanentNovelty> permanentNovelties = permanentNoveltyRepository.findAllByIdAffiliate(idAffiliate);
     result.addAll(mapPermanentNovelties(permanentNovelties));
-
-    if (result.isEmpty()) {
-            throw GeneralNoveltyException.notFoundByAffiliate(idAffiliate);
-    }
-
     return result;
 }
 

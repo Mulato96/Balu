@@ -18,10 +18,12 @@ import java.util.stream.Stream;
 
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -93,27 +95,33 @@ import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeracti
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.StateAffiliation;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadRequest;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.Entries;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.Entry;
+import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.AlfrescoResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.EntryDTO;
 import com.gal.afiliaciones.infrastructure.dto.sat.TransferableEmployerRequest;
 import com.gal.afiliaciones.infrastructure.dto.sat.TransferableEmployerResponse;
 import com.gal.afiliaciones.infrastructure.dto.typeemployerdocument.DocumentRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.BondDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RecordResponseDTO;
+import com.gal.afiliaciones.infrastructure.service.ConfecamarasConsultationService;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Base64ToMultipartFile;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.document.ValidationDocument;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AffiliationEmployerActivitiesMercantileServiceImpl implements AffiliationEmployerActivitiesMercantileService {
+
+    @Value("${sat.validation.enabled:true}")
+    private boolean satValidationEnabled;
+    private static final String SAT_UNAVAILABLE_MESSAGE = "Estimado empleador:\nPor motivos de conectividad con el SAT (Sistema de Afiliación Transaccional), en este momento no es posible continuar con tu solicitud de afiliación a nuestra ARL.\nPor favor intenta nuevamente en unos momentos.";
+    private static final String SAT_AFFILIATED_TO_POSITIVA_MESSAGE = "Estimado empleador, hemos detectado que con el número de documento ingresado existe una afiliación con la ARL POSITIVA COMPAÑIA DE SEGUROS S.A. Puedes ingresar al portal transaccional con tu usuario y contraseña en Iniciar sesión";
+    private static final String SAT_AFFILIATED_TO_OTHER_ARL_MESSAGE_TEMPLATE = "Estimado empleador:\n\nHemos identificado que el número de documento ingresado ya se encuentra actualmente afiliado a la ARL %s.\n\nPor esta razón, no es posible continuar con la solicitud de afiliación a nuestra ARL.\nTe invitamos a gestionar tus novedades y solicitudes con la entidad en la que actualmente registras la afiliación.";
 
     private final WebClient webClient;
     private final SendEmails sendEmails;
@@ -142,8 +150,10 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
     private final ArlInformationDao arlInformationDao;
     private final ArlRepository arlRepository;
     private final PolicyService policyService;
-    private final SatConsultTransferableEmployerClient satConsultTransferableEmployerClient;
     private final RegistraduriaUnifiedService registraduriaUnifiedService;
+    private final SatConsultTransferableEmployerClient satConsultTransferableEmployerClient;
+    private final ConfecamarasConsultationService confecamarasConsultationService;
+    private final GenericWebClient genericWebClient;
 
     @Override
     public DataBasicCompanyDTO validationsStepOne(@NotNull String numberDocument, String typeDocument, String dv) {
@@ -170,8 +180,9 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         if(typeDocument.equals(Constant.CC))
             validCC(numberDocument, dataBasicCompanyDTO);
 
-        validateTrasladoSat(typeDocument, numberDocument);
-
+        if (satValidationEnabled) {
+            validateTrasladoSat(typeDocument, numberDocument);
+        }
         if (typeDocument.equals(Constant.NI)){
 
             String initNit = numberDocument.substring(0,3);
@@ -230,7 +241,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             if (satResponse != null) {
                 Integer causal = satResponse.getCausal();
                 if (causal == null) {
-                    throw new SatUpstreamError("Estimado empleador:\nPor motivos de conectividad con el SAT (Sistema de Afiliación Transaccional), en este momento no es posible continuar con tu solicitud de afiliación a nuestra ARL.\nPor favor intenta nuevamente en unos momentos.");
+                    throw new SatUpstreamError(SAT_UNAVAILABLE_MESSAGE);
                 }
                 log.info("SAT transferable employer response: causal={}, empresaTrasladable={}, codigoARL={}, arlAfiliacion={}",
                         satResponse.getCausal(),
@@ -251,12 +262,11 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 if (!allowedByCausal) {
 
                     if (Constant.CODE_ARL.equals(employerArlCode)) {
-                        throw new SatError("Estimado empleador, hemos detectado que con el número de documento ingresado existe una afiliación con la ARL POSITIVA COMPAÑIA DE SEGUROS S.A. Puedes ingresar al portal transaccional con tu usuario y contraseña en Iniciar sesión");
+                        throw new SatError(SAT_AFFILIATED_TO_POSITIVA_MESSAGE);
                     }
 
-                     throw new SatError("Estimado empleador:\n\nHemos identificado que el número de documento ingresado ya se encuentra actualmente afiliado a la ARL " + employerArl + ".\n\nPor esta razón, no es posible continuar con la solicitud de afiliación a nuestra ARL.\nTe invitamos a gestionar tus novedades y solicitudes con la entidad en la que actualmente registras la afiliación.");
-            }
-
+                    throw new SatError(String.format(SAT_AFFILIATED_TO_OTHER_ARL_MESSAGE_TEMPLATE, employerArl));
+                }
             }
         } catch (SatError e) {
             log.warn("SAT business error (transferable employer): {}", e.getMessage(), e);
@@ -269,11 +279,12 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             // If SAT service is unreachable or returns an error, surface a controlled error
             log.error("Error calling SAT transferable employer service: {}", e.getMessage(), e);
 
-            throw new SatError(Optional.ofNullable(e.getMessage()).orElse("Estimado empleador:\nPor motivos de conectividad con el SAT (Sistema de Afiliación Transaccional), en este momento no es posible continuar con tu solicitud de afiliación a nuestra ARL.\nPor favor intenta nuevamente en unos momentos."));
+            throw new SatUpstreamError(SAT_UNAVAILABLE_MESSAGE);
         }
     }
 
     @Override
+    @Transactional
     public AffiliateMercantile stepOne(DataBasicCompanyDTO dataBasicCompanyDTO) {
 
         UserMain userRegister = iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(
@@ -326,7 +337,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             affiliateMercantile.setIdNumHorizontalProperty3ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty3());
             affiliateMercantile.setIdHorizontalProperty4ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdHorizontalProperty4());
             affiliateMercantile.setIdNumHorizontalProperty4ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty4());
-            affiliateMercantile.setDigitVerificationDV(dv);
+            affiliateMercantile.setDigitVerificationDV(Integer.parseInt(String.valueOf(dv)));
             affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
             affiliateMercantile.setArl(Constant.CODE_ARL);
             affiliateMercantile.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
@@ -357,6 +368,14 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             else if (dataBasicCompanyDTO.getZoneLocationEmployer().equalsIgnoreCase("URBANA"))
                 affiliateMercantile.setZoneLocationEmployer(Constant.URBAN_ZONE);
 
+            // Vincular el usuario preregistrado desde el inicio del flujo
+            affiliateMercantile.setIdUserPreRegister(userRegister.getId());
+
+            // Crear primero el registro base en affiliate para cumplir NOT NULL de id_affiliate
+            Affiliate preAffiliate = getAffiliate(affiliateMercantile);
+            Affiliate savedPreAffiliate = iAffiliateRepository.save(preAffiliate);
+            affiliateMercantile.setIdAffiliate(savedPreAffiliate.getIdAffiliate());
+
             affiliateMercantile = affiliateMercantileRepository.save(affiliateMercantile);
 
             return affiliateMercantile;
@@ -366,9 +385,8 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             throw e;
 
         } catch (Exception e) {
-
-            throw new AffiliationError("Error, datos incompletos!!");
-
+            log.error("Error en stepOne: {}", e.getMessage(), e);
+            throw new AffiliationError(e.getMessage() != null ? e.getMessage() : "Error, datos incompletos!!");
         }
 
     }
@@ -449,8 +467,8 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             affiliateMercantile.setIdHorizontalProperty4LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdHorizontalProperty4());
             affiliateMercantile.setIdNumHorizontalProperty4LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumHorizontalProperty4());
 
-           if(userMain.getPensionFundAdministrator() == null && userMain.getHealthPromotingEntity() == null)
-               iUserPreRegisterRepository.updateEPSandAFP(userMain.getId(), dataLegalRepresentativeDTO.getEps(), dataLegalRepresentativeDTO.getAfp());
+            if (userMain.getPensionFundAdministrator() == null && userMain.getHealthPromotingEntity() == null)
+                iUserPreRegisterRepository.updateEPSandAFP(userMain.getId(), dataLegalRepresentativeDTO.getEps(), dataLegalRepresentativeDTO.getAfp());
 
            affiliateMercantile =  affiliateMercantileRepository.save(affiliateMercantile);
 
@@ -504,8 +522,16 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
             affiliateMercantileRepository.save(affiliateMercantile);
 
-            Affiliate affiliate = getAffiliate(affiliateMercantile);
-            iAffiliateRepository.save(affiliate);
+            // Upsert de Affiliate: si se creó en stepOne, se actualiza; si no, se crea
+            Affiliate affiliateToSave = getAffiliate(affiliateMercantile);
+            if (affiliateMercantile.getIdAffiliate() != null) {
+                affiliateToSave.setIdAffiliate(affiliateMercantile.getIdAffiliate());
+            }
+            affiliateToSave.setFiledNumber(filedNumber);
+            Affiliate savedAffiliate = iAffiliateRepository.save(affiliateToSave);
+
+            affiliateMercantile.setIdAffiliate(savedAffiliate.getIdAffiliate());
+            affiliateMercantileRepository.save(affiliateMercantile);
 
 
             files.forEach(document -> {
@@ -513,13 +539,13 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 DocumentsDTO documentsDTO = new DocumentsDTO();
                 DataDocumentAffiliate dataDocumentAffiliate = new DataDocumentAffiliate();
                 DataDocumentAffiliate dataDocument;
-                String nameDocument = getNameDocument(listDocumentRequested, document, affiliate.getDocumentNumber());
+                String nameDocument = getNameDocument(listDocumentRequested, document, savedAffiliate.getDocumentNumber());
 
                 MultipartFile doc = castBase64ToMultipartfile(document.getFile(), nameDocument);
 
                 String idDocumentAlfresco = saveDocument(doc, idFolderAlfresco);
 
-                dataDocumentAffiliate.setIdAffiliate(affiliate.getIdAffiliate());
+                dataDocumentAffiliate.setIdAffiliate(savedAffiliate.getIdAffiliate());
                 dataDocumentAffiliate.setRevised(false);
                 dataDocumentAffiliate.setState(false);
                 dataDocumentAffiliate.setDateUpload(LocalDateTime.now());
@@ -876,6 +902,9 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
         if(interviewWebDTO.hasNotEmptyIdActivityEconomic()){
             saveActivityEconomic(interviewWebDTO.getIdActivityEconomic(),affiliateMercantile, null);
+            affiliateMercantile.getEconomicActivity().clear();
+            affiliateMercantile.getEconomicActivity().addAll(createAffiliateActivityEconomic(interviewWebDTO.getIdActivityEconomic(), affiliateMercantile));
+            affiliateMercantileRepository.save(affiliateMercantile);
         }
 
         if (interviewWebDTO.hasNullDataLegalRepresentativeDTO()) {
@@ -922,21 +951,21 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         } catch (AffiliationError a) {
             throw a;
         } catch (Exception e) {
-            //13 Indisponibilidad del ws
-            throw new AffiliationError("En este momento no es posible atender tu solicitud. Puedes intentar más tarde o comunicarte a nuestros canales de atención para, recibir ayuda de uno de nuestros profesionales");
-
+            log.error("Error consulting Confecamaras for NIT {}: {}", numberDocument, e.getMessage());
         }
-
     }
 
     private void fillInDataBasicCompany(RecordResponseDTO recordResponseDTO, DataBasicCompanyDTO dataBasicCompanyDTO) {
 
         AddressDTO addressDTO = new AddressDTO();
 
-        recordResponseDTO.getRecords().forEach(companyRecordDto -> {
+        recordResponseDTO.getRegistros().forEach(companyRecordDto -> {
 
-            Long numberEmployers = companyRecordDto.getEstablishments().stream().mapToLong(establishment ->
-                    Long.parseLong((establishment.getEmployees().isEmpty() ? "0" : establishment.getEmployees()))).sum();
+            Long numberEmployers = 0L;
+            if (companyRecordDto.getEstablishments() != null && !companyRecordDto.getEstablishments().isEmpty()) {
+                numberEmployers = companyRecordDto.getEstablishments().stream().mapToLong(establishment ->
+                        Long.parseLong((establishment.getEmployees() == null || establishment.getEmployees().isEmpty() ? "0" : establishment.getEmployees()))).sum();
+            }
 
             addressDTO.setAddress(companyRecordDto.getCommercialAddress());
 
@@ -947,29 +976,29 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             dataBasicCompanyDTO.setDepartment(findDepartmentByName(companyRecordDto.getCommercialDepartment()));
             dataBasicCompanyDTO.setCityMunicipality(findMunicipalityByName(companyRecordDto.getCommercialMunicipality()));
             dataBasicCompanyDTO.setPhoneOne(companyRecordDto.getCommercialPhone1());
-            dataBasicCompanyDTO.setEmail(companyRecordDto.getCommercialEmail());
+            dataBasicCompanyDTO.setEmail(companyRecordDto.getFiscalEmail());
             dataBasicCompanyDTO.setNumberWorkers(numberEmployers);
             dataBasicCompanyDTO.setAddressDTO(addressDTO);
 
 
-            if (companyRecordDto.getBonds() == null || companyRecordDto.getBonds().isEmpty()) {
-                throw new AffiliationError("No coincide la información del representante legal, actualiza tu Certificado de representación legal");
-            }
+            // if (companyRecordDto.getVinculos() == null || companyRecordDto.getVinculos().isEmpty()) {
+            //     throw new AffiliationError("No coincide la información del representante legal, actualiza tu Certificado de representación legal");
+            // }
 
-            String numberPersonResponsible = companyRecordDto.getBonds().stream()
-                    .filter(b -> b.getLinkType().contains("Principal"))
-                    .map(BondDTO::getIdentificationNumber)
+            String numberPersonResponsible = companyRecordDto.getVinculos().stream()
+                    .filter(b -> b.getTipo_vinculo().contains("Principal"))
+                    .map(BondDTO::getNumero_identificacion)
                     .findFirst()
                     .orElse(null);
 
             if (numberPersonResponsible == null)
-                numberPersonResponsible = companyRecordDto.getBonds().get(0).getIdentificationNumber();
+                numberPersonResponsible = companyRecordDto.getVinculos().get(0).getNumero_identificacion();
 
             dataBasicCompanyDTO.setNumberDocumentPersonResponsible(numberPersonResponsible);
             dataBasicCompanyDTO.setTypeDocumentPersonResponsible(
-                    (companyRecordDto.getBonds().get(0).getIdentificationClass().toLowerCase().contains("cedula de ciudadania") ?
+                    (companyRecordDto.getVinculos().get(0).getClase_identificacion().toLowerCase().contains("cedula de ciudadania") ?
                             "CC" :
-                            companyRecordDto.getBonds().get(0).getIdentificationClass())
+                            companyRecordDto.getVinculos().get(0).getClase_identificacion())
             );
         });
     }
@@ -1014,31 +1043,27 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
     private String createFolderAlfresco(String numberIdentification) {
 
-        List<Entries> entriesByUser = new ArrayList<>();
-        String idFolder = null;
-
         try {
 
-            List<Entries> entriesList = new ArrayList<>();
-            Optional<ConsultFiles> optionalFiles = alfrescoService.getIdDocumentsFolder(properties.getFolderIdMercantile());
+            Optional<String> existFolder = genericWebClient.folderExistsByName(properties.getFolderIdMercantile(), numberIdentification);
+            if(existFolder.isPresent()) {
 
-            if (optionalFiles.isPresent())
-                entriesList = optionalFiles.get().getList().getEntries();
+                AlfrescoResponseDTO alfrescoResponseDTO = genericWebClient.getChildrenNode(existFolder.get());
 
-            if (!entriesList.isEmpty())
-                entriesByUser = entriesList.stream().filter(entry -> entry.getEntry().getName().equals(numberIdentification)).toList();
+                List<EntryDTO> entries = new ArrayList<>();
+                EntryDTO entrySign = new EntryDTO();
+                if (alfrescoResponseDTO != null)
+                    entries = alfrescoResponseDTO.getList().getEntries();
 
-            Optional<Entries> optionalEntries = entriesByUser.stream().findFirst();
+                if (!entries.isEmpty())
+                    entrySign = entries.get(0);
 
-            if (optionalEntries.isPresent()) {
-                Entry entry = optionalEntries.get().getEntry();
-                idFolder = entry.getId();
-            } else {
-                idFolder = alfrescoService.createFolder(properties.getFolderIdMercantile(), numberIdentification).getData().getEntry().getId();
-
+                if (entrySign != null) {
+                    return entrySign.getEntry().getId();
+                }
             }
 
-            return idFolder;
+            return alfrescoService.createFolder(properties.getFolderIdMercantile(), numberIdentification).getData().getEntry().getId();
 
         } catch (Exception e) {
             throw new AffiliationError(e.getMessage());
@@ -1160,26 +1185,26 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         }
     }
 
-    private Long findDepartmentByName(String departmentName){
+    private Long findDepartmentByName(String departmentName) {
         Department department = departmentRepository.findByDepartmentName(departmentName.toUpperCase()).orElse(null);
 
-        if(department != null)
+        if (department != null)
             return department.getIdDepartment().longValue();
 
         return null;
     }
 
-    private Long findMunicipalityByName(String municipalityName){
+    private Long findMunicipalityByName(String municipalityName) {
         Municipality municipality = municipalityRepository.findByMunicipalityName(municipalityName.toUpperCase())
                 .orElse(null);
 
-        if(municipality != null)
+        if (municipality != null)
             return municipality.getIdMunicipality();
 
         return null;
     }
 
-    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Map<Long, Boolean> listActivityEconomic, AffiliateMercantile idAffiliateMercantile){
+    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Map<Long, Boolean> listActivityEconomic, AffiliateMercantile idAffiliateMercantile) {
 
         Map<Long, EconomicActivity> economicActivityMap = economicActivityList(listActivityEconomic.keySet().stream().toList())
                 .stream()
@@ -1190,17 +1215,17 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                 .stream()
                 .map(activity -> {
 
-                    EconomicActivity economicActivity =  economicActivityMap.get(activity.getKey());
+                    EconomicActivity economicActivity = economicActivityMap.get(activity.getKey());
 
-                    if(economicActivity == null)
+                    if (economicActivity == null)
                         throw new AffiliationError("No se encontro la actividad economica " + activity.getKey());
 
-                    AffiliateActivityEconomic affiliateActivityEconomic =  new AffiliateActivityEconomic();
+                    AffiliateActivityEconomic affiliateActivityEconomic = new AffiliateActivityEconomic();
                     affiliateActivityEconomic.setAffiliateMercantile(idAffiliateMercantile);
                     affiliateActivityEconomic.setIsPrimary(activity.getValue());
                     affiliateActivityEconomic.setActivityEconomic(economicActivity);
                     return affiliateActivityEconomic;
-                } )
+                })
                 .toList();
     }
 
@@ -1235,11 +1260,11 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
 
     private void searchUserInNationalRegistry(String identification, DataBasicCompanyDTO dataBasicCompanyDTO){
 
-        List<RegistryOfficeDTO> registryOfficeDTOS = registraduriaUnifiedService.searchUserInNationalRegistry(identification);
+        List<RegistryOfficeDTO> registries = registraduriaUnifiedService.searchUserInNationalRegistry(identification);
 
-        if(!registryOfficeDTOS.isEmpty()){
+        if(!registries.isEmpty()){
 
-            RegistryOfficeDTO registryOfficeDTO = registryOfficeDTOS.get(0);
+            RegistryOfficeDTO registryOfficeDTO = registries.get(0);
             String name = Stream.of(
                     registryOfficeDTO.getFirstName(),
                     registryOfficeDTO.getSecondName(),

@@ -1,8 +1,8 @@
 package com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail;
 
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.dto.employerreport.EmployerReportDTO;
-import com.gal.afiliaciones.infrastructure.dto.officialreport.OfficialReportDTO;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,8 +11,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.dto.employerreport.EmployerReportDTO;
+import com.gal.afiliaciones.infrastructure.dto.officialreport.OfficialReportDTO;
 
 @Repository
 public interface AffiliationDetailRepository extends JpaRepository<Affiliation, String>, JpaSpecificationExecutor<Affiliation> {
@@ -314,5 +315,44 @@ public interface AffiliationDetailRepository extends JpaRepository<Affiliation, 
     Optional<Affiliation> findFirstByIdentificationDocumentTypeAndIdentificationDocumentNumberOrderByFiledNumberDesc(String identificationDocumentType,
                            String identificationDocumentNumber);
 
+
     Optional<Affiliation> findByIdentificationDocumentNumber(String identificationDocumentNumber);
+
+    // New methods for EmployerEmployeeService
+    @Query("SELECT a FROM Affiliation a JOIN Affiliate af ON a.filedNumber = af.filedNumber WHERE af.nitCompany = :nitCompany")
+    List<Affiliation> findByCompanyNit(@Param("nitCompany") String nitCompany);
+    
+    @Query("SELECT a FROM Affiliation a WHERE a.identificationDocumentType = :documentType AND a.identificationDocumentNumber = :documentNumber")
+    List<Affiliation> findByDocumentTypeAndNumber(@Param("documentType") String documentType, @Param("documentNumber") String documentNumber);
+    
+    @Query("SELECT a FROM Affiliation a JOIN Affiliate af ON a.filedNumber = af.filedNumber WHERE " +
+           "(:idTipoDocEmp IS NULL OR af.documentType = :idTipoDocEmp) AND " +
+           "(:idEmpresa IS NULL OR af.nitCompany = :idEmpresa) AND " +
+           "(:idTipoDocPer IS NULL OR a.identificationDocumentType = :idTipoDocPer) AND " +
+           "(:idPersona IS NULL OR a.identificationDocumentNumber = :idPersona) AND " +
+           "(:razonSocial IS NULL OR LOWER(af.company) LIKE LOWER(CONCAT('%', :razonSocial, '%'))) AND " +
+           "(:estadoEmpresa IS NULL OR af.affiliationStatus = :estadoEmpresa) AND " +
+           "(:estadoPersona IS NULL OR af.affiliationStatus = :estadoPersona)")
+    List<Affiliation> findBySearchCriteria(@Param("idTipoDocEmp") String idTipoDocEmp,
+                                         @Param("idEmpresa") String idEmpresa,
+                                         @Param("idTipoDocPer") String idTipoDocPer,
+                                         @Param("idPersona") String idPersona,
+                                         @Param("razonSocial") String razonSocial,
+                                         @Param("estadoEmpresa") String estadoEmpresa,
+                                         @Param("estadoPersona") String estadoPersona);
+
+    // Specific query for the 4 parameters - first find affiliate, then independent
+    @Query("SELECT a FROM com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation a " +
+           "JOIN com.gal.afiliaciones.domain.model.affiliate.Affiliate af ON a.filedNumber = af.filedNumber " +
+           "WHERE af.documenTypeCompany = :tDocEmp AND " +
+           "af.nitCompany = :idEmp AND " +
+           "af.documentType = :tDocAfi AND " +
+           "af.documentNumber = :idAfi")
+    List<Affiliation> findByCompanyAndAffiliateDocument(@Param("tDocEmp") String tDocEmp,
+                                                       @Param("idEmp") String idEmp,
+                                                       @Param("tDocAfi") String tDocAfi,
+                                                       @Param("idAfi") String idAfi);
+
+    // Query to find independents by filed_number
+
 }

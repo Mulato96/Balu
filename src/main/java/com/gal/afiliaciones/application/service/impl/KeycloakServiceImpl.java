@@ -47,6 +47,12 @@ public class KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
+    public List<UserRepresentation> searchUserByUsernameComplete(String username) {
+        return Optional.ofNullable(keyCloakProvider.getRealmResource().users().searchByUsername(username, true))
+                .orElse(Collections.emptyList());
+    }
+
+    @Override
     public Map<String, Object> updateUser(String userId, String password) {
         try {
             UserRepresentation userRepresentation = new UserRepresentation();
@@ -421,9 +427,11 @@ public class KeycloakServiceImpl implements KeycloakService {
     public void updateEmailUser(UserPreRegisterDto currentUser, String newEmail) {
         try {
             UsersResource usersResource = keyCloakProvider.getUserResource();
-            UserRepresentation userRepresentationDeprecated = getUserRepresentation(currentUser);
+            UserRepresentation userKeycloak = searchUserByUsernameComplete(currentUser.getUserName())
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(Constant.USER_NOT_FOUND));
 
-            UserRepresentation userKeycloak = usersResource.searchByEmail(userRepresentationDeprecated.getEmail(),true ).stream().findFirst().get();
             userKeycloak.setEmail(newEmail);
             userKeycloak.setEmailVerified(true);
             userKeycloak.setEnabled(true);

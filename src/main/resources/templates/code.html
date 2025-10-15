@@ -1,0 +1,198 @@
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+    .maxWidth {
+      max-width: 523px;
+    }
+
+    .text {
+      color: #595566;
+      font-size: 14px;
+      line-height: 20px;
+      margin: 0;
+      margin-bottom: 12px;
+      margin-top: 12px;
+    }
+
+    .textLeft {
+      text-align: left;
+    }
+
+    .subTitle {
+      color: #595566;
+      font-weight: 700;
+      font-size: 16px;
+      line-height: 22px;
+    }
+
+    .codesInputsContainer {
+      display: inline-block;
+      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(3, 1, 76, 0.2);
+    }
+
+    .codesInputs {
+      display: inline;
+      color: rgba(3, 1, 76, 1);
+      font-weight: 700;
+      font-size: 20px;
+      line-height: 15px;
+      margin: 0;
+      width: 26px;
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+
+    @media (max-width: 920px) {
+      .container {
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin: 0 auto; font-family: 'Montserrat', Arial, Helvetica, sans-serif">
+  <!-- HEADER -->
+  <table border="0" style="height: 100vh;" bgcolor="#F9F9F9" width="100%" align="center" cellpadding="0"
+    cellspacing="0">
+    <tr>
+      <td>
+        <table border="0" cellpadding="0" cellspacing="0" class="container"
+          style="padding-left: 192px; padding-right: 192px;" align="center" style="max-width: 920px;">
+          <tr>
+            <td align="center">
+              <img style="padding-top: 112px;" src="/images/Logo.png" alt="Logo Arl">
+            </td>
+          </tr>
+
+
+          <!-- CONTENT -->
+
+          <tr>
+            <td align="center">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth"
+                      style="color: #DF7702; font-size: 24px; line-height: 28px; font-weight: 600; margin-bottom: 32px; margin-top: 44px;">
+                      Confirmar código
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin: 0;">{usuario}</p>
+                    <p class="maxWidth subTitle" style="margin: 0;">Cordial saludo</p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft" style="font-size: 16px !important;">A continuación, es necesario
+                      introducir el código
+                      que hemos enviado a
+                      través de este medio para
+                      seguir
+                      con el proceso de validación de tu identidad en nuestro portal de ARL.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="color: rgb(116, 116, 118, 0.5); font-weight: 700; font-size: 12px; line-height: 15px;"
+                      class="maxWidth">Código de validación</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <!-- Los códigos se insertan dinámicamente aquí -->
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit1}</p>
+                    </div>
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit2}</p>
+                    </div>
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit3}</p>
+                    </div>
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit4}</p>
+                    </div>
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit5}</p>
+                    </div>
+                    <div class="codesInputsContainer">
+                      <p class="codesInputs">{digit6}</p>
+                    </div>
+                  </td>
+
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin-top: 29px; margin-bottom: 0;">Recomendaciones:</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft">1. El código de seguridad tiene una vigencia de 5 minutos. Si
+                      transcurrido
+                      ese tiempo no ingresas
+                      el
+                      código, deberás solicitar uno nuevo.</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text textLeft">2. De llegar a modificar la información o cerrar el formulario de
+                      registro
+                      antes de que culmine
+                      el
+                      tiempo de vigencia, será necesario que solicites un nuevo código.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+
+          <tr>
+            <td align="center">
+              <table border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth subTitle" style="margin-bottom: 0; margin-top: 48px;">Cordialmente,</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p class="maxWidth text" style="color: rgba(89, 85, 102, 0.7);">Equipo Sistema ARL</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <p style="padding-bottom: 112px; margin: 0; color: rgb(89, 85, 102, 0.7); font-size: 10px; line-height: 12px;"
+                      class="maxWidth">Este es un mensaje automático, por favor absténgase de responder este correo.
+                      Para cualquier
+                      inquietud
+                      o información, no dude en solicitarla por cualquiera de nuestros canales disponibles.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+
+</html>

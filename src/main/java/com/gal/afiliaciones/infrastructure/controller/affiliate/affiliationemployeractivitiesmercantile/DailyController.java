@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/daily")
 @Tag(name="API daily", description = "Framework para las entrevistas")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class DailyController {
 
     private final DailyService dailyService;

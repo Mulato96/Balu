@@ -1,5 +1,11 @@
 package com.gal.afiliaciones.application.service;
 
+import java.io.IOException;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jetbrains.annotations.NotNull;
+
 import com.gal.afiliaciones.domain.model.SystemParam;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.infrastructure.dto.ExternalUserDTO;
@@ -11,12 +17,8 @@ import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.user.UserNameDTO;
 import com.gal.afiliaciones.infrastructure.dto.user.UserUpdateDTO;
-import jakarta.mail.MessagingException;
-import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.Optional;
+import jakarta.mail.MessagingException;
 
 public interface IUserRegisterService {
     ResponseUserDTO userPreRegister(UserPreRegisterDto userPreRegisterDto) throws MessagingException, IOException, IllegalAccessException;

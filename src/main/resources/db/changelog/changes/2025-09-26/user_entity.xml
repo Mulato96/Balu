@@ -1,0 +1,50 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/user_entity.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923729064-1">
+        <createTable tableName="user_entity">
+            <column name="id" type="VARCHAR(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="constraint_fb"/>
+            </column>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="email_constraint" type="VARCHAR(255)"/>
+            <column defaultValueBoolean="false" name="email_verified" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column defaultValueBoolean="false" name="enabled" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="federation_link" type="VARCHAR(255)"/>
+            <column name="first_name" type="VARCHAR(255)"/>
+            <column name="last_name" type="VARCHAR(255)"/>
+            <column name="realm_id" type="VARCHAR(255)"/>
+            <column name="username" type="VARCHAR(255)"/>
+            <column name="created_timestamp" type="BIGINT"/>
+            <column name="service_account_client_link" type="VARCHAR(255)"/>
+            <column defaultValueNumeric="0" name="not_before" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923729064-2">
+        <createIndex indexName="idx_user_email" tableName="user_entity" using="btree">
+            <column name="email"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923729064-3">
+        <createIndex indexName="idx_user_service_account" tableName="user_entity" using="btree">
+            <column name="realm_id"/>
+            <column name="service_account_client_link"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923729064-4">
+        <createIndex indexName="idx_user_entity_username" tableName="user_entity" using="btree">
+            <column name="username"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923729064-5">
+        <addUniqueConstraint columnNames="realm_id, email_constraint" constraintName="uk_dykn684sl8up1crfei6eckhd7" tableName="user_entity"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923729064-6">
+        <addUniqueConstraint columnNames="realm_id, username" constraintName="uk_ru8tt6t700s9v50bu18ws5ha6" tableName="user_entity"/>
+    </changeSet>
+</databaseChangeLog>

@@ -37,6 +37,14 @@ public class AffiliationDependentSpecification {
         return (root, query, criteriaBuilder) -> root.get(FILED_NUMBER).in(filedNumbers);
     }
 
+
+    public static Specification<AffiliationDependent> hasIdHeadquarter(Long idHeadquarter){
+        return (root, query, criteriaBuilder) -> {
+            Predicate idHeadquarterPredicate = criteriaBuilder.equal(root.get("idHeadquarter"), idHeadquarter);
+            return criteriaBuilder.and(idHeadquarterPredicate);
+        };
+    }
+
     public static Specification<AffiliationDependent> findByEconomicActivityAndEmployer(List<String> filedNumbers, String economicActivity){
         return (root, query, criteriaBuilder) -> {
             Predicate filedNumberPredicate = root.get(FILED_NUMBER).in(filedNumbers);
@@ -45,6 +53,7 @@ public class AffiliationDependentSpecification {
             return criteriaBuilder.and(filedNumberPredicate, economicActivityPredicate);
         };
     }
+
 
     public static Specification<AffiliationDependent> findDependentsByIdAffiliateEmployer(Long idAffiliateEmployer){
         return (root, query, criteriaBuilder) -> {

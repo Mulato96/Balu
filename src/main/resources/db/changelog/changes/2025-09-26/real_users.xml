@@ -1,0 +1,28 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/real_users.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758925037110-1">
+        <createView fullDefinition="false" viewName="real_users">SELECT k.id AS keycloak_user_id,
+    k.username AS keycloak_username,
+    k.email AS keycloak_email,
+    u.id AS usuario_id,
+    u.nombre_usuario,
+    tu.tipo AS tipo_usuario,
+    ur.id AS usuario_rol_id,
+    ur.rol_id AS usuario_rol_rol_id,
+    r.id AS rol_id,
+    r.codigo,
+    r.nombre_rol,
+    r.estado,
+    r.fecha_creacion,
+    r.id_funcionario,
+    r.nombre_funcionario,
+    r.fecha_actualizacion,
+    r.keycloak_id,
+    r.espacio_trabajo
+   FROM ((((usuario u
+     JOIN user_entity k ON (((k.username)::text = (u.nombre_usuario)::text)))
+     LEFT JOIN tipo_usuario tu ON ((tu.id = u.tipo)))
+     JOIN usuario_rol ur ON ((ur.usuario_id = u.id)))
+     JOIN role r ON ((r.id = ur.rol_id)));</createView>
+    </changeSet>
+</databaseChangeLog>

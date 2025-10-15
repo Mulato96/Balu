@@ -33,10 +33,12 @@ import com.gal.afiliaciones.domain.model.ContractExtension;
 import com.gal.afiliaciones.domain.model.Policy;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.client.generic.independentcontract.UpdateIndependentContractDateClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.ICardRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.CertificateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.contractextension.ContractExtensionRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
 import com.gal.afiliaciones.infrastructure.dto.contractextension.ContractExtensionInfoDTO;
@@ -65,6 +67,11 @@ class ContractExtensionServiceImplTest {
     @Mock
     private GeneralNoveltyServiceImpl generalNoveltyServiceImpl;
 
+    @Mock
+    private UpdateIndependentContractDateClient updateIndependentContractDateClient;
+
+    @Mock
+    private AffiliateMercantileRepository affiliateMercantileRepository;
 
     @InjectMocks
     private ContractExtensionServiceImpl service;
@@ -81,7 +88,9 @@ class ContractExtensionServiceImplTest {
                 cardAffiliatedService,
                 certificateService,
                 contractExtensionRepository,
-                generalNoveltyServiceImpl
+                generalNoveltyServiceImpl,
+                updateIndependentContractDateClient,
+                affiliateMercantileRepository
         );
     }
 

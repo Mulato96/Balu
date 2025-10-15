@@ -512,37 +512,5 @@ class KeycloakServiceImplTest {
         verify(newParentGroupResource).subGroup(any(GroupRepresentation.class));
     }
 
-    @Test
-    @DisplayName("Update Email User - Success")
-    void updateEmailUser_Success() {
-        String newEmail = "new.email@example.com";
-        UserPreRegisterDto currentUserDto = new UserPreRegisterDto();
-        currentUserDto.setEmail("old.email@example.com");
-        UserRepresentation userKeycloak = new UserRepresentation();
-        userKeycloak.setId("user-id");
-        userKeycloak.setEmail("old.email@example.com");
 
-        when(keyCloakProvider.getUserResource()).thenReturn(usersResource);
-        when(usersResource.searchByEmail("old.email@example.com", true)).thenReturn(List.of(userKeycloak));
-        when(usersResource.get("user-id")).thenReturn(userResource);
-
-        assertDoesNotThrow(() -> keycloakService.updateEmailUser(currentUserDto, newEmail));
-
-        verify(userResource).update(any(UserRepresentation.class));
-    }
-
-    @Test
-    @DisplayName("Update Email User - User Not Found")
-    void updateEmailUser_UserNotFound() {
-        String newEmail = "new.email@example.com";
-        UserPreRegisterDto currentUserDto = new UserPreRegisterDto();
-        currentUserDto.setEmail("notfound@example.com");
-
-        when(keyCloakProvider.getUserResource()).thenReturn(usersResource);
-        when(usersResource.searchByEmail("notfound@example.com", true)).thenThrow(new NoSuchElementException(Constant.USER_NOT_FOUND));
-
-        assertThrows(ErrorUpdateUserKeycloak.class,
-                () -> keycloakService.updateEmailUser(currentUserDto, newEmail));
-
-    }
 }

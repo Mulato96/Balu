@@ -1,0 +1,15 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/economic_sector.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923565364-1">
+        <createTable tableName="economic_sector">
+            <column autoIncrement="true" name="id" startWith="34" type="INTEGER">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="economic_sector_pkey"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="code" type="VARCHAR(2)"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923565364-2">
+        <addUniqueConstraint columnNames="code" constraintName="u_code_economic_sector" tableName="economic_sector"/>
+    </changeSet>
+</databaseChangeLog>

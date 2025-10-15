@@ -8,5 +8,5 @@ import java.util.List;
 
 public interface BulkLoadingHelp {
 
-    void affiliateData(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent, String type, Affiliate affiliate);
+    void affiliateData(List<DataExcelDependentDTO> dataDependent, List<DataExcelIndependentDTO> dataIndependent, String type, Affiliate affiliate, Long idUser);
 }

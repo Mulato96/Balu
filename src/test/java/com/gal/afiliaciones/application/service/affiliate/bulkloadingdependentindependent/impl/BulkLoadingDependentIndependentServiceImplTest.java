@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.domain.model.*;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,8 +44,6 @@ import com.gal.afiliaciones.application.service.workingday.WorkingDayService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
-import com.gal.afiliaciones.domain.model.EconomicActivity;
-import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
@@ -63,9 +62,21 @@ import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEcon
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelIndependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationDependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
+import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ResponseServiceDTO;
 import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
 @ExtendWith(MockitoExtension.class)
 class BulkLoadingDependentIndependentServiceImplTest {
 
@@ -345,6 +356,158 @@ class BulkLoadingDependentIndependentServiceImplTest {
         }
     }
 
+
+
+
+    // @Test
+    // @DisplayName("validGeneral - Should process independent file with no errors and send email")
+    // void validGeneral_shouldProcessIndependentFileWithNoErrorsAndSendEmail() throws IOException {
+    //     MultipartFile file = mock(MultipartFile.class);
+    //     Affiliate affiliate = new Affiliate();
+    //     affiliate.setFiledNumber("F123");
+    //     affiliate.setNitCompany("987654321");
+    //     affiliate.setDocumentNumber("123456789");
+    //     affiliate.setDocumentType("CC");
+
+    //     // Setup mocks for file
+    //     when(file.getOriginalFilename()).thenReturn("test.xlsx");
+
+        // Setup mocks for dependencies
+        // when(genericWebClient.getSmlmvByYear(anyInt())).thenReturn(salaryDTO);
+        // when(excelProcessingServiceData.converterExcelToMap(any(), any()))
+        //         .thenReturn(List.of(new LinkedHashMap<>()));
+        // when(excelProcessingServiceData.converterMapToClass(any(), eq(DataExcelIndependentDTO.class)))
+        //         .thenReturn(List.of(new DataExcelIndependentDTO() {
+        //             {
+        //                 setIdRecord(1);
+        //                 setCoverageDate(LocalDate.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING)));
+        //                 setIdentificationDocumentType("CC");
+        //                 setIdentificationDocumentNumber("1234567");
+        //                 setFirstName("John");
+        //                 setSurname("Doe");
+        //                 setDateOfBirth("01/01/1990");
+        //                 setGender("M");
+        //                 setHealthPromotingEntity("EPS1");
+        //                 setPensionFundAdministrator("AFP1");
+        //                 setIdDepartment("1");
+        //                 setIdCity("CITY1");
+        //                 setPhone1("3001234567");
+        //                 setEmail("test@example.com");
+        //                 setIdOccupation("OCC1");
+        //                 setContractType("Type");
+        //                 setTransportSupply("true");
+        //                 setStartDate(LocalDate.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING)));
+        //                 setEndDate(LocalDate.now().format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING)));
+        //                 setContractTotalValue("1000");
+        //                 setCodeActivityContract("ContractCode");
+        //                 setCodeActivityEmployer("4AB");
+        //                 setEmployerDocumentTypeCodeContractor("CC");
+        //                 setEmployerDocumentNumber("123");
+        //             }
+        //         }));
+        // when(excelProcessingServiceData.findDataDuplicate(any(), any(), any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.createDocumentExcelErrors(any())).thenReturn(new ExportDocumentsDTO());
+        // when(excelProcessingServiceData.findByEps(any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.findByAfp(any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.findByPensionOrEpsOrArl(any())).thenReturn(List.of());
+        // when(municipalityRepository.findAll()).thenReturn(List.of());
+        // when(iEconomicActivityRepository.findAll()).thenReturn(List.of());
+
+
+    //     when(recordLoadBulkService.save(any())).thenReturn(new RecordLoadBulk() {
+    //         {
+    //             setId(1L);
+    //         }
+    //     });
+    //     when(dependentRepository.findByIdentificationDocumentNumberIn(any())).thenReturn(List.of());
+
+    //     // Call private method via reflection
+    //     try {
+    //         Method method = BulkLoadingDependentIndependentServiceImpl.class.getDeclaredMethod(
+    //                 "validGeneral", MultipartFile.class, String.class, Long.class, Affiliate.class);
+    //         method.setAccessible(true);
+    //         ResponseServiceDTO response = (ResponseServiceDTO) method.invoke(service, file,
+    //                 Constant.TYPE_AFFILLATE_INDEPENDENT, 1L, affiliate);
+
+    //         assertEquals("1", response.getTotalRecord());
+    //         assertNotNull(response.getDocument());
+    //     } catch (Exception e) {
+    //         fail("Exception thrown: " + e.getMessage());
+    //     }
+    // }
+
+    // @Test
+    // @DisplayName("validGeneral - Should process dependent file with errors and create error document")
+    // void validGeneral_shouldProcessDependentFileWithErrorsAndCreateErrorDocument() throws IOException {
+    //     MultipartFile file = mock(MultipartFile.class);
+    //     Affiliate affiliate = new Affiliate();
+    //     affiliate.setFiledNumber("F123");
+    //     affiliate.setNitCompany("987654321");
+    //     affiliate.setDocumentNumber("123456789");
+    //     affiliate.setDocumentType("CC");
+
+    //     // Setup mocks for file
+    //     when(file.getOriginalFilename()).thenReturn("test.xlsx");
+
+        // Setup mocks for dependencies
+        // when(genericWebClient.getSmlmvByYear(anyInt())).thenReturn(salaryDTO);
+        // when(excelProcessingServiceData.converterExcelToMap(any(), any()))
+        //         .thenReturn(List.of(new LinkedHashMap<>()));
+        // when(excelProcessingServiceData.converterMapToClass(any(), eq(DataExcelDependentDTO.class)))
+        //         .thenReturn(List.of(new DataExcelDependentDTO() {
+        //             {
+        //                 setIdRecord(1);
+        //                 setCoverageDate("01/01/2099"); // Invalid
+        //                 setIdentificationDocumentType("XX"); // Invalid
+        //                 setIdentificationDocumentNumber("1"); // Invalid
+        //                 setFirstName("John123"); // Invalid
+        //                 setSurname("Doe$"); // Invalid
+        //                 setDateOfBirth("01/01/2020"); // Invalid age for CC
+        //                 setGender("X"); // Invalid
+        //                 setHealthPromotingEntity("EPS_INVALID"); // Invalid
+        //                 setPensionFundAdministrator("AFP_INVALID"); // Invalid
+        //                 setIdDepartment("INVALID"); // Invalid
+        //                 setIdCity("CITY_INVALID"); // Invalid
+        //                 setPhone1("12345"); // Invalid
+        //                 setIdWorkModality("5"); // Invalid
+        //                 setSalary("100"); // Invalid
+        //                 setIdOccupation(null); // Invalid (isRequested)
+        //                 setEconomicActivityCode("INVALID"); // Invalid
+        //                 setEmployerDocumentTypeCodeContractor("XX"); // Invalid
+        //             }
+        //         }));
+        // when(excelProcessingServiceData.findDataDuplicate(any(), any(), any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.createDocumentExcelErrors(any())).thenReturn(new ExportDocumentsDTO());
+        // when(excelProcessingServiceData.findByEps(any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.findByAfp(any())).thenReturn(List.of());
+        // when(excelProcessingServiceData.findByPensionOrEpsOrArl(any())).thenReturn(List.of());
+        // when(municipalityRepository.findAll()).thenReturn(List.of());
+        // when(iEconomicActivityRepository.findAll()).thenReturn(List.of());
+        // when(recordLoadBulkService.save(any())).thenReturn(new RecordLoadBulk() {
+        //     {
+        //         setId(1L);
+        //     }
+        // });
+        // when(dependentRepository.findByIdentificationDocumentNumberIn(any())).thenReturn(List.of());
+
+    //     // Call private method via reflection
+    //     try {
+    //         Method method = BulkLoadingDependentIndependentServiceImpl.class.getDeclaredMethod(
+    //                 "validGeneral", MultipartFile.class, String.class, Long.class, Affiliate.class);
+    //         method.setAccessible(true);
+    //         ResponseServiceDTO response = (ResponseServiceDTO) method.invoke(service, file,
+    //                 Constant.TYPE_AFFILLATE_DEPENDENT, 1L, affiliate);
+
+    //         assertEquals("1", response.getTotalRecord());
+    //         assertEquals("1", response.getRecordError());
+    //         assertEquals("0", response.getRecordSuccessful());
+    //         assertNotNull(response.getDocument());
+    //     } catch (Exception e) {
+    //         fail("Exception thrown: " + e.getMessage());
+    //     }
+    // }
+
+
     @Test
     @DisplayName("validActivityEconomicDependent - With AffiliateMercantile, economic activity found - Should return true")
     void validActivityEconomicDependent_withAffiliateMercantile_economicActivityFound_shouldReturnTrue()
@@ -585,5 +748,333 @@ class BulkLoadingDependentIndependentServiceImplTest {
         assertTrue(exception.getCause() instanceof AffiliationError);
     }
 
+//    @Test
+//    @DisplayName("assignPolicy - Should create policy for dependent when employer and policy exist")
+//    void assignPolicy_shouldCreatePolicyForDependent_whenEmployerAndPolicyExist() throws Exception {
+//        // Arrange
+//        Long idAffiliate = 1L;
+//        String nitEmployer = "900123456";
+//        String identificationTypeDependent = "CC";
+//        String identificationNumberDependent = "10203040";
+//        Long idPolicyType = Constant.ID_EMPLOYER_POLICY;
+//        String nameCompany = "Test Company";
+//
+//        Affiliate employerAffiliate = new Affiliate();
+//        employerAffiliate.setIdAffiliate(2L);
+//
+//        Policy employerPolicy = new Policy();
+//        employerPolicy.setIdPolicyType(idPolicyType);
+//        employerPolicy.setCode("POL123");
+//
+//        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(employerAffiliate));
+//        when(policyRepository.findByIdAffiliate(employerAffiliate.getIdAffiliate()))
+//                .thenReturn(List.of(employerPolicy));
+//
+//        // Act
+//        Method method = BulkLoadingDependentIndependentServiceImpl.class.getDeclaredMethod("assignPolicy", Long.class,
+//                String.class, String.class, String.class, Long.class, String.class);
+//        method.setAccessible(true);
+//        method.invoke(service, idAffiliate, nitEmployer, identificationTypeDependent, identificationNumberDependent,
+//                idPolicyType, nameCompany);
+//
+//        // Assert
+//        verify(policyService, times(1)).createPolicyDependent(
+//                eq(identificationTypeDependent),
+//                eq(identificationNumberDependent),
+//                any(LocalDate.class),
+//                eq(idAffiliate),
+//                eq(employerPolicy.getCode()),
+//                eq(nameCompany));
+//    }
+@Test
+void consultAffiliation_shouldThrowWhenAffiliateNotFound() {
+    when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+    assertThrows(AffiliationError.class, () -> service.consultAffiliation("CC", "999"));
+}
 
+    @Test
+    void validDateBirtDate_variants() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validDateBirtDate", String.class, String.class);
+        m.setAccessible(true);
+
+        String fmt = "yyyy/MM/dd";
+        String adult = LocalDate.now().minusYears(20).format(DateTimeFormatter.ofPattern(fmt));
+        String minor = LocalDate.now().minusYears(16).format(DateTimeFormatter.ofPattern(fmt));
+        String okOther = LocalDate.now().minusYears(5).format(DateTimeFormatter.ofPattern(fmt));
+        String tooOld = "1899/12/31";
+
+        assertTrue((Boolean)m.invoke(service, adult, "CC"));
+        assertFalse((Boolean)m.invoke(service, minor, "CC"));
+        assertTrue((Boolean)m.invoke(service, okOther, "TI"));   // distinto de CC
+        assertFalse((Boolean)m.invoke(service, tooOld, "TI"));   // antes de 1900
+    }
+
+    @Test
+    void formatDate_validAndInvalid() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("formatDate", String.class);
+        m.setAccessible(true);
+        assertNotNull(m.invoke(service, "2025/01/15"));
+        assertNull(m.invoke(service, "15/01/2025"));
+    }
+
+    @Test
+    void basicValidators_shouldCoverNameEmailPhone() throws Exception {
+        Method vName = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validName", String.class, int.class);
+        Method vMail = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validEmail", String.class);
+        Method vPhone = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validNumberPhone", String.class);
+        vName.setAccessible(true);
+        vMail.setAccessible(true);
+        vPhone.setAccessible(true);
+
+        assertTrue((Boolean)vName.invoke(service, "José Pérez", 50));
+        assertFalse((Boolean)vName.invoke(service, "John123", 50));
+
+        assertTrue((Boolean)vMail.invoke(service, "user@mail.com"));
+        assertFalse((Boolean)vMail.invoke(service, "bad@@mail"));
+
+        assertTrue((Boolean)vPhone.invoke(service, "300"));
+        assertFalse((Boolean)vPhone.invoke(service, "999"));
+    }
+
+    @Test
+    void validDateStartCoverage_window() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validDateStartCoverage", String.class);
+        m.setAccessible(true);
+        String fmt = "yyyy/MM/dd";
+        String ok = LocalDate.now().plusDays(5).format(DateTimeFormatter.ofPattern(fmt));
+        String before = LocalDate.now().minusDays(1).format(DateTimeFormatter.ofPattern(fmt));
+        String after = LocalDate.now().plusMonths(2).format(DateTimeFormatter.ofPattern(fmt));
+
+        assertTrue((Boolean)m.invoke(service, ok));
+        assertFalse((Boolean)m.invoke(service, before));
+        assertFalse((Boolean)m.invoke(service, after));
+    }
+
+    @Test
+    void validSalary_bounds() throws Exception {
+        when(genericWebClient.getSmlmvByYear(any(Integer.class))).thenReturn(salaryDTO);
+        Method salary = BulkLoadingDependentIndependentServiceImpl.class.getDeclaredMethod("salary");
+        salary.setAccessible(true);
+        SalaryDTO smlv = (SalaryDTO) salary.invoke(service);
+
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validSalary", String.class, com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO.class);
+        m.setAccessible(true);
+
+        long min = smlv.getValue();
+        long ok = min + 1;
+        long maxFail = smlv.getValue() * 25;
+
+        assertTrue((Boolean)m.invoke(service, String.valueOf(min), smlv));
+        assertTrue((Boolean)m.invoke(service, String.valueOf(ok), smlv));
+        assertFalse((Boolean)m.invoke(service, String.valueOf(min - 1), smlv));
+        assertFalse((Boolean)m.invoke(service, String.valueOf(maxFail), smlv));
+        assertFalse((Boolean)m.invoke(service, "no-num", smlv));
+    }
+
+    @Test
+    void validAge_usesMinMax() throws Exception {
+        when(properties.getMinimumAge()).thenReturn(18);
+        when(properties.getMaximumAge()).thenReturn(60);
+
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validAge", String.class);
+        m.setAccessible(true);
+        String fmt = "yyyy/MM/dd";
+        String ok = LocalDate.now().minusYears(30).format(DateTimeFormatter.ofPattern(fmt));
+        String tooYoung = LocalDate.now().minusYears(16).format(DateTimeFormatter.ofPattern(fmt));
+        String tooOld = LocalDate.now().minusYears(70).format(DateTimeFormatter.ofPattern(fmt));
+        String bad = "01-01-2000";
+
+        assertTrue((Boolean)m.invoke(service, ok));
+        assertFalse((Boolean)m.invoke(service, tooYoung));
+        assertFalse((Boolean)m.invoke(service, tooOld));
+        assertFalse((Boolean)m.invoke(service, bad));
+    }
+
+    @Test
+    void departmentAndMunicipality_checks() throws Exception {
+        Method vDep = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validDepartment", String.class);
+        Method vMun = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validMunicipality", String.class);
+        vDep.setAccessible(true);
+        vMun.setAccessible(true);
+
+        Department dep = new Department(); dep.setIdDepartment(Integer.valueOf(1));
+        when(departmentRepository.findById(1L)).thenReturn(Optional.of(dep));
+        when(departmentRepository.findById(2L)).thenReturn(Optional.empty());
+
+        Municipality m1 = new Municipality(); m1.setIdMunicipality(100L);
+        Municipality m2 = new Municipality(); m2.setIdMunicipality(200L);
+        service.allMunicipality = List.of(m1, m2);
+
+        assertTrue((Boolean)vDep.invoke(service, "1"));
+        assertFalse((Boolean)vDep.invoke(service, "2"));
+        assertTrue((Boolean)vMun.invoke(service, "100"));
+        assertFalse((Boolean)vMun.invoke(service, "999"));
+        // entrada inválida
+        assertFalse((Boolean)vDep.invoke(service, "abc"));
+        assertFalse((Boolean)vMun.invoke(service, "abc"));
+    }
+
+    @Test
+    void validActivityEconomicIndependent_codeOnly() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validActivityEconomicIndependent", String.class);
+        m.setAccessible(true);
+
+        EconomicActivity e4 = new EconomicActivity(); e4.setId(1L); e4.setClassRisk("4");
+        e4.setCodeCIIU("01"); e4.setAdditionalCode("0");
+        EconomicActivity e3 = new EconomicActivity(); e3.setId(2L); e3.setClassRisk("3");
+        e3.setCodeCIIU("02"); e3.setAdditionalCode("0");
+        service.allActivities = List.of(e4, e3);
+
+        String code4 = e4.getClassRisk()+e4.getCodeCIIU()+e4.getAdditionalCode(); // "4010"
+        String code3 = e3.getClassRisk()+e3.getCodeCIIU()+e3.getAdditionalCode();
+
+        assertTrue((Boolean)m.invoke(service, code4));
+        assertFalse((Boolean)m.invoke(service, code3));
+        assertFalse((Boolean)m.invoke(service, "NOEXISTE"));
+    }
+
+    @Test
+    void validActivityEconomicIndependent_withAffiliateMercantile_returnsHighestRiskCode() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validActivityEconomicIndependent", String.class, Object.class);
+        m.setAccessible(true);
+
+        EconomicActivity aLow = new EconomicActivity(); aLow.setId(10L); aLow.setClassRisk("3"); aLow.setCodeCIIU("10"); aLow.setAdditionalCode("0"); aLow.setEconomicActivityCode("A-LOW");
+        EconomicActivity aHigh = new EconomicActivity(); aHigh.setId(20L); aHigh.setClassRisk("5"); aHigh.setCodeCIIU("20"); aHigh.setAdditionalCode("0"); aHigh.setEconomicActivityCode("A-HIGH");
+
+        service.allActivities = List.of(aLow, aHigh);
+
+        AffiliateActivityEconomic ae = new AffiliateActivityEconomic(); ae.setActivityEconomic(aLow);
+        AffiliateMercantile merc = new AffiliateMercantile(); merc.setEconomicActivity(List.of(ae));
+
+        String inputCode = aHigh.getClassRisk()+aHigh.getCodeCIIU()+aHigh.getAdditionalCode();
+        String result = (String)m.invoke(service, inputCode, merc);
+        assertEquals("A-HIGH", result);
+    }
+
+    @Test
+    void findActivityEconomic_foundAndNotFound() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("findActivityEconomic", String.class);
+        m.setAccessible(true);
+
+        EconomicActivity act = new EconomicActivity();
+        act.setId(99L); act.setClassRisk("4"); act.setCodeCIIU("77"); act.setAdditionalCode("1");
+        service.allActivities = List.of(act);
+
+        String code = act.getClassRisk()+act.getCodeCIIU()+act.getAdditionalCode();
+        Object dto = m.invoke(service, code);
+        assertNotNull(dto);
+
+        assertNull(m.invoke(service, "NOPE"));
+    }
+
+    @Test
+    void findAllById_picksHighestRisk() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("findAllById", List.class);
+        m.setAccessible(true);
+
+        EconomicActivity a1 = new EconomicActivity(); a1.setId(1L); a1.setClassRisk("2"); a1.setEconomicActivityCode("R2");
+        EconomicActivity a2 = new EconomicActivity(); a2.setId(2L); a2.setClassRisk("5"); a2.setEconomicActivityCode("R5");
+        service.allActivities = List.of(a1, a2);
+
+        String code = (String) m.invoke(service, List.of(1L, 2L));
+        assertEquals("R5", code);
+    }
+
+    @Test
+    void findAffiliation_prefersMercantileElseDomesticElseNull() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("findAffiliation", String.class);
+        m.setAccessible(true);
+
+        AffiliateMercantile am = new AffiliateMercantile();
+        when(affiliateMercantileRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(am));
+        assertSame(am, m.invoke(service, "F123"));
+
+        when(affiliateMercantileRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.empty());
+        Affiliation af = new Affiliation();
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(af));
+        assertSame(af, m.invoke(service, "F123"));
+
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.empty());
+        assertNull(m.invoke(service, "F123"));
+    }
+
+    @Test
+    void validLetter_returnsLetterIfAnyFalse() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validLetter", List.class, String.class);
+        m.setAccessible(true);
+        assertNull(m.invoke(service, List.of(true, true), "X"));
+        assertEquals("X", m.invoke(service, List.of(true, false, true), "X"));
+    }
+
+    @Test
+    void validDocumentEmployer_appendsErrorOnMismatch() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validDocumentEmployer",
+                        com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO.class,
+                        com.gal.afiliaciones.domain.model.affiliate.Affiliate.class,
+                        StringBuilder.class);
+        m.setAccessible(true);
+
+        DataExcelDependentDTO dto = new DataExcelDependentDTO();
+        dto.setIdentificationDocumentNumberContractor("X");
+        dto.setEmployerDocumentTypeCodeContractor("TI");
+
+        Affiliate aff = new Affiliate();
+        aff.setDocumentNumber("Y");
+        aff.setDocumentType("CC");
+
+        StringBuilder sb = new StringBuilder();
+        m.invoke(service, dto, aff, sb);
+        assertTrue(sb.toString().contains("Número de documento empleador"));
+    }
+
+    @Test
+    void validAddress_appendsErrorOnInvalidChars() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validAddress", String.class, StringBuilder.class);
+        m.setAccessible(true);
+
+        StringBuilder ok = new StringBuilder();
+        m.invoke(service, "CALLE#10-20", ok);
+        assertEquals("", ok.toString());
+
+        StringBuilder bad = new StringBuilder();
+        m.invoke(service, "CALLE 10-20*", bad);
+        assertTrue(bad.toString().contains("Dirección"));
+    }
+
+    @Test
+    void validDatesCoverageContract_writesMessageOnIssues() throws Exception {
+        Method m = BulkLoadingDependentIndependentServiceImpl.class
+                .getDeclaredMethod("validDatesCoverageContract", String.class, String.class, StringBuilder.class);
+        m.setAccessible(true);
+
+        StringBuilder bad1 = new StringBuilder();
+        m.invoke(service, LocalDate.now().toString(), LocalDate.now().plusDays(1).toString(), bad1);
+        assertTrue(bad1.toString().contains("cobertura"));
+
+        StringBuilder bad2 = new StringBuilder();
+        m.invoke(service, "NO/FECHA", "NO/FECHA", bad2);
+        assertTrue(bad2.toString().contains("cobertura"));
+    }
 }

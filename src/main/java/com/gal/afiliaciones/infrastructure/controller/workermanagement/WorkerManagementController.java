@@ -34,7 +34,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/workersmanagement")
 @Tag(name = "Workers-Management-Controller", description = "GESTIÓN DE TRABAJADORES")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class WorkerManagementController {
 

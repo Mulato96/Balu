@@ -1,0 +1,89 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/usuario_backup_2025_09_22_19_43_31.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923736602-1">
+        <createTable tableName="usuario_backup_2025_09_22_19_43_31">
+            <column name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="usuario_backup_2025_09_22_19_43_31_pkey"/>
+            </column>
+            <column name="tipo_documento" type="VARCHAR(255)"/>
+            <column name="numero_identificacion" type="VARCHAR(255)"/>
+            <column name="dv" type="INTEGER"/>
+            <column name="primer_nombre" type="VARCHAR(255)"/>
+            <column name="segundo_nombre" type="VARCHAR(255)"/>
+            <column name="primer_apellido" type="VARCHAR(255)"/>
+            <column name="segundo_apellido" type="VARCHAR(255)"/>
+            <column name="razon_social" type="VARCHAR(255)"/>
+            <column name="tipo" type="BIGINT"/>
+            <column name="estado" type="BIGINT"/>
+            <column name="email" type="VARCHAR(255)"/>
+            <column name="telefono" type="VARCHAR(255)"/>
+            <column name="pin" type="VARCHAR(255)"/>
+            <column name="fecha_registro" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="telefono_2" type="VARCHAR(255)"/>
+            <column name="perfil" type="VARCHAR(255)"/>
+            <column name="accept_notification" type="BOOLEAN"/>
+            <column name="address" type="VARCHAR(255)"/>
+            <column name="date_birth" type="date"/>
+            <column name="authorization_id" type="BIGINT"/>
+            <column name="idUsuario" type="VARCHAR(255)"/>
+            <column name="Area" type="BIGINT"/>
+            <column name="nivel_autorizacion" type="VARCHAR(255)"/>
+            <column name="fecha_edicion" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="fecha_eliminacion" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="nombre_usuario" type="VARCHAR"/>
+            <column name="age" type="INTEGER"/>
+            <column name="generate_attempts" type="INTEGER"/>
+            <column name="generate_time" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="id_cardinal_point2" type="BIGINT"/>
+            <column name="id_cardinal_point_main_street" type="BIGINT"/>
+            <column name="id_city" type="BIGINT"/>
+            <column name="id_department" type="BIGINT"/>
+            <column name="id_horizontal_property1" type="BIGINT"/>
+            <column name="id_horizontal_property2" type="BIGINT"/>
+            <column name="id_horizontal_property3" type="BIGINT"/>
+            <column name="id_horizontal_property4" type="BIGINT"/>
+            <column name="id_letter1_main_street" type="BIGINT"/>
+            <column name="id_letter2_main_street" type="BIGINT"/>
+            <column name="id_letter_second_street" type="BIGINT"/>
+            <column name="id_main_street" type="BIGINT"/>
+            <column name="id_number1_second_street" type="BIGINT"/>
+            <column name="id_number2_second_street" type="BIGINT"/>
+            <column name="id_number_horizontal_property1" type="BIGINT"/>
+            <column name="id_number_horizontal_property2" type="BIGINT"/>
+            <column name="id_number_horizontal_property3" type="BIGINT"/>
+            <column name="id_number_horizontal_property4" type="BIGINT"/>
+            <column name="id_number_main_street" type="BIGINT"/>
+            <column name="bis" type="BOOLEAN"/>
+            <column name="last_affiliation_attempt" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="lockout_time" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="login_attempts" type="INTEGER"/>
+            <column name="nationality" type="BIGINT"/>
+            <column name="other_sex" type="VARCHAR(255)"/>
+            <column name="sex" type="VARCHAR(255)"/>
+            <column name="status_active" type="BOOLEAN"/>
+            <column name="status_inactive_since" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="status_pre_register" type="BOOLEAN"/>
+            <column name="status_start_affiliate" type="BOOLEAN"/>
+            <column name="valid_attempts" type="INTEGER"/>
+            <column name="valid_time" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="last_update" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="id_oficina" type="BIGINT"/>
+            <column name="id_cargo" type="BIGINT"/>
+            <column name="eps" type="BIGINT"/>
+            <column name="afp" type="BIGINT"/>
+            <column name="last_password_update" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="password_expired" type="BOOLEAN"/>
+            <column name="inactive_by_pending_affiliation" type="BOOLEAN"/>
+            <column name="is_temporal_password" type="BOOLEAN"/>
+            <column name="created_at_temporal_password" type="date"/>
+            <column name="id_operador_informacion" type="BIGINT"/>
+            <column name="id_operador_financiero" type="BIGINT"/>
+            <column name="is_in_arrears_status" type="BOOLEAN"/>
+            <column name="is_import" type="BOOLEAN"/>
+            <column name="assigned_password" type="BOOLEAN"/>
+            <column name="employer_update_time" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="audit" type="JSONB"/>
+            <column name="code_otp" type="VARCHAR(100)"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

@@ -117,7 +117,7 @@ public class SendEmailImpl implements SendEmails {
     private final HealthPromotingEntityRepository healthRepository;
     private final FundPensionRepository pensionRepository;
     private final AlfrescoService alfrescoService;
-
+    private final GenericWebClient genericWebClient;
 
     private static final String NUMBER_DOCUMENT = "numberDocument";
     private static final String FORMAT_DATE_DDMMYYYY = "dd/MM/yyyy";
@@ -298,7 +298,7 @@ public class SendEmailImpl implements SendEmails {
             data.put("businessName", templateSendEmailsDTO.getBusinessName());
             data.put(COMPANY_MOTTO_LABEL, Constant.COMPANY_MOTTO);
             data.put(LINK_LABEL, properties.getLinkLogin());
-            data.put(EMAIL_LABEL, Constant.EMAIL_ARL);
+            data.put(EMAIL_LABEL, arlInformation.getEmail());
 
             // Generar Certificado afiliación
             FindAffiliateReqDTO requestCertificate = new FindAffiliateReqDTO();
@@ -492,14 +492,14 @@ public class SendEmailImpl implements SendEmails {
                 log.warn("Base64 string is null or empty for file: {}. Skipping file conversion.", fileName);
                 return null; // Retornar null en lugar de lanzar excepción
             }
-            
+
             // Log para depuración (solo los primeros 50 caracteres para evitar logs muy largos)
             String preview = base64String.length() > 50 ? base64String.substring(0, 50) + "..." : base64String;
             log.debug("Converting Base64 to MultipartFile for file: {}, preview: {}", fileName, preview);
-            
+
             // Decodificar el string base64 a un arreglo de bytes
             return new Base64ToMultipartFile(base64String, fileName);
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Error converting Base64 to MultipartFile for file {}: {}", fileName, e.getMessage());
             throw new RuntimeException("Failed to convert Base64 string to file: " + fileName, e);
@@ -863,10 +863,10 @@ public class SendEmailImpl implements SendEmails {
     private String findNodeIdSignature(String identificationNumber){
         String idFolder = null;
 
-        Optional<String> existFolder = webClient.folderExistsByName(properties.getNodeFirmas(), identificationNumber);
+        Optional<String> existFolder = genericWebClient.folderExistsByName(properties.getNodeFirmas(), identificationNumber);
         if(existFolder.isPresent()) {
 
-            AlfrescoResponseDTO alfrescoResponseDTO = webClient.getChildrenNode(existFolder.get());
+            AlfrescoResponseDTO alfrescoResponseDTO = genericWebClient.getChildrenNode(existFolder.get());
 
             List<EntryDTO> entries = new ArrayList<>();
             EntryDTO entrySign = new EntryDTO();
@@ -897,12 +897,14 @@ public class SendEmailImpl implements SendEmails {
 
         List<MultipartFile> attachments = new ArrayList<>();
 
+        try{
         // Generar certificado afiliacion
-        FindAffiliateReqDTO requestCertificate = generateRequestCertificateDependent(affiliation, idAffiliate, idBondingType);
-        String base64certificate = certificateService.createAndGenerateCertificate(requestCertificate);
-        MultipartFile multipartFileCertificate = convertStringToMultipartfile(base64certificate, CERTIFICATE_LABEL+affiliation.getIdentificationDocumentNumber()+".pdf");
-        if (multipartFileCertificate != null) {
+            FindAffiliateReqDTO requestCertificate = generateRequestCertificateDependent(affiliation, idAffiliate, idBondingType);
+            String base64certificate = certificateService.createAndGenerateCertificate(requestCertificate);
+            MultipartFile multipartFileCertificate = convertStringToMultipartfile(base64certificate, CERTIFICATE_LABEL+affiliation.getIdentificationDocumentNumber()+".pdf");
             attachments.add(multipartFileCertificate);
+        }catch(Exception ex){
+            log.error("Generate certificate error");
         }
 
         sendEmailWithAttachment(data, Constant.TEMPLANTE_EMAIL_WELCOME, dataEmployerDTO.getEmailEmployer(), attachments);
@@ -1153,7 +1155,7 @@ public class SendEmailImpl implements SendEmails {
         data.put("payrollNumber", dataEmail.getPayrollNumber());
         data.put(FILED_NUMBER_LABEL, dataEmail.getFiledNumber());
 
-        sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_APPLY, dataEmail.getEmailTo());
+       // sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_APPLY, dataEmail.getEmailTo());
     }
 
     @Override
@@ -1173,12 +1175,12 @@ public class SendEmailImpl implements SendEmails {
         data.put(FILED_NUMBER_LABEL, dataEmail.getFiledNumber());
         data.put("customerServiceUrl", properties.getCustomerServiceUrl());
 
-        sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_NOT_APPLY, dataEmail.getEmailTo());
+       // sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_NOT_APPLY, dataEmail.getEmailTo());
     }
 
     @Override
     public void emailNotRetirementPILA(Map<String, Object> data, String email) {
-        sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_RETIREMENT_NOT_APPLY,email);
+     //   sendEmail(data, Constant.TEMPLATE_EMAIL_PILA_RETIREMENT_NOT_APPLY,email);
     }
 
     @Override

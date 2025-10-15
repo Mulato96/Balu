@@ -16,7 +16,6 @@ import java.util.Map;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/notifications")
-@CrossOrigin(origins = "*")
 public class NotificationsController {
 
     private final FiledWebSocketService filedWebSocketService;

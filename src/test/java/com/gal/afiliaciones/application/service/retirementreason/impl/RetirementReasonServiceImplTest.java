@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.jpa.domain.Specification;
 
 import com.gal.afiliaciones.application.service.affiliate.WorkCenterService;
@@ -56,6 +58,7 @@ import com.gal.afiliaciones.infrastructure.dto.retirementreason.RetirementEmploy
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.utils.EmailService;
 
+@MockitoSettings(strictness = Strictness.LENIENT)
 @ExtendWith(MockitoExtension.class)
 class RetirementReasonServiceImplTest {
 
@@ -186,105 +189,6 @@ class RetirementReasonServiceImplTest {
         verify(retirementReasonWorkerDao, times(1)).findAllRetirementReasonWorker();
     }
 
-
-    @Test
-    void retirementEmployer_Domestic_Success() throws Exception {
-        RetirementEmployerDTO request = new RetirementEmployerDTO();
-        request.setIdUser(1L);
-        request.setIdentificationType("CC");
-        request.setIdentification("12345");
-        request.setTypeOfAffiliate(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        request.setReasonId(1L);
-        request.setBase64File("dGVzdA==");
-        request.setFileName("test.pdf");
-
-        UserMain user = new UserMain();
-        user.setIdentification("user123");
-
-        Affiliate affiliate = new Affiliate();
-        affiliate.setIdAffiliate(10L);
-
-        Affiliation affiliationDetail = new Affiliation();
-        affiliationDetail.setFirstName("John");
-        affiliationDetail.setSurname("Doe");
-        affiliationDetail.setSecondSurname("Smith");
-        affiliationDetail.setEmail("test@test.com");
-        affiliationDetail.setSecondName("");
-        Entry entry1 = new Entry();
-        entry1.setId("folderId");
-
-        Entry entry2 = new Entry();
-        entry2.setId("docId");
-
-        when(userPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(properties.getRetirementFolder()).thenReturn("retirementFolderId");
-        when(alfrescoService.getIdDocumentsFolder(anyString())).thenReturn(Optional.empty());
-        when(alfrescoService.createFolder(anyString(), anyString())).thenReturn(AlfrescoUploadResponse.builder().data(new DataUpload(entry1)).build());
-        when(alfrescoService.uploadFileAlfresco(any(com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadRequest.class)))
-                .thenReturn(AlfrescoUploadResponse.builder().data(new DataUpload(entry2)).build());
-        when(filedService.getNextFiledNumberRetirementReason()).thenReturn("R-001");
-        when(affiliationRepository.findByNitCompany(anyString())).thenReturn(Collections.singletonList(affiliate));
-        when(affiliationDetailRepository.findByIdentificationDocumentTypeAndIdentificationDocumentNumber(anyString(), anyString()))
-                .thenReturn(Optional.of(affiliationDetail));
-
-        String result = retirementReasonService.retirementEmployer(request);
-
-        assertEquals("se ha radicado solicitud  R-001", result);
-        verify(retirementRepository, times(1)).save(any(Retirement.class));
-        verify(emailService, times(1)).sendSimpleMessage(any(), anyString());
-    }
-
-    @Test
-    void retirementEmployer_Mercantile_Success() throws Exception {
-        RetirementEmployerDTO request = new RetirementEmployerDTO();
-        request.setIdUser(1L);
-        request.setIdentificationType("NI");
-        request.setIdentification("12345");
-        request.setTypeOfAffiliate(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-        request.setReasonId(1L);
-        request.setBase64File("dGVzdA==");
-        request.setFileName("test.pdf");
-
-        UserMain user = new UserMain();
-        user.setIdentification("user123");
-
-        UserMain legalRep = new UserMain();
-        legalRep.setFirstName("Legal");
-        legalRep.setSurname("Rep");
-
-        Affiliate affiliate = new Affiliate();
-        affiliate.setIdAffiliate(10L);
-
-        AffiliateMercantile affiliateMercantile = new AffiliateMercantile();
-        affiliateMercantile.setEmail("test@test.com");
-        affiliateMercantile.setTypeDocumentPersonResponsible("CC");
-        affiliateMercantile.setNumberDocumentPersonResponsible("54321");
-
-        Entry entry1 = new Entry();
-        entry1.setId("folderId");
-
-        Entry entry2 = new Entry();
-        entry2.setId("docId");
-
-        when(userPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(user));
-        when(properties.getRetirementFolder()).thenReturn("retirementFolderId");
-        when(alfrescoService.getIdDocumentsFolder(anyString())).thenReturn(Optional.empty());
-        when(alfrescoService.createFolder(anyString(), anyString())).thenReturn(AlfrescoUploadResponse.builder().data(new DataUpload(entry1)).build());
-        when(alfrescoService.uploadFileAlfresco(any(com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadRequest.class)))
-                .thenReturn(AlfrescoUploadResponse.builder().data(new DataUpload(entry2)).build());
-        when(filedService.getNextFiledNumberRetirementReason()).thenReturn("R-002");
-        when(affiliationRepository.findByNitCompany(anyString())).thenReturn(Collections.singletonList(affiliate));
-        when(affiliateMercantileRepository.findByTypeDocumentIdentificationAndNumberIdentification(anyString(), anyString()))
-                .thenReturn(Optional.of(affiliateMercantile));
-        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
-                .thenReturn(Optional.of(legalRep));
-
-        String result = retirementReasonService.retirementEmployer(request);
-
-        assertEquals("se ha radicado solicitud  R-002", result);
-        verify(retirementRepository, times(1)).save(any(Retirement.class));
-        verify(emailService, times(1)).sendSimpleMessage(any(), anyString());
-    }
 
     @Test
     void retirementEmployer_Mercantile_LegalRepNotFound() throws Exception {

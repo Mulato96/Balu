@@ -3,6 +3,7 @@ package com.gal.afiliaciones.application.service.impl;
 import com.gal.afiliaciones.application.service.ConsultCertificateByUserService;
 import com.gal.afiliaciones.application.service.OtpService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.validationpreregister.ErrorNumberAttemptsExceeded;
 import com.gal.afiliaciones.config.ex.validationpreregister.ErrorValidateCode;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
@@ -19,6 +20,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.UserAffiliateDTO;
 import com.gal.afiliaciones.infrastructure.dto.certificate.DataCertificateDTO;
+import com.gal.afiliaciones.infrastructure.dto.certificate.RequestCertificateBaluDTO;
+import com.gal.afiliaciones.infrastructure.dto.certificate.ResponseCertificateBaluDTO;
 import com.gal.afiliaciones.infrastructure.dto.certificate.UserNotAffiliatedDTO;
 import com.gal.afiliaciones.infrastructure.dto.certificate.ValidCodeCertificateDTO;
 import com.gal.afiliaciones.infrastructure.dto.otp.OTPRequestDependentDTO;
@@ -198,6 +201,23 @@ public class ConsultCertificateByUserServiceImpl implements ConsultCertificateBy
                                 validCodeCertificateDTO.getIdentification()))
                 .stream().findFirst()
                 .orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_IN_DATA_BASE));
+    }
+
+    @Override
+    public List<ResponseCertificateBaluDTO> generatecertificatebalu(RequestCertificateBaluDTO request){
+        List<Affiliate> affiliateList = findAffiliatesByUser(request.getIdentification(), request.getIdentificationType());
+
+        if(affiliateList.isEmpty())
+            throw new AffiliateNotFound("The user is not affiliated");
+
+        List<ResponseCertificateBaluDTO> listResponseGrillaCardsDTO = new ArrayList<>();
+        affiliateList.forEach(affiliate -> {
+            ResponseCertificateBaluDTO userAffiliateDTO = new ResponseCertificateBaluDTO();
+            BeanUtils.copyProperties(affiliate, userAffiliateDTO);
+            listResponseGrillaCardsDTO.add(userAffiliateDTO);
+        });
+
+        return listResponseGrillaCardsDTO;
     }
 
 }

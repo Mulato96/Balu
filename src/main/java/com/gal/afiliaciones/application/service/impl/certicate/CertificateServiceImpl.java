@@ -117,8 +117,8 @@ public class CertificateServiceImpl implements CertificateService {
     private static final String FORMAT_DATE_TEXT = "yyyy-MM-dd";
     private static final String STUDENT = "Estudiante Decreto 055 de 2015";
 
-    private static final DateTimeFormatter shortLatinFormatter = DateTimeFormatter.ofPattern(Constant.DATE_FORMAT_SHORT_LATIN);
 
+    private static final DateTimeFormatter shortLatinFormatter = DateTimeFormatter.ofPattern(Constant.DATE_FORMAT_SHORT_LATIN);
 
     public String createAndGenerateCertificate(FindAffiliateReqDTO findAffiliateReqDTO) {
 
@@ -135,6 +135,7 @@ public class CertificateServiceImpl implements CertificateService {
             return createMembershipCertificate(affiliate.get());
         }
         
+
         Certificate savedCertificate = createCertificate(affiliate.orElse(null), addressedTo);
 
         return generateReportCertificate(savedCertificate.getNumberDocument(), savedCertificate.getValidatorCode());
@@ -317,6 +318,12 @@ public class CertificateServiceImpl implements CertificateService {
                     .orElseThrow(() -> new UserNotFoundInDataBase("No se encontro carnet"));
             Affiliate affiliate = affiliateRepository.findByFiledNumber(identification)
                     .orElseThrow(() -> new AffiliateNotFoundException("No se encontro afiliacion"));
+            
+            // Validate filed_number is not null before querying affiliation details
+            if (affiliate.getFiledNumber() == null) {
+                throw new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND);
+            }
+            
             if(!affiliate.getAffiliationType().equalsIgnoreCase("Trabajador Dependiente")) {
                 affiliation = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber())
                         .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
@@ -621,9 +628,18 @@ public class CertificateServiceImpl implements CertificateService {
                         .findFirst()
                         .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
             } else {
-                idActivityEconomic = economicActivityRepository
+                if(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES.equals(affiliate.getAffiliationSubType())) {
+                    idActivityEconomic = affiliation.getEconomicActivity()
+                        .stream()
+                        .filter(AffiliateActivityEconomic::getIsPrimary)
+                        .map(economic -> economic.getActivityEconomic().getId())
+                        .findFirst()
+                        .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
+                } else {
+                    idActivityEconomic = economicActivityRepository
                         .findFirstByEconomicActivityCode(affiliation.getCodeMainEconomicActivity())
                         .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND)).getId();
+                }
             }
             certificate.setNameActivityEconomic(nameActivityEconomic(idActivityEconomic));
             certificate.setCodeActivityEconomicPrimary(findEconomicActivityById(idActivityEconomic));
@@ -729,9 +745,7 @@ public class CertificateServiceImpl implements CertificateService {
     private Certificate saveMercantileCertificate(Certificate certificate, Affiliate affiliate,
                                                                       AffiliateMercantile affiliation) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(FORMAT_DATE_TEXT);
         LocalDate today = LocalDate.now();
-        LocalDate tomorrow = today.plusDays(1);
 
         UserMain userMain = findByIdUserMain(affiliation.getIdUserPreRegister());
         Integer dependentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_DEPENDENT);
@@ -751,13 +765,13 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setDocumentTypeContrator(affiliation.getTypeDocumentIdentification());
         certificate.setNitContrator(affiliate.getNitCompany());
         certificate.setRetirementDate(validateRetimentDate(String.valueOf(affiliate.getRetirementDate())));
-        certificate.setCoverageDate(LocalDate.parse(tomorrow.format(formatter)));
+        certificate.setCoverageDate(affiliate.getCoverageStartDate() != null ? affiliate.getCoverageStartDate() : affiliate.getAffiliationDate().toLocalDate().plusDays(1));
         certificate.setStatus(affiliate.getAffiliationStatus());
         certificate.setValidatorCode(generateValidationCode(affiliate.getDocumentNumber(), affiliate.getDocumentType()));
         certificate.setExpeditionDate(formatDate(today));
         certificate.setInitContractDate(LocalDate.from(affiliate.getAffiliationDate()));
         certificate.setCity(Constant.CITY_ARL);
-        certificate.setMembershipDate(LocalDate.parse(today.format(formatter)));
+        certificate.setMembershipDate(affiliate.getAffiliationDate().toLocalDate());
         certificate.setRisk(getRiskActivityEconomicPrimary(idActivityEconomic));
         certificate.setNameActivityEconomic(nameActivityEconomic(idActivityEconomic));
         certificate.setCodeActivityEconomicPrimary(findEconomicActivityById(idActivityEconomic));
@@ -775,17 +789,29 @@ public class CertificateServiceImpl implements CertificateService {
     private Certificate saveDependentCertificate(Certificate certificate, Affiliate affiliate,
                                                   AffiliationDependent affiliation) {
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(FORMAT_DATE_TEXT);
         LocalDate today = LocalDate.now();
-
         AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findFirstByNumberIdentification(affiliate.getNitCompany())
-                                                    .orElseThrow(() -> new AffiliationError("No se encontro afiliacion mercantil del empleador"));
-        Long idActivityEconomic = affiliateMercantile.getEconomicActivity()
+                                                    .orElse(null);
+        Long idActivityEconomic;
+        if(Objects.nonNull(affiliateMercantile)) {
+            idActivityEconomic = affiliateMercantile.getEconomicActivity()
                 .stream()
                 .filter(AffiliateActivityEconomic::getIsPrimary)
                 .map(economic -> economic.getActivityEconomic().getId())
                 .findFirst()
                 .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
+        } else {
+            Affiliation affiliationEmployer = affiliationRepository.findByIdAffiliate(affiliation.getIdAffiliateEmployer())
+                                              .orElseThrow(() -> new AffiliationError("No se encontro afiliacion mercantil del empleador"));
+            idActivityEconomic = affiliationEmployer.getEconomicActivity()
+                .stream()
+                .filter(AffiliateActivityEconomic::getIsPrimary)
+                .map(economic -> economic.getActivityEconomic().getId())
+                .findFirst()
+                .orElseThrow(() -> new AffiliationError(Constant.ECONOMIC_ACTIVITY_NOT_FOUND));
+        }
+        
+
 
         certificate.setCompany(affiliate.getCompany());
         certificate.setDocumentTypeContrator(findDocumentTypeEmployer(affiliate.getNitCompany()));
@@ -821,6 +847,12 @@ public class CertificateServiceImpl implements CertificateService {
         List<Affiliate> affiliateEmployer = affiliateRepository.findAll(spc);
         if(!affiliateEmployer.isEmpty()){
             Affiliate affiliate = affiliateEmployer.get(0);
+            
+            // Validate filed_number is not null before querying affiliation details
+            if (affiliate.getFiledNumber() == null) {
+                return Constant.NI;
+            }
+            
             String affiliationType = affiliate.getAffiliationType();
             if(affiliationType.equalsIgnoreCase(Constant.TYPE_AFFILLATE_EMPLOYER)){
                 Optional<AffiliateMercantile> mercantile = affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber());

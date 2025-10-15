@@ -1,6 +1,7 @@
 package com.gal.afiliaciones.infrastructure.dto.sat;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ public class TransferableEmployerRequest {
     @JsonProperty("NumeroDocumentoEmpleador")
     private String numeroDocumentoEmpleador;
     @JsonProperty("ConsecutivoNITEmpleador")
+    @JsonAlias("numeroDocumentoEmpleador")
     private String consecutivoNITEmpleador;
 }
 

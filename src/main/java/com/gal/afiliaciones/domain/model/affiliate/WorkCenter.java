@@ -46,9 +46,26 @@ public class WorkCenter {
     @ManyToOne
     @JoinColumn(name = "id_main_office", nullable = false)
     private MainOffice mainOffice;
-    @Column(name = "id_affiliate")
-    private Long idAffiliate;
+
     @Column(name = "is_enable")
     private Boolean isEnable;
+
+    @Column(name = "document_type")
+    private String documentType;
+
+    @Column(name = "document_number")
+    private String documentNumber;
+
+    @Column(name = "fecha_registro")
+    private java.time.LocalDateTime fechaRegistro;
+
+    @Column(name = "id_affiliate")
+    private Long idAffiliate;
+
+    @Column(name = "document_type_company")
+    private String documentTypeCompany;
+
+    @Column(name = "document_number_company")
+    private String documentNumberCompany;
 
 }

@@ -48,6 +48,9 @@ public class MainOffice {
     @Column(name = "id_affiliate")
     private Long idAffiliate;
 
+    @Column(name = "id_sede_positiva")
+    private Long idSedePositiva;
+
     @Column(name = "type_document_responsible_headquarters")
     private String typeDocumentResponsibleHeadquarters;
     @Column(name = "number_document_responsible_headquarters")

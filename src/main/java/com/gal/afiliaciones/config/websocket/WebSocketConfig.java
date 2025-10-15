@@ -24,8 +24,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/websocket")
                 .addInterceptors(webSocketAuthInterceptor)
-                .setAllowedOrigins("*");
-
+                .setAllowedOrigins(
+                    "http://localhost:3000",
+                    "http://localhost:4200",
+                    "https://operacionesarl.positiva.gov.co",
+                    "https://gal-back.linktic.com"
+                );
     }
 }
 

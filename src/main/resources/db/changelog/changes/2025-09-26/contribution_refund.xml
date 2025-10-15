@@ -1,0 +1,40 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/contribution_refund.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923514149-1">
+        <createTable tableName="contribution_refund">
+            <column autoIncrement="true" name="id" type="INTEGER">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="contribution_refund_pkey"/>
+            </column>
+            <column name="request_type" type="VARCHAR(255)"/>
+            <column name="user_id" type="BIGINT"/>
+            <column name="collection_id" type="BIGINT"/>
+            <column name="number_payroll" type="VARCHAR(255)"/>
+            <column name="validity" type="VARCHAR(255)"/>
+            <column name="causal" type="VARCHAR(255)"/>
+            <column name="banking_entity" type="VARCHAR(255)"/>
+            <column name="account_type" type="VARCHAR(255)"/>
+            <column name="account_number" type="VARCHAR(255)"/>
+            <column name="account_holder_id_type" type="VARCHAR(255)"/>
+            <column name="account_holder_id_number" type="VARCHAR(255)"/>
+            <column name="account_holder" type="VARCHAR(255)"/>
+            <column name="arl_transfer_nit" type="VARCHAR(255)"/>
+            <column name="arl_transfer_name" type="VARCHAR(255)"/>
+            <column name="ibc_or_rate" type="VARCHAR(255)"/>
+            <column name="ibc_value" type="VARCHAR(255)"/>
+            <column name="rate_value" type="VARCHAR(255)"/>
+            <column name="status" type="VARCHAR(255)"/>
+            <column name="folder_id" type="VARCHAR(255)"/>
+            <column defaultValueComputed="CURRENT_TIMESTAMP" name="created_date" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="status_refund" type="VARCHAR(20)"/>
+            <column name="count_days" type="INTEGER"/>
+            <column name="observation" type="VARCHAR(250)"/>
+            <column name="approved_value" type="VARCHAR(20)"/>
+            <column name="estimated_value" type="INTEGER"/>
+            <column name="update_refund_date" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="updated_user_id" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923514149-2">
+        <addForeignKeyConstraint baseColumnNames="updated_user_id" baseTableName="contribution_refund" constraintName="contribution_refund_updated_user_id_fkey" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="usuario" validate="true"/>
+    </changeSet>
+</databaseChangeLog>

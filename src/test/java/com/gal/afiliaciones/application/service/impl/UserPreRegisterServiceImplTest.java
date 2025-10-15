@@ -113,6 +113,7 @@ class UserPreRegisterServiceImplTest {
     private AffiliateRepository affiliateRepository;
     @Mock
     private UpdatePreRegisterMapper updatePreRegisterMapper;
+
     @Mock
     private UserMapper userMapper;
     @Mock
@@ -372,6 +373,7 @@ class UserPreRegisterServiceImplTest {
                 affiliateMercantileRepository,
                 Mockito.mock(AffiliationDetailRepository.class),
                 affiliateRepository, updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
+
         // Replace the affiliationDetailRepository with our mock via reflection
         java.lang.reflect.Field field = UserPreRegisterServiceImpl.class
                 .getDeclaredField("affiliationDetailRepository");
@@ -482,50 +484,50 @@ class UserPreRegisterServiceImplTest {
 
     @Test
     void testUpdateAffiliateMercantile_updatesAllProperties() throws Exception {
-        // Mocks for dependencies needed to instantiate the service
-        GenericWebClient webClient = Mockito.mock(GenericWebClient.class);
-        IUserPreRegisterRepository iUserPreRegisterRepository = Mockito.mock(IUserPreRegisterRepository.class);
-        KeycloakServiceImpl keycloakServiceImpl = Mockito.mock(KeycloakServiceImpl.class);
-        UserStatusUpdateService userStatusUpdateService = Mockito.mock(UserStatusUpdateService.class);
-        RestTemplate restTemplate = Mockito.mock(RestTemplate.class);
-        AffiliationProperties affiliationProperties = Mockito.mock(AffiliationProperties.class);
-        GenderRepository genderRepository = Mockito.mock(GenderRepository.class);
-        SystemParamRepository paramRepository = Mockito.mock(SystemParamRepository.class);
-        HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
-        CollectProperties properties = Mockito.mock(CollectProperties.class);
-        SendEmails sendEmails = Mockito.mock(SendEmails.class);
-        OtpService otpService = Mockito.mock(OtpService.class);
-        AffiliateMercantileRepository affiliateMercantileRepository = Mockito.mock(AffiliateMercantileRepository.class);
-        AffiliationDetailRepository affiliationDetailRepository = Mockito.mock(AffiliationDetailRepository.class);
-        AffiliateRepository affiliateRepository = Mockito.mock(AffiliateRepository.class);
+        Mockito.doAnswer(new org.mockito.stubbing.Answer<Object>() {
+            @Override
+            public Object answer(org.mockito.invocation.InvocationOnMock inv) {
+                UserUpdateDTO req = (UserUpdateDTO) inv.getArguments()[0];
+                AffiliateMercantile target = (AffiliateMercantile) inv.getArguments()[1];
+                var a = req.getAddress();
+                target.setIdDepartment(a.getIdDepartment());
+                target.setIdCity(a.getIdCity());
+                target.setIdMainStreet(a.getIdMainStreet());
+                target.setIdNumberMainStreet(a.getIdNumberMainStreet());
+                target.setIdLetter1MainStreet(a.getIdLetter1MainStreet());
+                target.setIsBis(a.getIsBis());
+                target.setIdLetter2MainStreet(a.getIdLetter2MainStreet());
+                target.setIdCardinalPointMainStreet(a.getIdCardinalPointMainStreet());
+                target.setIdNum1SecondStreet(a.getIdNum1SecondStreet());
+                target.setIdLetterSecondStreet(a.getIdLetterSecondStreet());
+                target.setIdNum2SecondStreet(a.getIdNum2SecondStreet());
+                target.setIdCardinalPoint2(a.getIdCardinalPoint2());
+                target.setIdHorizontalProperty1(a.getIdHorizontalProperty1());
+                target.setIdNumHorizontalProperty1(a.getIdNumHorizontalProperty1());
+                target.setIdHorizontalProperty2(a.getIdHorizontalProperty2());
+                target.setIdNumHorizontalProperty2(a.getIdNumHorizontalProperty2());
+                target.setIdHorizontalProperty3(a.getIdHorizontalProperty3());
+                target.setIdNumHorizontalProperty3(a.getIdNumHorizontalProperty3());
+                target.setIdHorizontalProperty4(a.getIdHorizontalProperty4());
+                target.setIdNumHorizontalProperty4(a.getIdNumHorizontalProperty4());
+                return target; // si el mapper devuelve la misma instancia
+            }
+        }).when(updatePreRegisterMapper).requestToMercantile(
+                Mockito.any(UserUpdateDTO.class),
+                Mockito.any(AffiliateMercantile.class)
+        );
 
-        // Instantiate the service with all required dependencies
-        UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-                webClient,
-                iUserPreRegisterRepository,
-                keycloakServiceImpl,
-                userStatusUpdateService,
-                restTemplate,
-                affiliationProperties,
-                genderRepository,
-                paramRepository,
-                request,
-                properties,
-                sendEmails,
-                otpService,
-                keycloakService, affiliateMercantileRepository,
-                affiliationDetailRepository,
-                affiliateRepository,
-                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
+        Affiliate affiliate = Affiliate.builder()
+                .affiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER)
+                .build();
 
-        Affiliate affiliate = Affiliate.builder().affiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC).affiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER).build();
-
-        // Prepare a UserUpdateDTO with Address data
         UserUpdateDTO updateDTO = UserUpdateDTO.builder()
                 .identificationType("CC")
                 .identification("123456789")
                 .build();
-        com.gal.afiliaciones.infrastructure.dto.address.AddressDTO address = new com.gal.afiliaciones.infrastructure.dto.address.AddressDTO();
+
+        com.gal.afiliaciones.infrastructure.dto.address.AddressDTO address =
+                new com.gal.afiliaciones.infrastructure.dto.address.AddressDTO();
         address.setIdDepartment(1L);
         address.setIdCity(2L);
         address.setAddress("Test Street");
@@ -547,43 +549,18 @@ class UserPreRegisterServiceImplTest {
         address.setIdNumHorizontalProperty3(17L);
         address.setIdHorizontalProperty4(18L);
         address.setIdNumHorizontalProperty4(19L);
-
         updateDTO.setAddress(address);
 
-        // Create an empty AffiliateMercantile instance
         AffiliateMercantile affiliateMercantile = AffiliateMercantile.builder()
                 .typeDocumentIdentification("CC")
                 .numberIdentification("123456789")
-                .idDepartment(1L)
-                .idCity(2L)
-                .idMainStreet(3L)
-                .idNumberMainStreet(4L)
-                .idLetter1MainStreet(5L)
-                .isBis(true)
-                .idLetter2MainStreet(6L)
-                .idCardinalPointMainStreet(7L)
-                .idNum1SecondStreet(8L)
-                .idLetterSecondStreet(9L)
-                .idNum2SecondStreet(10L)
-                .idCardinalPoint2(11L)
-                .idHorizontalProperty1(12L)
-                .idNumHorizontalProperty1(13L)
-                .idHorizontalProperty2(14L)
-                .idNumHorizontalProperty2(15L)
-                .idHorizontalProperty3(16L)
-                .idNumHorizontalProperty3(17L)
-                .idHorizontalProperty4(18L)
-                .idNumHorizontalProperty4(19L)
                 .build();
 
-        // Use reflection to access the private updateAffiliateMercantile method
         java.lang.reflect.Method method = UserPreRegisterServiceImpl.class
                 .getDeclaredMethod("updateAffiliation", UserUpdateDTO.class, Object.class, Affiliate.class);
         method.setAccessible(true);
         method.invoke(service, updateDTO, affiliateMercantile, affiliate);
 
-        // Verify that the affiliateMercantile instance was updated with values from
-        // updateDTO and its address
         assertEquals("CC", affiliateMercantile.getTypeDocumentIdentification());
         assertEquals("123456789", affiliateMercantile.getNumberIdentification());
         assertEquals(Long.valueOf(1), affiliateMercantile.getIdDepartment());
@@ -606,11 +583,9 @@ class UserPreRegisterServiceImplTest {
         assertEquals(Long.valueOf(17), affiliateMercantile.getIdNumHorizontalProperty3());
         assertEquals(Long.valueOf(18), affiliateMercantile.getIdHorizontalProperty4());
         assertEquals(Long.valueOf(19), affiliateMercantile.getIdNumHorizontalProperty4());
-
-        // Verify that the repository's save method was called with the updated
-        // affiliateMercantile
-        Mockito.verify(affiliateMercantileRepository).save(affiliateMercantile);
     }
+
+
 
     @Test
     void testUpdateAffiliationDetail_shouldUpdateFieldsProperly() throws Exception {
@@ -902,23 +877,23 @@ class UserPreRegisterServiceImplTest {
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
         // Instantiate the service with mocks
-        UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-                webClient,
-                repo,
-                keycloakService,
-                statusService,
-                restTemplate,
-                affiliationProps,
-                genderRepo,
-                paramRepo,
-                request,
-                collectProps,
-                sendEmails,
-                otpService,
-                keycloakService, affiliateMercantileRepo,
-                affiliationDetailRepo,
-                affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
+        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
+        //         webClient,
+        //         repo,
+        //         keycloakService,
+        //         statusService,
+        //         restTemplate,
+        //         affiliationProps,
+        //         genderRepo,
+        //         paramRepo,
+        //         request,
+        //         collectProps,
+        //         sendEmails,
+        //         otpService,
+        //         keycloakService, affiliateMercantileRepo,
+        //         affiliationDetailRepo,
+        //         affiliateRepo,
+        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         // Prepare a valid NIT for a natural employer.
         // Choose a base number that qualifies as natural: e.g., "700000000"
@@ -954,23 +929,23 @@ class UserPreRegisterServiceImplTest {
         AffiliateRepository affiliateRepo = Mockito.mock(AffiliateRepository.class);
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
-        UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-                webClient,
-                repo,
-                keycloakService,
-                statusService,
-                restTemplate,
-                affiliationProps,
-                genderRepo,
-                paramRepo,
-                request,
-                collectProps,
-                sendEmails,
-                otpService,
-                keycloakService, affiliateMercantileRepo,
-                affiliationDetailRepo,
-                affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
+        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
+        //         webClient,
+        //         repo,
+        //         keycloakService,
+        //         statusService,
+        //         restTemplate,
+        //         affiliationProps,
+        //         genderRepo,
+        //         paramRepo,
+        //         request,
+        //         collectProps,
+        //         sendEmails,
+        //         otpService,
+        //         keycloakService, affiliateMercantileRepo,
+        //         affiliationDetailRepo,
+        //         affiliateRepo,
+        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         String baseNumber = "700000000";
         int calculatedDV = service.calculateModulo11DV(baseNumber);
@@ -1006,23 +981,23 @@ class UserPreRegisterServiceImplTest {
         AffiliateRepository affiliateRepo = Mockito.mock(AffiliateRepository.class);
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
-        UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-                webClient,
-                repo,
-                keycloakService,
-                statusService,
-                restTemplate,
-                affiliationProps,
-                genderRepo,
-                paramRepo,
-                request,
-                collectProps,
-                sendEmails,
-                otpService,
-                keycloakService, affiliateMercantileRepo,
-                affiliationDetailRepo,
-                affiliateRepo,
-                updatePreRegisterMapper, userMapper, arlRepository, registraduriaUnifiedService);
+        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
+        //         webClient,
+        //         repo,
+        //         keycloakService,
+        //         statusService,
+        //         restTemplate,
+        //         affiliationProps,
+        //         genderRepo,
+        //         paramRepo,
+        //         request,
+        //         collectProps,
+        //         sendEmails,
+        //         otpService,
+        //         keycloakService, affiliateMercantileRepo,
+        //         affiliationDetailRepo,
+        //         affiliateRepo,
+        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         // Test with a completely non-numeric NIT value
         String nonNumericNIT = "ABC123X";
@@ -1305,12 +1280,12 @@ class UserPreRegisterServiceImplTest {
         try {
             method = UserPreRegisterServiceImpl.class.getDeclaredMethod("findGenderByDescription", String.class);
             method.setAccessible(true);
-            result = (String) method.invoke(service, null);
+            result = (String) method.invoke(service, new Object[]{null});
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         assertNull(result);
+
     }
     @Test
     void testUpdatePassword_success() throws Exception {

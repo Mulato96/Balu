@@ -1,0 +1,27 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/certificate_affiliate.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923496434-1">
+        <createTable remarks="Afiliado relacionado al certificado principal" tableName="certificate_affiliate">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="certificate_affiliate_pkey"/>
+            </column>
+            <column name="coverage_date" type="date"/>
+            <column name="identification_type" type="VARCHAR(255)"/>
+            <column name="identification_number" type="VARCHAR(255)"/>
+            <column name="worker" type="VARCHAR(255)"/>
+            <column name="risk" type="VARCHAR(255)"/>
+            <column name="rate" type="VARCHAR(255)"/>
+            <column name="certificate_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923496434-2">
+        <createIndex indexName="idx_certificate_affiliate_certificate_id" tableName="certificate_affiliate" using="btree">
+            <column name="certificate_id"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923496434-3">
+        <addForeignKeyConstraint baseColumnNames="certificate_id" baseTableName="certificate_affiliate" constraintName="fk_certificate_affiliate_certificate" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="certificate" validate="true"/>
+    </changeSet>
+</databaseChangeLog>

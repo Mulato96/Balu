@@ -28,10 +28,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.aot.DisabledInAotMode;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.reactive.function.client.WebClient;
-
+@TestPropertySource(locations = "classpath:application.properties")
 @ContextConfiguration(classes = {ScheduleInterviewWebServiceImpl.class})
 @ExtendWith(SpringExtension.class)
 @DisabledInAotMode

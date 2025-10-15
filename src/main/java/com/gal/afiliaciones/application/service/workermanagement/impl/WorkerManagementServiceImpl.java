@@ -1,5 +1,23 @@
 package com.gal.afiliaciones.application.service.workermanagement.impl;
 
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.gal.afiliaciones.application.service.CertificateService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
@@ -29,6 +47,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateR
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.dependent.RecordMassiveUpdateWorkerRepository;
@@ -52,6 +71,7 @@ import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagement
 import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadWorker;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -71,6 +91,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.data.domain.Sort;
 
 @Slf4j
 @Service
@@ -130,6 +151,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         // PASO 1: Contar total de afiliados (consulta rápida de conteo)
         long totalAffiliates = affiliateRepository.count(specAffiliation);
 
+        
         // PASO 2: Aplicar paginación solo a la página solicitada
         Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize(), Sort.by("filedNumber").descending());
 
@@ -149,6 +171,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         // PASO 4: Calcular métricas de paginación basadas en afiliados
         int totalPages = (int) Math.ceil((double) totalAffiliates / filters.getSize());
         int currentPage = filters.getPage();
+        
 
         // Validar página solicitada
         if (currentPage >= totalPages && totalPages > 0) {
@@ -377,18 +400,20 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private DependentWorkerDTO searchUserInNationalRegistry(String identificationNumber){
         DependentWorkerDTO userRegistry = new DependentWorkerDTO();
 
-        List<RegistryOfficeDTO> registryOfficeDTOS = registraduriaUnifiedService.searchUserInNationalRegistry(identificationNumber);
+        List<RegistryOfficeDTO> registries = registraduriaUnifiedService.searchUserInNationalRegistry(identificationNumber);
 
-        if(!registryOfficeDTOS.isEmpty()){
-            RegistryOfficeDTO registry = registryOfficeDTOS.get(0);
+        if(!registries.isEmpty()){
+            RegistryOfficeDTO registry = registries.get(0);
             userRegistry.setIdentificationDocumentType(Constant.CC);
             userRegistry.setIdentificationDocumentNumber(identificationNumber);
             userRegistry.setFirstName(registry.getFirstName());
             userRegistry.setSecondName(registry.getSecondName());
             userRegistry.setSurname(registry.getFirstLastName());
             userRegistry.setSecondSurname(registry.getSecondLastName());
-            userRegistry.setDateOfBirth(LocalDate.parse(registry.getBirthDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-            userRegistry.setGender(registry.getGender()!=null ? registry.getGender().substring(0,1): "");
+            userRegistry.setDateOfBirth(registry.getBirthDate() != null && !registry.getBirthDate().isEmpty() 
+                ? LocalDate.parse(registry.getBirthDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")) 
+                : null);
+            userRegistry.setGender(RegistraduriaUnifiedService.mapGender(registry.getGender()));
             userRegistry.setNationality(1L);
         }
 
@@ -431,13 +456,13 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                     if(filedWorker != null){
 
                         if(filedWorker.equals(FieldsExcelLoadWorker.DOCUMENT_NUMBER)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeDocument, id, idAffiliateEmployer);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeDocument, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.RISK)){
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.CONTRACT_START_DATE)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.CONTRACT_END_DATE)) {
-                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()), typeContract, id, idAffiliateEmployer);
+                            error = validStructDataWorker(filedWorker, String.valueOf(data.getValue()),typeContract, id, idAffiliateEmployer);
                         }else if(filedWorker.equals(FieldsExcelLoadWorker.EPS_CODE)){
 
                             if(isRequested(String.valueOf(data.getValue()))){

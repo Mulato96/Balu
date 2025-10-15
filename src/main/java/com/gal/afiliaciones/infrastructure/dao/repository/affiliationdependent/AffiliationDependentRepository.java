@@ -44,18 +44,59 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
            and (:idBondingType is null or tvd.id = :idBondingType)
            and (:updateRequired is null or ad.pendingCompleteFormPila = :updateRequired)""")
     List<Map<String, String>> findWorkersByAllFilters(String nitCompany, String startCoverageDate, String endCoverageDate,
-                                                   String affiliationStatus, String identificationDocumentType,
-                                                   String identificationDocumentNumber, Long idBondingType,
+                                                      String affiliationStatus, String identificationDocumentType,
+                                                      String identificationDocumentNumber, Long idBondingType,
                                                       Boolean updateRequired);
 
     @Query("SELECT a.identificationDocumentNumber FROM AffiliationDependent a WHERE a.identificationDocumentNumber IN :ids")
     List<String> findByIdentificationDocumentNumberIn(@Param("ids") List<String> ids);
 
+    @Query("SELECT a.email FROM AffiliationDependent a WHERE a.email IN :email")
+    List<String> findByEmailIn(@Param("email") List<String> ids);
+
+    // New methods for EmployerEmployeeService
+
+    @Query("SELECT ad FROM AffiliationDependent ad JOIN Affiliate a ON ad.filedNumber = a.filedNumber WHERE a.nitCompany = :nitCompany")
+    List<AffiliationDependent> findByCompanyNit(@Param("nitCompany") String nitCompany);
+    
+    @Query("SELECT ad FROM AffiliationDependent ad WHERE ad.identificationDocumentType = :documentType AND ad.identificationDocumentNumber = :documentNumber")
+    List<AffiliationDependent> findByDocumentTypeAndNumber(@Param("documentType") String documentType, @Param("documentNumber") String documentNumber);
+    
+    @Query("SELECT ad FROM AffiliationDependent ad JOIN Affiliate a ON ad.filedNumber = a.filedNumber WHERE " +
+           "(:idTipoDocEmp IS NULL OR a.documentType = :idTipoDocEmp) AND " +
+           "(:idEmpresa IS NULL OR a.nitCompany = :idEmpresa) AND " +
+           "(:idTipoDocPer IS NULL OR ad.identificationDocumentType = :idTipoDocPer) AND " +
+           "(:idPersona IS NULL OR ad.identificationDocumentNumber = :idPersona) AND " +
+           "(:razonSocial IS NULL OR LOWER(a.company) LIKE LOWER(CONCAT('%', :razonSocial, '%'))) AND " +
+           "(:estadoEmpresa IS NULL OR a.affiliationStatus = :estadoEmpresa) AND " +
+           "(:estadoPersona IS NULL OR a.affiliationStatus = :estadoPersona)")
+    List<AffiliationDependent> findBySearchCriteria(@Param("idTipoDocEmp") String idTipoDocEmp,
+                                                   @Param("idEmpresa") String idEmpresa,
+                                                   @Param("idTipoDocPer") String idTipoDocPer,
+                                                   @Param("idPersona") String idPersona,
+                                                   @Param("razonSocial") String razonSocial,
+                                                   @Param("estadoEmpresa") String estadoEmpresa,
+                                                   @Param("estadoPersona") String estadoPersona);
+
+    // Specific query for the 4 parameters - first find affiliate, then dependent
+    @Query("SELECT ad FROM com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent ad " +
+           "JOIN com.gal.afiliaciones.domain.model.affiliate.Affiliate a ON ad.filedNumber = a.filedNumber " +
+           "WHERE a.documenTypeCompany = :tDocEmp AND " +
+           "a.nitCompany = :idEmp AND " +
+           "a.documentType = :tDocAfi AND " +
+           "a.documentNumber = :idAfi")
+    List<AffiliationDependent> findByCompanyAndAffiliateDocument(@Param("tDocEmp") String tDocEmp,
+                                                               @Param("idEmp") String idEmp,
+                                                               @Param("tDocAfi") String tDocAfi,
+                                                               @Param("idAfi") String idAfi);
+
+    // Query to find dependents by filed_number
+
     @Query("""
            select 
            ad.identificationDocumentType as identification_type, 
            ad.identificationDocumentNumber as identification_number, 
-           ad.firstName || ' ' || ad.secondName || ' ' || ad.surname || ' ' || ad.secondSurname as complete_name,
+           COALESCE(ad.firstName, '') || ' ' || COALESCE(ad.secondName, '') || ' ' || COALESCE(ad.surname, '') || ' ' || COALESCE(ad.secondSurname, '') as complete_name,
            initcap(oc.nameOccupation) as occupation, 
            to_char(ad.coverageDate, 'yyyy-mm-dd') as coverage_date, 
            case when ad.endDate is null then 'No registra' else to_char(ad.endDate, 'yyyy-mm-dd') end as end_date, 
@@ -76,8 +117,8 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
            and (:idBondingType is null or tvd.id = :idBondingType)
            and (:updateRequired is null or ad.pendingCompleteFormPila = :updateRequired)""")
     List<Map<String, String>> findWorkersWithoutDate(String nitCompany, String affiliationStatus,
-                                                   String identificationDocumentType, String identificationDocumentNumber,
-                                                   Long idBondingType, Boolean updateRequired);
+                                                     String identificationDocumentType, String identificationDocumentNumber,
+                                                     Long idBondingType, Boolean updateRequired);
 
     @Query("select a from AffiliationDependent a where a.filedNumber = ?1")
     Optional<AffiliationDependent> findByFiledNumber(String filedNumber);
@@ -86,7 +127,7 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
            select 
            ad.identificationDocumentType as identification_type, 
            ad.identificationDocumentNumber as identification_number, 
-           ad.firstName || ' ' || ad.secondName || ' ' || ad.surname || ' ' || ad.secondSurname as complete_name,
+           COALESCE(ad.firstName, '') || ' ' || COALESCE(ad.secondName, '') || ' ' || COALESCE(ad.surname, '') || ' ' || COALESCE(ad.secondSurname, '') as complete_name,
            initcap(oc.nameOccupation) as occupation, 
            to_char(ad.coverageDate, 'yyyy-mm-dd') as coverage_date, 
            case when ad.endDate is null then 'No registra' else to_char(ad.endDate, 'yyyy-mm-dd') end as end_date, 
@@ -117,7 +158,7 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
            select 
            ad.identificationDocumentType as identification_type, 
            ad.identificationDocumentNumber as identification_number, 
-           ad.firstName || ' ' || ad.secondName || ' ' || ad.surname || ' ' || ad.secondSurname as complete_name,
+           COALESCE(ad.firstName, '') || ' ' || COALESCE(ad.secondName, '') || ' ' || COALESCE(ad.surname, '') || ' ' || COALESCE(ad.secondSurname, '') as complete_name,
            initcap(oc.nameOccupation) as occupation, 
            to_char(ad.coverageDate, 'yyyy-mm-dd') as coverage_date, 
            case when ad.endDate is null then 'No registra' else to_char(ad.endDate, 'yyyy-mm-dd') end as end_date, 
@@ -245,4 +286,5 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
     @Query("SELECT ad FROM AffiliationDependent ad JOIN Affiliate a ON ad.idAffiliateEmployer = a.idAffiliate " +
             "WHERE a.documentType = :docType AND a.documentNumber = :docNumber")
     List<AffiliationDependent> findByMainAffiliateIdentification(@Param("docType") String docType, @Param("docNumber") String docNumber);
+    
 }

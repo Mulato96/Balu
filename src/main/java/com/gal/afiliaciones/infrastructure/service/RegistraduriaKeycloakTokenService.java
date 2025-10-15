@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -63,6 +64,9 @@ public class RegistraduriaKeycloakTokenService {
         try {
             log.info("Sending token request to Keycloak...");
 
+
+            log.info("Sending token request to Keycloak...");
+            
             Map<String, Object> response = webClientBuilder.build()
                     .post()
                     .uri(tokenEndpoint)
@@ -78,6 +82,7 @@ public class RegistraduriaKeycloakTokenService {
             if (response != null) {
                 log.info("Keycloak response keys: {}", response.keySet());
 
+                
                 String newToken = (String) response.get("access_token");
                 Integer expiresIn = (Integer) response.get("expires_in");
 
@@ -85,11 +90,12 @@ public class RegistraduriaKeycloakTokenService {
                     cachedAccessToken = newToken;
                     // Estimate expiration time (subtract a few seconds for safety)
                     expirationTime = Instant.now().plusSeconds(expiresIn - 10);
+
                     log.info("Access token obtained successfully for Registraduria service. Expires in: {} seconds", expiresIn);
                     return cachedAccessToken;
                 } else {
-                    log.error("Invalid response format from Keycloak. access_token: {}, expires_in: {}",
-                            newToken != null ? "present" : "null", expiresIn);
+                    log.error("Invalid response format from Keycloak. access_token: {}, expires_in: {}", 
+                             newToken != null ? "present" : "null", expiresIn);
                     log.error("Full response: {}", response);
                     throw new IllegalStateException("Invalid response format from Keycloak server");
                 }
@@ -123,5 +129,4 @@ public class RegistraduriaKeycloakTokenService {
         expirationTime = Instant.now();
         log.debug("Cached access token cleared for Registraduria service");
     }
-
-}
+} 

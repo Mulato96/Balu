@@ -18,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/retirement-reason")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class RetirementReasonController {
 

@@ -8,17 +8,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.util.Arrays;
 import java.util.List;
-
 import com.gal.afiliaciones.domain.model.novelty.PermanentNovelty;
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RequestExportDTO;
-
-import java.time.LocalDate;
+import java.time.LocalDate; 
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -138,7 +134,7 @@ class GeneralNoveltyServiceImplTest {
     }
 
     @Test
-    void exportNoveltiesByContributorDocument_exportsSuccessfully_whenServiceReturnsData() {
+    void exportNoveltiesByContributorDocument_exportsSuccessfully() {
         // Given
         String contributorIdentificationType = "CC";
         String contributorIdentification = "123456789";

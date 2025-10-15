@@ -53,7 +53,7 @@ public class AffiliateCompanyResponse {
     @JsonProperty("sexo")
     private String sexo;
 
-    @JsonProperty("estadoRl")
+    @JsonProperty("estado")
     private String estadoRl;
 
     @JsonProperty("nomVinLaboral")

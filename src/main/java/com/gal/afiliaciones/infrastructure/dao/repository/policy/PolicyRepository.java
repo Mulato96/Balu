@@ -16,6 +16,7 @@ public interface PolicyRepository extends JpaRepository<Policy, Long>, JpaSpecif
 
     List<Policy> findByCode(String code);
 
+
     @Query(value = """
             SELECT tp.nombre, p.codigo, p.fecha_vigencia_desde, 
             p.fecha_vigencia_hasta, p.fecha_emision, p.estado, p.id_affiliate, a.affiliation_subtype
@@ -25,6 +26,11 @@ public interface PolicyRepository extends JpaRepository<Policy, Long>, JpaSpecif
             WHERE p.id_affiliate = :idAffiliate
             """, nativeQuery = true)
     List<Object[]> findByAffiliate(@Param("idAffiliate") Long idAffiliate);
+
+    @Query(value = "" +
+            "select codigo from poliza where substring(codigo,5,2) = :currentYear order by codigo desc limit 1",
+            nativeQuery = true)
+    String getLastPolicyCode(String currentYear);
 
     @Query(value = "select max(num_policy_client) + 1 from poliza", nativeQuery = true)
     Long nextNumPolicyCient();

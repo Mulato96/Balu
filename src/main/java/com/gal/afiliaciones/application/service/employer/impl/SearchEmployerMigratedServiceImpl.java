@@ -1,6 +1,8 @@
 package com.gal.afiliaciones.application.service.employer.impl;
 
 import com.gal.afiliaciones.application.service.employer.SearchEmployerMigratedService;
+import com.gal.afiliaciones.config.ex.Error.Type;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
@@ -30,7 +32,14 @@ public class SearchEmployerMigratedServiceImpl implements SearchEmployerMigrated
                     .orElseThrow(() -> new UserNotFoundInDataBase("User delegate not found"));
             return affiliateRepository.findEmployerDataByDelegate(userDelegate.getId());
         } else {
-            return affiliateRepository.findEmployerDataByDocument(documentType, documentNumber);
+            // Validar si es super usuario de grupo empresarial
+            List<DataBasicEmployerMigratedDTO> superUserAffiliate = affiliateRepository.findEmployerDataSuperUser(documentType, documentNumber);
+            if(!superUserAffiliate.isEmpty()){
+                return superUserAffiliate;
+            }else {
+                // Es representante legal
+                return affiliateRepository.findEmployerDataByDocument(documentType, documentNumber);
+            }
         }
     }
 

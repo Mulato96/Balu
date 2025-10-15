@@ -1,5 +1,18 @@
 package com.gal.afiliaciones.infrastructure.controller.users;
 
+import java.io.IOException;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.config.BodyResponseConfig;
 import com.gal.afiliaciones.domain.model.SystemParam;
@@ -14,20 +27,14 @@ import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.user.UserNameDTO;
 import com.gal.afiliaciones.infrastructure.dto.user.UserUpdateDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
-import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class UserPreRegisterController {
 
     private final IUserRegisterService iUserRegisterService;
@@ -143,6 +150,7 @@ public class UserPreRegisterController {
         return ResponseEntity.ok(user);
     }
 
+
     @GetMapping("find-preregister-affiliation/{idUser}")
     public ResponseEntity<BodyResponseConfig<UserUpdateDTO>> findPreRegisterAffiliation(@PathVariable Long idUser) {
         return ResponseEntity.ok(new BodyResponseConfig<>(iUserRegisterService.findUserDataById(idUser), ""));
@@ -152,6 +160,7 @@ public class UserPreRegisterController {
     public ResponseEntity<BodyResponseConfig<Boolean>> updatePreRegisterAffiliation(@RequestBody UserUpdateDTO request) {
         return ResponseEntity.ok(new BodyResponseConfig<>(iUserRegisterService.updateAffiliationPreRegister(request), ""));
     }
+
 
     @GetMapping("/consultExternalUser/{identificationType}/{identification}")
     public ResponseEntity<ExternalUserDTO> consultExternalUser(@PathVariable String identificationType, @PathVariable String identification) {

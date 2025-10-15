@@ -15,7 +15,6 @@ import java.util.List;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/observations_affiliations")
-@CrossOrigin(origins = "*")
 public class ObservationAffiliationController {
 
     private final ObservationsAffiliationService observationsAffiliationService;

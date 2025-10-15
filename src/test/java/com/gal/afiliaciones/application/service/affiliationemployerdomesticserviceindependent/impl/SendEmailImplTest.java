@@ -268,34 +268,7 @@ class SendEmailImplTest {
         verify(emailService).sendSimpleMessage(any(EmailDataDTO.class), anyString());
     }
 
-    @Test
-    void testEmailApplyPILA() throws MessagingException, IOException {
-        DataEmailApplyDTO dataEmail = mock(DataEmailApplyDTO.class);
-        when(dataEmail.getNovelty()).thenReturn("Novedad");
-        when(dataEmail.getFiledNumber()).thenReturn("F123");
-        when(dataEmail.getCompleteName()).thenReturn("John Doe");
-        when(dataEmail.getPayrollNumber()).thenReturn("P123");
-        when(dataEmail.getEmailTo()).thenReturn("to@email.com");
 
-        sendEmailImpl.emailApplyPILA(dataEmail);
-
-        verify(emailService).sendSimpleMessage(any(EmailDataDTO.class), anyString());
-    }
-
-    @Test
-    void testEmailNotApplyPILA() throws MessagingException, IOException {
-        DataEmailNotApplyDTO dataEmail = mock(DataEmailNotApplyDTO.class);
-        when(dataEmail.getNovelty()).thenReturn("Novedad");
-        when(dataEmail.getFiledNumber()).thenReturn("F123");
-        when(dataEmail.getCompleteName()).thenReturn("John Doe");
-        when(dataEmail.getPayrollNumber()).thenReturn("P123");
-        when(dataEmail.getCausal()).thenReturn("Causal");
-        when(dataEmail.getEmailTo()).thenReturn("to@email.com");
-
-        sendEmailImpl.emailNotApplyPILA(dataEmail);
-
-        verify(emailService).sendSimpleMessage(any(EmailDataDTO.class), anyString());
-    }
 
     @Test
     void testEmailNotRetirementPILA() throws MessagingException, IOException {

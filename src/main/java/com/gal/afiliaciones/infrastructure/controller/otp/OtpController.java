@@ -16,7 +16,6 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/otp")
-@CrossOrigin(origins = "*")
 @Tag(name = "Codigo otp", description = "Codigo otp Management API")
 @RequiredArgsConstructor
 public class OtpController {
@@ -25,14 +24,12 @@ public class OtpController {
 
     @Operation(summary = "Generación de código de validación", description = "Generación de código de validación, si existe un código vigente se invalida y se crea uno nuevo")
     @PostMapping("/generar-otp")
-    @CrossOrigin(origins = "*")
     public ResponseEntity<OTPDataResponseDTO> generarOtp(@RequestBody OTPRequestDTO requestDTO) throws IllegalAccessException, IOException, MessagingException, AffiliationsExceptionBase {
         return ResponseEntity.ok(otpService.generarOtp(requestDTO));
     }
 
     @Operation(summary = "Verificación de código de validación", description = "Verificación de código de validación, por defecto cuenta con un tiempo de expiración de 5 minutos")
     @PostMapping("/validar-otp")
-    @CrossOrigin(origins = "*")
     public ResponseEntity<OTPDataDTO> validarOtp(@RequestBody OTPRequestDTO request) {
         return ResponseEntity.ok(otpService.validarOtp(request));
     }

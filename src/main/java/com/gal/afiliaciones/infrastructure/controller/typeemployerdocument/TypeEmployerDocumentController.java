@@ -20,7 +20,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/document")
-@CrossOrigin(origins = "*")
 @Tag(name = "documentRequested", description = "document Requested")
 @AllArgsConstructor
 public class TypeEmployerDocumentController {

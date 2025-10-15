@@ -1,0 +1,113 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/affiliate_dependants.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual" id="1758925019357-drop-view-if-exists">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <viewExists viewName="affiliate_dependants"/>
+        </preConditions>
+        <sql>DROP VIEW IF EXISTS affiliate_dependants;</sql>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758925019357-1">
+        <createView fullDefinition="false" viewName="affiliate_dependants">SELECT ad.identification_type AS tipodoc,
+    ad.identification_number AS idpersona,
+    ad.first_name AS nombre1,
+    ad.second_name AS nombre2,
+    ad.surname AS apellido1,
+    ad.second_surname AS apellido2,
+    to_char((ad.date_of_birth)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechanacimiento,
+    ad.gender AS sexo,
+    ad.email AS emailpersona,
+    ad.phone1 AS telefonopersona,
+    ad.address AS direccion,
+    ad.id_department AS iddepartamento,
+    dep.nombre_departamento AS departamento,
+    COALESCE((NULLIF((mun.codigo_municipio)::text, ''::text))::integer, ad.id_city_municipality) AS idmunicipio,
+    mun.nombre_municipio AS municipio,
+    ad.id_occupation AS idocupacion,
+    occ.nombre_ocupacion AS ocupacion,
+    (ad.pension_fund_administrator)::integer AS afp,
+    afp.nombre_afp AS nombreafp,
+    hpe.codigoeps AS eps,
+    hpe.nombreeps,
+    ad.occupational_risk_manager AS idarl,
+    arl.administradora AS nombrearl,
+    ea.description AS nomacteco,
+    (NULLIF((ea.class_risk)::text, ''::text))::integer AS idsectoreconomico,
+    ad.salary AS salario,
+    'Dependiente'::text AS nomvinlaboral,
+        CASE
+            WHEN ((ad.id_bonding_type = 1) AND (ad.economic_activity_code = ANY (ARRAY['1970001'::text, '3869201'::text, '1970002'::text, '3970001'::text]))) THEN 1
+            WHEN (ad.id_bonding_type = 2) THEN 34
+            WHEN (ad.id_bonding_type = 3) THEN 35
+            WHEN (ad.id_bonding_type = 4) THEN 0
+            ELSE 3
+        END AS idtipovinculado,
+    1 AS idsucursal,
+    to_char((a.coverage_start_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechainiciovinculacion,
+    to_char((a.retirement_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechafinvinculacion,
+    to_char((a.coverage_start_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechaafiliacionefectiva,
+    ea_aff.document_type_company AS tpdocempresa,
+    ea_aff.nit_company AS idempresa,
+    ea_aff.company AS razonsocial,
+        CASE ea_aff.affiliation_status
+            WHEN 'Activa'::text THEN 'Activo'::character varying
+            WHEN 'Inactiva'::text THEN 'Inactivo'::character varying
+            ELSE ea_aff.affiliation_status
+        END AS estadorl,
+        CASE ea_aff.affiliation_status
+            WHEN 'Activa'::text THEN 'Activo'::character varying
+            WHEN 'Inactiva'::text THEN 'Inactivo'::character varying
+            ELSE ea_aff.affiliation_status
+        END AS estadoempresa,
+    'BALU'::text AS appsource,
+    ad.id AS sort_order,
+    ea.id AS idacteconomica,
+    COALESCE(mo.address, (am.address)::text, (am.address_contact_company)::text) AS direccionempresa,
+    (COALESCE(mo.id_department, am.id_department, ((NULLIF((am.department)::text, ''::text))::integer)::bigint))::integer AS iddepartamentoemp,
+    dep_emp.nombre_departamento AS departamentoemp,
+    (COALESCE(mo.id_city, am.id_city, ((NULLIF((am.city_municipality)::text, ''::text))::integer)::bigint))::integer AS idmunicipioemp,
+    mun_emp.nombre_municipio AS municipioemp,
+    COALESCE(mo.phone, (am.phone_one)::text, (am.phone_two)::text, (am.phone_one_contact_company)::text, (am.phone_two_contact_company)::text) AS telefonoempresa,
+    COALESCE(mo.email, (am.email)::text, (am.email_contact_company)::text) AS emailempresa,
+    COALESCE(mo.zone, NULLIF((am.zone_location_employer)::text, ''::text)) AS indzona,
+    wc.id AS idcentrotrabajo,
+        CASE ea_aff.affiliation_status
+            WHEN 'Activa'::text THEN 'Activo'::character varying
+            WHEN 'Inactiva'::text THEN 'Inactivo'::character varying
+            ELSE ea_aff.affiliation_status
+        END AS estado,
+    mo.id AS idsede,
+    ea_aff.document_type_company AS idtipodocemp,
+    NULL::text AS codigosubempresa,
+    occ.codigo_ocupacion AS codigoocupacion,
+    NULL::text AS ocupacionvoluntario,
+        CASE
+            WHEN (
+            CASE
+                WHEN ((ad.id_bonding_type = 1) AND (ad.economic_activity_code = ANY (ARRAY['1970001'::text, '3869201'::text, '1970002'::text, '3970001'::text]))) THEN 1
+                WHEN (ad.id_bonding_type = 2) THEN 34
+                WHEN (ad.id_bonding_type = 3) THEN 35
+                WHEN (ad.id_bonding_type = 4) THEN 0
+                ELSE 3
+            END = 3) THEN 'TRABAJADORES DEPENDIENTES'::text
+            ELSE NULL::text
+        END AS tipovinculado,
+    a.coverage_start_date AS fechainiciocontrato,
+    a.retirement_date AS fechafincontrato,
+    a.affiliation_status AS estadocontrato
+   FROM ((((((((((((((affiliation_dependent ad
+     JOIN affiliate a ON ((ad.id_affiliate = a.id_affiliate)))
+     LEFT JOIN affiliate ea_aff ON ((ad.id_affiliate_employer = ea_aff.id_affiliate)))
+     LEFT JOIN affiliate_mercantile am ON ((ea_aff.id_affiliate = am.id_affiliate)))
+     LEFT JOIN tmp_departamentos dep ON ((ad.id_department = dep.id_departamento)))
+     LEFT JOIN tmp_municipality mun ON ((ad.id_city_municipality = mun.id_municipio)))
+     LEFT JOIN tmp_ocupaciones occ ON ((ad.id_occupation = occ.id_ocupacion)))
+     LEFT JOIN tmp_fondos_pensiones afp ON ((ad.pension_fund_administrator = afp.id_afp)))
+     LEFT JOIN tmp_health hpe ON ((ad.health_promoting_entity = hpe.id)))
+     LEFT JOIN tmp_arl arl ON ((ad.occupational_risk_manager = (arl.codigo)::text)))
+     LEFT JOIN economic_activity ea ON ((ad.economic_activity_code = (ea.economic_activity_code)::text)))
+     LEFT JOIN main_office mo ON ((ad.id_headquarter = mo.id)))
+     LEFT JOIN work_center wc ON ((mo.id = wc.id_main_office)))
+     LEFT JOIN tmp_departamentos dep_emp ON ((COALESCE(mo.id_department, am.id_department, ((NULLIF((am.department)::text, ''::text))::integer)::bigint) = dep_emp.id_departamento)))
+     LEFT JOIN tmp_municipality mun_emp ON ((COALESCE(mo.id_city, am.id_city, ((NULLIF((am.city_municipality)::text, ''::text))::integer)::bigint) = mun_emp.id_municipio)));</createView>
+    </changeSet>
+</databaseChangeLog>

@@ -19,4 +19,5 @@ public interface IAffiliationAssignRepository extends JpaRepository<AffiliationA
     // Todas las afiliaciones asignadas actualmente a un usuario
     List<AffiliationAssignmentHistory> findByUsuarioIdAndIsCurrentTrue(Long usuarioId);
 
+
 }

@@ -172,6 +172,9 @@ public class EconomicActivityServiceImpl implements IEconomicActivityService {
         Specification<EconomicActivity> spec = UserSpecifications.findActivityEconomicByDescription(null);
         List<EconomicActivity> allActivityList = iEconomicActivityRepository.findAll(spec);
 
+        // NO excluir actividades existentes - permitir que se muestren todas las actividades
+        // Comentado el código que excluía las actividades existentes del usuario
+        /*
         Set<String> userActivityCodes = affiliationDetailRepository
                 .findAllByIdentificationDocumentTypeAndIdentificationDocumentNumber(documentType, documentNumber)
                 .stream()
@@ -181,12 +184,11 @@ public class EconomicActivityServiceImpl implements IEconomicActivityService {
                                 .map(AffiliateActivityEconomic::getActivityEconomic)
                                 .map(EconomicActivity::getEconomicActivityCode)
                 ).collect(Collectors.toSet());
-
+        */
 
         return allActivityList.stream()
                 .filter(activity -> activity.getCodeCIIU() != null)
-                .filter(activity -> !userActivityCodes.contains(activity.getCodeCIIU()))
-                .filter(activity -> "4".equals(activity.getClassRisk()) || "5".equals(activity.getClassRisk()))
+                // Removido el filtro que excluía actividades existentes: .filter(activity -> !userActivityCodes.contains(activity.getCodeCIIU()))
                 .map(EconomicActivityAdapter.entityToEconmyActivityDto)
                 .toList();
     }

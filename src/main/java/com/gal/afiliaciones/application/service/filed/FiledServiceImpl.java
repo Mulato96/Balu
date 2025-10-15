@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class FiledServiceImpl implements FiledService {
 
-    private final AffiliateRepository sequenceRepository;
     private final ConsecutiveService consecutiveService;
+    private final AffiliateRepository sequenceRepository;
 
     private static final String PREFIX = "%s%09d";
 

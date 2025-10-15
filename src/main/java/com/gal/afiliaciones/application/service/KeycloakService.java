@@ -15,6 +15,8 @@ public interface KeycloakService {
 
     List<UserRepresentation> searchUserByUsername(String username);
 
+    List<UserRepresentation> searchUserByUsernameComplete(String username);
+
     void createUser(UserPreRegisterDto userPreRegisterDto);
 
     List<RoleRepresentation> getAllRoles();

@@ -8,7 +8,7 @@ target/
 *.iws
 *.iml
 *.ipr
-
+*.jar
 ### Eclipse ###
 .apt_generated
 .classpath
@@ -33,3 +33,16 @@ build/
 
 ### Mac OS ###
 .DS_Store
+target/
+target/*.jar
+target/
+*.jar
+*.jar
+
+
+.cursor
+plan/
+application-local.properties
+application-uat.properties
+application-qa.properties
+application-prod.properties

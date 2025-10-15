@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/identificationlegalnature")
-@CrossOrigin(origins = "*")
 @Tag(name = "identification-nature", description = "entidad de las empresas publicas")
 @AllArgsConstructor
 public class IdentificationLegalNatureServiceController {

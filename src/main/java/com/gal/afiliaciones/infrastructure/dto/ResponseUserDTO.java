@@ -65,4 +65,5 @@ public class ResponseUserDTO {
     private TypeUser typeUser;
     private String userName;
     private LocalDateTime employerUpdateTime;
+    private Boolean assignedPassword;
 }

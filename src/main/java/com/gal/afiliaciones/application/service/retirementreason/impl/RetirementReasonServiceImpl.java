@@ -1,5 +1,20 @@
 package com.gal.afiliaciones.application.service.retirementreason.impl;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.filed.FiledService;
 import com.gal.afiliaciones.application.service.retirementreason.RetirementReasonService;
@@ -19,14 +34,15 @@ import com.gal.afiliaciones.domain.model.affiliate.RetirementReasonWorker;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonWorkerDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerProvisionServiceIndependentSpecifications;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.AlfrescoUploadRequest;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.Entries;
@@ -36,20 +52,15 @@ import com.gal.afiliaciones.infrastructure.dto.otp.email.EmailDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.retirementreason.CompanyInfoDTO;
 import com.gal.afiliaciones.infrastructure.dto.retirementreason.RegisteredAffiliationsDTO;
 import com.gal.afiliaciones.infrastructure.dto.retirementreason.RetirementEmployerDTO;
+import com.gal.afiliaciones.infrastructure.enums.TypeUser;
 import com.gal.afiliaciones.infrastructure.utils.Base64ToMultipartFile;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.utils.EmailService;
+
 import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -106,6 +117,7 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
                 throw new ExistsRetirementAffiliationException(AFFILIATION_EXIST);
 
             List<RegisteredAffiliationsDTO> economicActivities = registeredAffiliations.stream()
+                    .filter(affiliate -> affiliate.getFiledNumber() != null) // Ignore affiliates with null filed_number
                     .map(affiliate -> affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber()))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
@@ -155,7 +167,8 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
     @Override
     public String retirementEmployer(RetirementEmployerDTO request) throws MessagingException, IOException {
 
-        UserMain user = userPreRegisterRepository.findById(request.getIdUser())
+        String username = structureUserName(request.getIdentificationType(), request.getIdentification(), TypeUser.INT);
+        UserMain user = userPreRegisterRepository.findOne(UserSpecifications.byUsername(username))
                 .orElseThrow(() -> new UserNotFoundInDataBase(USER_NOT_FOUND));
 
         MultipartFile file = castBase64ToMultipartfile(request.getBase64File(), request.getFileName());
@@ -388,4 +401,11 @@ public class RetirementReasonServiceImpl implements RetirementReasonService {
                 .toList();
     }
 
-}
+    /**
+     * Construye el username usando el patrón: documentType-identification-typeUser
+     */
+    private String structureUserName(String documentType, String identification, TypeUser typeUser) {
+        return documentType + "-" + identification + "-" + typeUser;
+    }
+
+ }

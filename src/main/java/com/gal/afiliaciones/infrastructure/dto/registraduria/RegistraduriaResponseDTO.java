@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegistraduriaResponseDTO {
-
     private ConsultationStatusDTO consultationStatus;
     private IdentityCardDataDTO identityCardData;
 
@@ -51,5 +50,4 @@ public class RegistraduriaResponseDTO {
         private String referenceDate;
         private String affectationDate;
     }
-
-}
+} 

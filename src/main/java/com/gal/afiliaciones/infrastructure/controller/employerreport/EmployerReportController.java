@@ -17,7 +17,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/employer/report")
-@CrossOrigin(origins = "*")
 @Tag(name = "employer-report", description = "REPORTES EMPLEADOR")
 @AllArgsConstructor
 public class EmployerReportController {

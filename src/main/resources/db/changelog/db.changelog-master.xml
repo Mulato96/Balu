@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <!-- Baseline intentionally not included to ensure it never executes. Use changelogSync on baseline file when needed. -->
+  <!-- <include file="baseline/prod-baseline-2025-09-26.xml" relativeToChangelogFile="true"/> -->
+  <include file="changes/2025-09-26/_bundle.xml" relativeToChangelogFile="true"/>
+  <include file="changes/liq_test.xml" relativeToChangelogFile="true"/>
+  <include file="changes/liq_test_2.xml" relativeToChangelogFile="true"/>
+  <include file="changes/test-liquibase.xml" relativeToChangelogFile="true"/>
+  <include file="changes/test_pipiline.xml" relativeToChangelogFile="true"/>
+  <include file="changes/2025-09-29_inserts_nivelacion_qa_con_prod-snapshot.xml" relativeToChangelogFile="true"/>
+</databaseChangeLog>
+
+

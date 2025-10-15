@@ -65,6 +65,12 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     private final CollectProperties properties;
     private final DetailRecordLoadBulkService recordLoadBulkService;
     private final DetailRecordMassiveUpdateWorkerService recordMassiveUpdateWorkerService;
+    private static final List<String> LIST_DATE = List.of(
+            "FECHA DE NACIMIENTO",
+            "FECHA DE INICIO CONTRATO",
+            "FECHA DE TERMINACION CONTRATO",
+            "FECHA INICIO COBERTURA",
+            "FECHA DE NACIMIENTO");
 
     @Override
     public <T> String createDocumentError(String base64, List<T> dataExcelIndependentDTOS, String type) throws IOException {
@@ -150,13 +156,13 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
                 for (int j = 0; j < headerRow.getLastCellNum(); j++) {
 
-                    String value = getCellValue(row.getCell(j));
+                    String columnName = columnName(headerRow.getCell(j).getStringCellValue());
+                    String value = getCellValue(row.getCell(j), columnName);
 
                     if(headerRow.getCell(j).getStringCellValue().equals(value)){
                         break;
                     }
 
-                    String columnName = columnName(headerRow.getCell(j).getStringCellValue());
                     data.put(columnName, value.replaceAll("^\\s+|\\s+$", ""));
                 }
 
@@ -345,14 +351,15 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
         return -1;
     }
 
-    private String getCellValue(Cell cell) {
+    private String getCellValue(Cell cell, String name) {
 
-        if (cell != null && cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell))
+        if (cell != null && ((cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) ||
+                (name != null && cell.getCellType() == CellType.NUMERIC && LIST_DATE.contains(name))))
             return cell.getDateCellValue()
                     .toInstant()
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
-                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    .format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
 
 
         DataFormatter formatter = new DataFormatter();
@@ -363,7 +370,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
 
         List<String> nameColumns = new ArrayList<>(listColumns(headerColumns)
                 .stream()
-                .filter(name -> !name.equalsIgnoreCase("error"))
+                .filter(name -> (name != null && !name.equalsIgnoreCase("error") && !name.isEmpty()))
                 .toList());
         Collections.sort(nameColumns);
         Collections.sort(listColumns);
@@ -379,7 +386,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
             List<String> listColumns = new ArrayList<>();
 
             for(int i = 0; i < row.getLastCellNum(); i++){
-                listColumns.add(columnName(getCellValue(row.getCell(i))));
+                listColumns.add(columnName(getCellValue(row.getCell(i), null)));
             }
 
             return listColumns;

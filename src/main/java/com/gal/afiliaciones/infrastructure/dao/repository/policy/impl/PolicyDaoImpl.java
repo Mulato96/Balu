@@ -30,7 +30,8 @@ public class PolicyDaoImpl implements PolicyDao {
 
     @Override
     @Transactional
-    public Policy createPolicy(String idType, String idNumber, LocalDate effectiveDateFrom, Long idPolicyType, Long idAffiliate, Long decentralizedConsecutive, String nameCompany) {
+    public Policy createPolicy(String idType, String idNumber, LocalDate effectiveDateFrom, Long idPolicyType,
+                               Long idAffiliate, Long decentralizedConsecutive, String nameCompany) {
         Optional<Policy> policyOptional = findExistingPolicy(idType, idNumber, idPolicyType, idAffiliate);
         policyOptional.ifPresent(this::deactivateExistingPolicy);
 
@@ -77,34 +78,26 @@ public class PolicyDaoImpl implements PolicyDao {
     }
 
     public String getNextConsecutive(String currentYear) {
-        List<Policy> policies = policyRepository.findAll();
         int nextNumber = 1;
 
-        if (!policies.isEmpty()) {
-            // Filtra las pólizas por el año actual
-            policies.removeIf(policy -> !policy.getCode().substring(4, 6).equals(currentYear));
+        // Obtener el código de la última póliza del año actual
+        String lastCode = policyRepository.getLastPolicyCode(currentYear);
 
-            if (!policies.isEmpty()) {
-                // Ordenar las pólizas por código en orden descendente
-                policies.sort(Comparator.comparing(Policy::getCode).reversed());
+        if(lastCode!=null && !lastCode.isBlank()) {
+            // Extraer el número consecutivo del código (los últimos dígitos)
+            String numberStr = lastCode.substring(lastCode.length() - 14);
+            int lastNumber = Integer.parseInt(numberStr);
 
-                // Obtener el código de la última póliza del año actual
-                String lastCode = policies.get(0).getCode();
-
-                // Extraer el número consecutivo del código (los últimos dígitos)
-                String numberStr = lastCode.substring(lastCode.length() - 5);
-                int lastNumber = Integer.parseInt(numberStr);
-
-                // Incrementar el número para el próximo consecutivo
-                nextNumber = lastNumber + 1;
-            }
+            // Incrementar el número para el próximo consecutivo
+            nextNumber = lastNumber + 1;
         }
 
         return String.valueOf(nextNumber);
     }
 
     @Override
-    public Policy createPolicyDependent(String idType, String idNumber, LocalDate effectiveDateFrom, Long idAffiliate, String code, String nameCompany){
+    public Policy createPolicyDependent(String idType, String idNumber, LocalDate effectiveDateFrom, Long idAffiliate,
+                                        String code, String nameCompany){
         Optional<Policy> policyOptional = findExistingPolicy(idType, idNumber, null, idAffiliate);
         policyOptional.ifPresent(this::deactivateExistingPolicy);
 

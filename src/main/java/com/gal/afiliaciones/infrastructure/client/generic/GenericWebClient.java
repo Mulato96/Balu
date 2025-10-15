@@ -1,40 +1,48 @@
 package com.gal.afiliaciones.infrastructure.client.generic;
 
-import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
-import com.gal.afiliaciones.infrastructure.dto.RequestServiceDTO;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.Query;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.SearchRequest;
-import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.AlfrescoResponseDTO;
-import com.gal.afiliaciones.infrastructure.dto.consultationform.ViewingAssociatedDocumentsDTO;
-import com.gal.afiliaciones.infrastructure.dto.sat.AffiliationWorkerIndependentArlDTO;
-import com.gal.afiliaciones.infrastructure.dto.sat.EmployerTransferResponseDTO;
-import com.gal.afiliaciones.config.util.CollectProperties;
-import com.gal.afiliaciones.domain.model.Occupation;
-import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
-import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ConsultIndependentWorkerDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ResponseConsultWorkerDTO;
-import com.gal.afiliaciones.infrastructure.dto.certificate.CertificateReportRequestDTO;
-import com.gal.afiliaciones.config.BodyResponseConfig;
-import com.gal.afiliaciones.infrastructure.dto.economicactivity.OccupationDecree1563DTO;
-import com.gal.afiliaciones.infrastructure.dto.municipality.MunicipalityDTO;
-import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
-import com.gal.afiliaciones.infrastructure.dto.user.RequestUserUpdateDTO;
-import com.gal.afiliaciones.infrastructure.dto.user.UserDTO;
-import com.google.gson.Gson;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.ws.rs.NotFoundException;
+
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
-import reactor.core.publisher.Mono;
 
-import javax.ws.rs.NotFoundException;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import com.gal.afiliaciones.config.BodyResponseConfig;
+import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.domain.model.Occupation;
+import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
+import com.gal.afiliaciones.infrastructure.dto.RequestServiceDTO;
+import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ConsultIndependentWorkerDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ResponseConsultWorkerDTO;
+import com.gal.afiliaciones.infrastructure.dto.alfresco.Query;
+import com.gal.afiliaciones.infrastructure.dto.alfresco.SearchRequest;
+import com.gal.afiliaciones.infrastructure.dto.alfrescoDTO.AlfrescoResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.certificate.CertificateReportRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.consultationform.ViewingAssociatedDocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.economicactivity.OccupationDecree1563DTO;
+import com.gal.afiliaciones.infrastructure.dto.municipality.MunicipalityDTO;
+import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
+import com.gal.afiliaciones.infrastructure.dto.sat.AffiliationWorkerIndependentArlDTO;
+import com.gal.afiliaciones.infrastructure.dto.sat.EmployerTransferResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.user.RequestUserUpdateDTO;
+import com.gal.afiliaciones.infrastructure.dto.user.UserDTO;
+import com.google.gson.Gson;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
@@ -53,6 +61,7 @@ public class GenericWebClient {
     private static final String TYPE = "Basic ";
     private static final String ERROR_TEXT = "Error: ";
     private static final String URL_CHILDREN = "%s/nodes/%s/children?skipCount=0&maxItems=2000";
+    private static final String TELEMETRY_REQUEST_BODY = "telemetryRequestBody";
 
     public Optional<UserDtoApiRegistry> getByIdentification(String identification) {
         return webClientBuilder.get()
@@ -67,6 +76,7 @@ public class GenericWebClient {
                 .post()
                 .uri(properties.getReportServiceUrl())
                 .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, reportRequestDto)
                 .body(Mono.just(reportRequestDto), CertificateReportRequestDTO.class)
                 .retrieve()
                 .bodyToMono(String.class)
@@ -130,6 +140,7 @@ public class GenericWebClient {
                 .post()
                 .uri(properties.getCreateUserServiceUrl())
                 .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, request)
                 .body(Mono.just(request), UserDTO.class)
                 .retrieve()
                 .bodyToMono(BodyResponseConfig.class)
@@ -141,6 +152,7 @@ public class GenericWebClient {
                 .post()
                 .uri(properties.getConsultIndependentWorkerUrl())
                 .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, request)
                 .body(Mono.just(request), ConsultIndependentWorkerDTO.class)
                 .retrieve()
                 .bodyToMono(ResponseConsultWorkerDTO.class)
@@ -167,6 +179,7 @@ public class GenericWebClient {
                 .post()
                 .uri(properties.getAffiliationIndependentSat())
                 .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, request)
                 .body(Mono.just(request), AffiliationWorkerIndependentArlDTO.class)
                 .retrieve()
                 .bodyToMono(EmployerTransferResponseDTO.class)
@@ -330,6 +343,7 @@ public class GenericWebClient {
     public Optional<ExportDocumentsDTO> exportDataGrid(RequestServiceDTO requestServiceDTO) {
         return webClientBuilder.post()
                 .uri(properties.getExportDataGrid())
+                .attribute(TELEMETRY_REQUEST_BODY, requestServiceDTO)
                 .body(Mono.just(requestServiceDTO), RequestServiceDTO.class)
                 .retrieve()
                 .bodyToMono(ExportDocumentsDTO.class)
@@ -340,6 +354,7 @@ public class GenericWebClient {
         try {
             webClientBuilder.put()
                     .uri(properties.getUrlTransversal()+"user-role/assignment/"+ idUser)
+                    .attribute(TELEMETRY_REQUEST_BODY, roleIds)
                     .bodyValue(roleIds)
                     .retrieve()
                     .toBodilessEntity()
@@ -355,7 +370,9 @@ public class GenericWebClient {
         return webClientBuilder
                 .post()
                 .uri(properties.getReportServiceUrl() + "/card")
+                
                 .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, reportRequestDto)
                 .body(Mono.just(reportRequestDto), CertificateReportRequestDTO.class)
                 .retrieve()
                 .bodyToMono(String.class)
@@ -375,6 +392,7 @@ public class GenericWebClient {
             .post()
             .uri(properties.getUpdateUser() + "/" + request.idUser())
             .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+            .attribute(TELEMETRY_REQUEST_BODY, request)
             .body(Mono.just(request), RequestUserUpdateDTO.class)
             .retrieve()
             .bodyToMono(String.class)
@@ -387,6 +405,7 @@ public class GenericWebClient {
             })
             .blockOptional();
     }
+
 
     public Optional<String> folderExistsByName(String parentFolderId, String folderName) {
         AlfrescoResponseDTO response = searchFolderByName(folderName, parentFolderId);
@@ -412,6 +431,7 @@ public class GenericWebClient {
                 .uri("/alfresco/api/-default-/public/search/versions/1/search")
                 .header(HEADER, authHeader)
                 .contentType(MediaType.APPLICATION_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, request)
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(AlfrescoResponseDTO.class)

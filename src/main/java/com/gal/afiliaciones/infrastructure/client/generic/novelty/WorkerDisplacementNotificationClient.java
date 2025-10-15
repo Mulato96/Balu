@@ -9,7 +9,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-@Component
+@Component("noveltyWorkerDisplacementNotificationClient")
 @RequiredArgsConstructor
 public class WorkerDisplacementNotificationClient {
 

@@ -77,12 +77,12 @@ public class Constant {
     public static final String TYPE_AFFILLATE_JUDICIAL_PROCESSES = "certificado afiliaciones procesos judiciales";
     public static final String TYPE_AFFILLATE_EMPLOYER_DOMESTIC = "Empleador Servicio Doméstico";
     public static final String TYPE_AFFILIATE_EMPLOYER = "certificado afiliaciones empleador";
+    public static final String DATE_FORMAT_SHORT_LATIN = "dd/MM/yyyy";
     public static final String TYPE_AFFILIATE_EMPLOYER_OPS = "certificado afiliaciones trabajador ops";
     public static final String TYPE_CERTIFICATE_SINGLE_MEMBERSHIP = "certificado unico afiliacion";
-    public static final String TYPE_CERTIFICATE_INDEPENDENT_VOLUNTEER = "certificado independiente voluntario";
     public static final String DATE_FORMAT_CERTIFICATE_EXPEDITION = "d 'días del mes de' MMMM 'del' yyyy";
-    public static final String DATE_FORMAT_SHORT_LATIN = "dd/MM/yyyy";
     public static final String USER_NOT_AFFILIATE_CARD = "Señor documento, no presentas información en nuestra ARL";
+    public static final String TYPE_CERTIFICATE_INDEPENDENT_VOLUNTEER = "certificado independiente voluntario";
     public static final String USER_NOT_AFFILIATED = "El usuario no cuenta con afiliacion activa!";
     public static final String ERROR_FIND_CONTRACT_EXTENSION = "La extensión del contrato no fue encontrado!";
     public static final String ERROR_FIND_CARD = "El carnet no fue encontrado!";
@@ -454,13 +454,18 @@ public class Constant {
 
     public static final String IDENTIFICATION_TYPE = "identificationType";
     public static final String PRE_REGISTER = "preregistro";
-
     /*----------------------- Novedades RUAF -----------------------------*/
     public static final String NOVELTY_RUAF_RETIREMENT_CODE = "R04";
     public static final Integer NOVELTY_RUAF_CAUSAL_PENSION = 1;
     public static final Integer NOVELTY_RUAF_CAUSAL_DISASSOCIATION = 2;
     public static final Integer NOVELTY_RUAF_CAUSAL_DEATH = 4;
-
+    
+    // Valores por defecto para campos obligatorios de dirección
+    public static final Long DEFAULT_MAIN_STREET_ID = 1L;
+    public static final Long DEFAULT_NUMBER_MAIN_STREET_ID = 1L;
+    
+    // Tolerancia para validación de IBC (diferencias de redondeo)
+    public static final BigDecimal IBC_TOLERANCE = new BigDecimal("1.00");
 
     /*----------------------- Integraciones -----------------------------*/
     public static final String USER_AUD = "LinkTICUsr";
@@ -470,6 +475,9 @@ public class Constant {
     public static final String EPS_DEFAULT = "EPS103";
     public static final int AFP_DEFAULT = 0;
     public static final String EMPLOYER_VOLUNTEER = "899999998";
+
+
+
 
     /*------------------------Certificados masivo---------------------------*/
     public static final String TEMPLATE_CERTIFICATE_MASSIVE = "template-emails/massive_affiliation_notification.html";

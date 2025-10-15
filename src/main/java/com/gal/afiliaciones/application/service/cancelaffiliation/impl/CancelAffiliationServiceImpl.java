@@ -42,7 +42,7 @@ public class CancelAffiliationServiceImpl implements ICancelAffiliationService {
         List<AffiliationDependent> affiliationDependentList = affiliationDependentRepository.findAll(specDependent);
 
         if(affiliationDependentList.isEmpty())
-                throw new CancelAffiliationNotFoundException(Constant.CANCEL_AFFILIATION_NOT_FOUND);
+            throw new CancelAffiliationNotFoundException(Constant.CANCEL_AFFILIATION_NOT_FOUND);
 
         affiliationDependentList.sort(Comparator.comparing(AffiliationDependent::getId).reversed());
         AffiliationDependent affiliationDependent = affiliationDependentList.get(0);

@@ -23,7 +23,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/contract")
 @Tag(name = "Contract-Controller", description = "CONTRATOS EMPLEADORES")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class ContractController {
 

@@ -211,6 +211,7 @@ public class OtpImpl implements OtpService {
 
         //compara que el email del usuario pre registrado sea el mismo del request, no requiere token por eso no compara
         if(!otpDependentDataDTO.getRequestDTO().getDestinatario().equals(email))
+
             throw new AffiliationError("El correo electronico no es correcto");
 
         OtpCodeEntity verificarOtpDate = findByNumberDocument(otpDependentDataDTO.getRequestDTO().getCedula());

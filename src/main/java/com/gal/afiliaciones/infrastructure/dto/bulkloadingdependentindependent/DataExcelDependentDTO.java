@@ -40,10 +40,10 @@ public class DataExcelDependentDTO{
     @JsonProperty("SEXO")
     private String gender;
 
-    @JsonProperty("EPS TRABAJADOR")
+    @JsonProperty("CODIGO EPS")
     private String healthPromotingEntity;
 
-    @JsonProperty("AFP TRABAJADOR")
+    @JsonProperty("CODIGO AFP")
     private String pensionFundAdministrator;
 
     @JsonProperty("DEPARTAMENTO TRABAJADOR")
@@ -61,7 +61,7 @@ public class DataExcelDependentDTO{
     @JsonProperty("DIRECCION")
     private String address;
 
-    @JsonProperty("SALARIO")
+    @JsonProperty("SALARIO IBC")
     private String salary;
 
     @JsonProperty("CARGO U OCUPACIÓN")

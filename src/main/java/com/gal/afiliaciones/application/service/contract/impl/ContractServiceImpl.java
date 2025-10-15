@@ -1,25 +1,26 @@
 package com.gal.afiliaciones.application.service.contract.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.impl.AffiliationEmployerDomesticServiceIndependentServiceImpl;
 import com.gal.afiliaciones.application.service.contract.ContractService;
-import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
 import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.contract.ContractEmployerResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.contract.ContractFilterDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +42,11 @@ public class ContractServiceImpl implements ContractService {
             return new ArrayList<>();
 
         affiliateList.forEach(affiliate -> {
+            // Ignore affiliates with null filed_number
+            if (affiliate.getFiledNumber() == null) {
+                return;
+            }
+            
             ContractEmployerResponseDTO contract = new ContractEmployerResponseDTO();
             // Busca por radicado el detalle de la afiliacion
             Optional<Affiliation> affiliation = repositoryAffiliation.findByFiledNumber(affiliate.getFiledNumber());

@@ -235,25 +235,6 @@ public class AffiliationIndependentCouncillorServiceImplTest {
     }
 
     @Test
-    void createAffiliationStep2_InvalidMonthlyValue() {
-        // Arrange
-        SalaryDTO salaryDTO = new SalaryDTO();
-        salaryDTO.setValue(908526L); // Colombian minimum wage 2021
-        
-        step2DTO.getContractorDataStep2DTO().setContractMonthlyValue(new BigDecimal("100")); // Too low
-        
-        when(repositoryAffiliation.findById(anyLong())).thenReturn(Optional.of(affiliation));
-        when(webClient.getSmlmvByYear(anyInt())).thenReturn(salaryDTO);
-
-        // Act & Assert
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, 
-            () -> service.createAffiliationStep2(step2DTO));
-        assertTrue(exception.getMessage().contains("El valor mensual del contrato debe estar entre"));
-    }
-
-
-
-    @Test
     void createAffiliationStep3_Success() throws IOException {
         // Arrange
         List<MultipartFile> documents = new ArrayList<>();

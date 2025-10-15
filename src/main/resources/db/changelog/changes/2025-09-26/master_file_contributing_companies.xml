@@ -1,0 +1,43 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/master_file_contributing_companies.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923624143-1">
+        <addColumn tableName="master_file_contributing_companies">
+            <column name="digito_verificacion" type="VARCHAR"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-2">
+        <addColumn tableName="master_file_contributing_companies">
+            <column name="departamento" type="VARCHAR"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-3">
+        <addColumn tableName="master_file_contributing_companies">
+            <column name="municipio" type="VARCHAR"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-4">
+        <addColumn tableName="master_file_contributing_companies">
+            <column name="total_monto_cotizacion" type="VARCHAR"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-5">
+        <addColumn tableName="master_file_contributing_companies">
+            <column name="conciliation_id" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-6">
+        <addForeignKeyConstraint baseColumnNames="conciliation_id" baseTableName="master_file_contributing_companies" constraintName="master_file_contributing_companies_conciliation_id_fkey" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="payment_conciliation" validate="true"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-7">
+        <dropColumn columnName="codigo_departamento" tableName="master_file_contributing_companies"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-8">
+        <dropColumn columnName="codigo_municipio" tableName="master_file_contributing_companies"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-9">
+        <dropColumn columnName="digito_verificacion_aportante" tableName="master_file_contributing_companies"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923624143-10">
+        <dropColumn columnName="total_cotizacion_obligatoria" tableName="master_file_contributing_companies"/>
+    </changeSet>
+</databaseChangeLog>

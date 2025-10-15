@@ -1,0 +1,86 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/mandatory_danger.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923614509-1">
+        <createTable tableName="mandatory_danger">
+            <column autoIncrement="true" name="id" startWith="859" type="INTEGER">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="mandatory_danger_pkey"/>
+            </column>
+            <column name="fk_occupation_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="isnoise" type="BOOLEAN"/>
+            <column name="isvibration" type="BOOLEAN"/>
+            <column name="isextremeatmosphericpressures" type="BOOLEAN"/>
+            <column name="isextremetemperaturebycold" type="BOOLEAN"/>
+            <column name="isextremetemperaturebywarm" type="BOOLEAN"/>
+            <column name="isnonionizingradiation" type="BOOLEAN"/>
+            <column name="isionizingradiation" type="BOOLEAN"/>
+            <column name="issolidaerosols" type="BOOLEAN"/>
+            <column name="isliquidaerosols" type="BOOLEAN"/>
+            <column name="isorganicorinorganicgases" type="BOOLEAN"/>
+            <column name="isvapours" type="BOOLEAN"/>
+            <column name="isvirus" type="BOOLEAN"/>
+            <column name="isbacterium" type="BOOLEAN"/>
+            <column name="isrickettsias" type="BOOLEAN"/>
+            <column name="isfungus" type="BOOLEAN"/>
+            <column name="iscrustaceans" type="BOOLEAN"/>
+            <column name="isarachnids" type="BOOLEAN"/>
+            <column name="isrodents" type="BOOLEAN"/>
+            <column name="isinvertebrates" type="BOOLEAN"/>
+            <column name="isvertebrates" type="BOOLEAN"/>
+            <column name="isvegetables" type="BOOLEAN"/>
+            <column name="isstatic" type="BOOLEAN"/>
+            <column name="isdynamic" type="BOOLEAN"/>
+            <column name="isinappropriateworkplans" type="BOOLEAN"/>
+            <column name="isinappropriateworkspaces" type="BOOLEAN"/>
+            <column name="isfire" type="BOOLEAN"/>
+            <column name="isburst" type="BOOLEAN"/>
+            <column name="ischemicalleaks" type="BOOLEAN"/>
+            <column name="ischemicalreactions" type="BOOLEAN"/>
+            <column name="ishighvoltage" type="BOOLEAN"/>
+            <column name="ismediumvoltage" type="BOOLEAN"/>
+            <column name="islowvoltage" type="BOOLEAN"/>
+            <column name="iselectricalequipment" type="BOOLEAN"/>
+            <column name="iselectricalinstallation" type="BOOLEAN"/>
+            <column name="isworkatheights" type="BOOLEAN"/>
+            <column name="isorderandcleanliness" type="BOOLEAN"/>
+            <column name="ismaterialstorage" type="BOOLEAN"/>
+            <column name="isarrangementmachinesandequipment" type="BOOLEAN"/>
+            <column name="isinstallation" type="BOOLEAN"/>
+            <column name="ismachinesandequipment" type="BOOLEAN"/>
+            <column name="istools" type="BOOLEAN"/>
+            <column name="ismechanismsinmotion" type="BOOLEAN"/>
+            <column name="ispressureequipmentandlines" type="BOOLEAN"/>
+            <column name="isquake" type="BOOLEAN"/>
+            <column name="isflood" type="BOOLEAN"/>
+            <column name="isavalanche" type="BOOLEAN"/>
+            <column name="isvolcaniceruption" type="BOOLEAN"/>
+            <column name="istheft" type="BOOLEAN"/>
+            <column name="ismanifestation" type="BOOLEAN"/>
+            <column name="isterrorism" type="BOOLEAN"/>
+            <column name="isextortion" type="BOOLEAN"/>
+            <column name="iskidnapping" type="BOOLEAN"/>
+            <column name="isstorm" type="BOOLEAN"/>
+            <column name="islotscomplexinformation" type="BOOLEAN"/>
+            <column name="ishandlemoney" type="BOOLEAN"/>
+            <column name="isphysicaleffort" type="BOOLEAN"/>
+            <column name="isnegativetreatmentbypublic" type="BOOLEAN"/>
+            <column name="islittlecommunication" type="BOOLEAN"/>
+            <column name="islongworkday" type="BOOLEAN"/>
+            <column name="isinsufficienttimework" type="BOOLEAN"/>
+            <column name="istimeforbreaks" type="BOOLEAN"/>
+            <column name="isimpedesskilldevelopment" type="BOOLEAN"/>
+            <column name="islittletimetodedicatetofamily" type="BOOLEAN"/>
+            <column name="isconflictivefamilyrelationships" type="BOOLEAN"/>
+            <column name="iscomplicatedeconomicsituation" type="BOOLEAN"/>
+            <column name="islongtravelhomeworkplace" type="BOOLEAN"/>
+            <column name="isworkperformednotcorrespondingtosalary" type="BOOLEAN"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923614509-2">
+        <addUniqueConstraint columnNames="fk_occupation_id" constraintName="mandatory_danger_fk_occupation_id_key" tableName="mandatory_danger"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923614509-3">
+        <addForeignKeyConstraint baseColumnNames="fk_occupation_id" baseTableName="mandatory_danger" constraintName="fk_mandatory_danger_occupation" deferrable="false" initiallyDeferred="false" onDelete="CASCADE" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="occupation_decree_1563" validate="true"/>
+    </changeSet>
+</databaseChangeLog>

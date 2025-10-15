@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/_bundle.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <include file="affiliate_activity_economic_2.xml" relativeToChangelogFile="true"/>
+  <include file="affiliation_detail_20250913.xml" relativeToChangelogFile="true"/>
+  <include file="backup_affiliate_mercantile2_null_id_20250924.xml" relativeToChangelogFile="true"/>
+  <include file="backup_affiliate_mercantile_null_id_20250924.xml" relativeToChangelogFile="true"/>
+  <include file="backup_affiliation_dependent_null_id_20250924.xml" relativeToChangelogFile="true"/>
+  <include file="backup_affiliation_detail_null_id_20250924.xml" relativeToChangelogFile="true"/>
+  <include file="certificate.xml" relativeToChangelogFile="true"/>
+  <include file="certificate_affiliate.xml" relativeToChangelogFile="true"/>
+  <include file="comparacion_archivos_recaudo_model.xml" relativeToChangelogFile="true"/>
+  <include file="contribution_refund.xml" relativeToChangelogFile="true"/>
+  <include file="danger.xml" relativeToChangelogFile="true"/>
+  <include file="economic_sector.xml" relativeToChangelogFile="true"/>
+  <include file="economic_activity.xml" relativeToChangelogFile="true"/>
+  <include file="http_outbound_call.xml" relativeToChangelogFile="true"/>
+  <include file="informacion_arl.xml" relativeToChangelogFile="true"/>
+  <include file="log_bancario_backup_09_09_2025.xml" relativeToChangelogFile="true"/>
+  <include file="log_bancario_backup_antes_cambio_estado.xml" relativeToChangelogFile="true"/>
+  <include file="mandatory_danger.xml" relativeToChangelogFile="true"/>
+  <include file="master_file_contributing_companies.xml" relativeToChangelogFile="true"/>
+  <include file="novedad_consulta_general.xml" relativeToChangelogFile="true"/>
+  <include file="novedad_ruaf.xml" relativeToChangelogFile="true"/>
+  <include file="record_load_bulk.xml" relativeToChangelogFile="true"/>
+  <include file="record_massive_update_worker.xml" relativeToChangelogFile="true"/>
+  <include file="reporte_uno_por_ciento_model.xml" relativeToChangelogFile="true"/>
+  <include file="ruaf_files.xml" relativeToChangelogFile="true"/>
+  <include file="tmp_card.xml" relativeToChangelogFile="true"/>
+  <include file="user_entity.xml" relativeToChangelogFile="true"/>
+  <include file="usuario_backup_2025_09_22_19_43_31.xml" relativeToChangelogFile="true"/>
+  <include file="v_afiliados.xml" relativeToChangelogFile="true"/>
+  <!-- <include file="affiliation_dependent.xml" relativeToChangelogFile="true"/> -->
+  <!-- <include file="affiliation_detail.xml" relativeToChangelogFile="true"/> -->
+  <!-- <include file="affiliate_mercantile.xml" relativeToChangelogFile="true"/> -->
+  <!-- <include file="affiliate_dependants.xml" relativeToChangelogFile="true"/>
+  <include file="affiliate_independents.xml" relativeToChangelogFile="true"/> -->
+</databaseChangeLog>

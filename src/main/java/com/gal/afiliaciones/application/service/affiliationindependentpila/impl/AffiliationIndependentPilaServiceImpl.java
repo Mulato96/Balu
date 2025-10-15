@@ -90,7 +90,8 @@ public class AffiliationIndependentPilaServiceImpl implements AffiliationIndepen
 
         // Generar poliza
         policyService.createPolicy(dto.getIdentificationDocumentType(),
-                dto.getIdentificationDocumentNumber(), LocalDate.now(), null, affiliate.getIdAffiliate(), 0L, dto.getCompanyName());
+                dto.getIdentificationDocumentNumber(), LocalDate.now(), null, affiliate.getIdAffiliate(),
+                0L, dto.getCompanyName());
 
         return affiliate.getIdAffiliate();
 
@@ -182,7 +183,8 @@ public class AffiliationIndependentPilaServiceImpl implements AffiliationIndepen
 
         // Generar poliza
         policyService.createPolicy(affiliation.getIdentificationDocumentType(),
-                affiliation.getIdentificationDocumentNumber(), LocalDate.now(), null, idAffiliate, 0L, affiliation.getCompanyName());
+                affiliation.getIdentificationDocumentNumber(), LocalDate.now(), null, idAffiliate,
+                0L, affiliation.getCompanyName());
 
         affiliation.setFiledNumber(filedNumber);
         affiliation.setStageManagement(Constant.PENDING_COMPLETE_FORM);

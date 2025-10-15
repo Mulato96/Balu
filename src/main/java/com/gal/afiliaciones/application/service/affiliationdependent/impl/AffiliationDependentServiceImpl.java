@@ -1,7 +1,27 @@
 package com.gal.afiliaciones.application.service.affiliationdependent.impl;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
@@ -42,12 +62,15 @@ import com.gal.afiliaciones.infrastructure.client.generic.dependentrelationship.
 import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipClient;
 import com.gal.afiliaciones.infrastructure.client.generic.independentrelationship.IndependentContractRelationshipRequest;
 import com.gal.afiliaciones.infrastructure.client.generic.person.InsertPersonClient;
+import com.gal.afiliaciones.infrastructure.client.generic.person.UpdatePersonClient;
 import com.gal.afiliaciones.infrastructure.client.generic.person.PersonRequest;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.client.generic.workerposition.UpdateWorkerPositionClient;
+import com.gal.afiliaciones.infrastructure.client.generic.workerposition.UpdateWorkerPositionRequest;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.dependent.BondingTypeDependentDao;
@@ -55,8 +78,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.dependent.WorkModality
 import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.novelty.PermanentNoveltyRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
@@ -78,27 +101,9 @@ import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.Va
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.AffiliationValidations;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -131,19 +136,21 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
     private final HealthPromotingEntityRepository healthPromotingEntityRepository;
     private final MunicipalityRepository municipalityRepository;
     private final InsertPersonClient insertPersonClient;
+    private final UpdatePersonClient updatePersonClient;
+    private final UpdateWorkerPositionClient updateWorkerPositionClient;
     private final OccupationRepository occupationRepository;
     private final DependentRelationshipClient dependentRelationshipClient;
     private final IndependentContractRelationshipClient independentContractClient;
 
     private static final String DOCUMENT_TEXT = "El documento";
+    private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
     private static final DateTimeFormatter formatter_date = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final List<String> economicActivitiesDomestic = new ArrayList<>(Arrays.asList(
             Constant.CODE_MAIN_ECONOMIC_ACTIVITY_DOMESTIC,
             Constant.ECONOMIC_ACTIVITY_DOMESTIC_2,
             Constant.ECONOMIC_ACTIVITY_DOMESTIC_3,
             Constant.ECONOMIC_ACTIVITY_DOMESTIC_4
-            ));
-    private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
+    ));
 
     @Override
     public List<BondingTypeDependent> findAll() {
@@ -177,11 +184,11 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
 
         if (userPreregister.isEmpty() && userAffiliation.isEmpty()) {
             //Consultar registraduria
-            if (request.getEmployeeIdentificationType().equals(Constant.CC))
+            if (request.getEmployeeIdentificationNumber().equals(Constant.CC))
                 response = searchUserInNationalRegistry(request.getEmployeeIdentificationNumber());
 
             if (response.getIdentificationDocumentType() == null)
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DOCUMENT_TEXT + " " + request.getEmployerIdentificationType() + ": " +
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, DOCUMENT_TEXT + " " + request.getEmployeeIdentificationType() + ": " +
                         request.getEmployeeIdentificationNumber() + " no ha sido encontrado. Para continuar con la afiliación usando los " +
                         "datos ingresados, haz clic en Continuar.");
         }
@@ -367,6 +374,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         affiliation.setCodeContributantType(convertContributantType(dto.getIdBondingType()));
         affiliation.setCodeContributantSubtype(Constant.CODE_CONTRIBUTANT_SUBTYPE_NOT_APPLY);
         affiliation.setPendingCompleteFormPila(dto.getFromPila());
+        
 
         //Guardar fecha fin de la practica para estudiante y aprendiz SENA
         if (dto.getIdBondingType() == 2L || dto.getIdBondingType() == 3L)
@@ -376,10 +384,15 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         String filedNumber = filedService.getNextFiledNumberAffiliation();
         affiliation.setFiledNumber(filedNumber);
 
-        affiliation.setIdAffiliateEmployer(dto.getIdAffiliateEmployer());
-        affiliation.setIdWorkCenter(dto.getIdWorkCenter());
+        //Guardar afiliacion general
+        Affiliate affiliate = saveAffiliate(dto, filedNumber, risk);
+
+        affiliation.setIdAffiliate(affiliate.getIdAffiliate());
         AffiliationDependent responseAffiliation = dependentRepository.save(affiliation);
-        DataEmployerDTO dataEmployerDTO = completeAffiliation(dto, responseAffiliation, filedNumber, risk);
+        DataEmployerDTO dataEmployerDTO = completeAffiliation(affiliate, dto, responseAffiliation);
+
+        //Enviar registro del dependiante a Positiva
+        insertWorkerDependent(responseAffiliation, dataEmployerDTO);
 
         //Enviar registro del dependiante a Positiva
         insertWorkerDependent(responseAffiliation, dataEmployerDTO);
@@ -420,11 +433,9 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         return contributantType;
     }
 
-    private DataEmployerDTO completeAffiliation(AffiliationDependentDTO dto, AffiliationDependent responseAffiliation,
-                                String filedNumber, String risk){
-        //Guardar afiliacion general
-        Affiliate affiliate = saveAffiliate(dto, filedNumber, risk);
-
+    private DataEmployerDTO completeAffiliation(Affiliate affiliate, AffiliationDependentDTO dto, 
+                                                AffiliationDependent responseAffiliation){
+        
         //Asignar poliza empleador
         assignPolicy(affiliate.getIdAffiliate(), responseAffiliation.getIdAffiliateEmployer(),
                 responseAffiliation.getIdentificationDocumentType(),
@@ -485,7 +496,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
     }
 
     private void updateEpsAndAfp(AffiliationDependentDTO dto){
-        Optional<UserMain> userPreregister = iUserPreRegisterRepository.findOne(UserSpecifications.hasDocumentTypeAndNumber(dto.getWorker().getIdentificationDocumentType(), dto.getWorker().getIdentificationDocumentNumber()));
+        Optional<UserMain> userPreregister = iUserPreRegisterRepository.findOne(UserSpecifications.findExternalUser(dto.getWorker().getIdentificationDocumentType(), dto.getWorker().getIdentificationDocumentNumber()));
 
         if (userPreregister.isPresent() && userPreregister.get().getPensionFundAdministrator() == null && userPreregister.get().getHealthPromotingEntity() == null)
             iUserPreRegisterRepository.updateEPSandAFP(userPreregister.get().getId(), dto.getWorker().getHealthPromotingEntity(), dto.getWorker().getPensionFundAdministrator());
@@ -530,6 +541,12 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         return workModalityDao.findAll();
     }
 
+    @Override
+    public List<AffiliationDependent> findByIdHeadquarter(Long idHeadquarter) {
+        Specification<AffiliationDependent> spec = AffiliationDependentSpecification.hasIdHeadquarter(idHeadquarter);
+        return dependentRepository.findAll(spec);
+    }
+
     private DependentWorkerDTO searchUserInNationalRegistry(String identificationNumber) {
         DependentWorkerDTO userRegistry = new DependentWorkerDTO();
 
@@ -543,9 +560,9 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             userRegistry.setSecondName(capitalize(registry.getSecondName()));
             userRegistry.setSurname(capitalize(registry.getFirstLastName()));
             userRegistry.setSecondSurname(capitalize(registry.getSecondLastName()));
-            userRegistry.setDateOfBirth(registry.getBirthDate() != null && !registry.getBirthDate().isEmpty()
-                    ? LocalDate.parse(registry.getBirthDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-                    : null);
+            userRegistry.setDateOfBirth(registry.getBirthDate() != null && !registry.getBirthDate().isEmpty() 
+                ? LocalDate.parse(registry.getBirthDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")) 
+                : null);
             userRegistry.setGender(RegistraduriaUnifiedService.mapGender(registry.getGender()));
             userRegistry.setNationality(1L);
             userRegistry.setUserFromRegistry(true);
@@ -578,6 +595,47 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
                     return economicActivityDTO4;
                 }).toList();
     }
+    public List<EconomicActivityDTO> searchEconomicActivitiesMercantile(List<AffiliateMercantile> affiliationList) {
+
+        return affiliationList.stream()
+                .flatMap(affiliate -> affiliate.getEconomicActivity()
+                                .stream()
+                                .map(economic -> {
+                                    EconomicActivityDTO economicActivityDTO4 = new EconomicActivityDTO();
+                                    BeanUtils.copyProperties(economic.getActivityEconomic(), economicActivityDTO4);
+                                    return economicActivityDTO4;
+                                })
+                )
+                .collect(Collectors.toMap(
+                    EconomicActivityDTO::getEconomicActivityCode,
+                    dto -> dto,
+                    (existing, replacement) -> existing // Mantener el primer elemento en caso de duplicados
+                ))
+                .values()
+                .stream()
+                .toList();
+    }
+
+    private List<EconomicActivityDTO> searchEconomicActivitiesDomestic(List<Affiliation> affiliationList) {
+        return affiliationList
+                .stream()
+                .flatMap(affiliate -> affiliate.getEconomicActivity()
+                        .stream()
+                        .map(economic -> {
+                            EconomicActivityDTO economicActivity = new EconomicActivityDTO();
+                            BeanUtils.copyProperties(economic.getActivityEconomic(), economicActivity);
+                            economicActivity.setEconomicActivityCode(economic.getActivityEconomic().getEconomicActivityCode());
+                            return economicActivity;
+                        }))
+                .collect(Collectors.toMap(
+                    EconomicActivityDTO::getEconomicActivityCode,
+                    dto -> dto,
+                    (existing, replacement) -> existing // Mantener el primer elemento en caso de duplicados
+                ))
+                .values()
+                .stream()
+                .toList();
+    }
 
     @Override
     public AffiliationDependent createAffiliationIndependentStep1(AffiliationIndependentStep1DTO dto) {
@@ -589,7 +647,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
                 throw new AffiliationError(messageError.messageError(dto.getWorker().getIdentificationDocumentType(), dto.getWorker().getIdentificationDocumentNumber()));
         }
 
-        Optional<UserMain> userPreregister = iUserPreRegisterRepository.findOne(UserSpecifications.hasDocumentTypeAndNumber(dto.getWorker().getIdentificationDocumentType(), dto.getWorker().getIdentificationDocumentNumber()));
+        Optional<UserMain> userPreregister = iUserPreRegisterRepository.findOne(UserSpecifications.findExternalUser(dto.getWorker().getIdentificationDocumentType(), dto.getWorker().getIdentificationDocumentNumber()));
 
         if (userPreregister.isPresent() && userPreregister.get().getPensionFundAdministrator() == null && userPreregister.get().getHealthPromotingEntity() == null)
             iUserPreRegisterRepository.updateEPSandAFP(userPreregister.get().getId(), dto.getWorker().getHealthPromotingEntity(), dto.getWorker().getPensionFundAdministrator());
@@ -603,33 +661,43 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Afiliación no permitida para empleador de servicios domésticos.");
 
         AffiliationDependent affiliation = new AffiliationDependent();
-
+ 
         if (dto.getIdAffiliation() > 0) {
             affiliation = dependentRepository.findById(dto.getIdAffiliation())
                     .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
         }
-
+ 
         BeanUtils.copyProperties(dto, affiliation);
         BeanUtils.copyProperties(dto.getWorker(), affiliation);
         BeanUtils.copyProperties(dto.getWorker().getAddress(), affiliation);
         affiliation.setEconomicActivityCode(economicActivityMinimumRisk(dto.getIdAffiliateEmployer()));
         affiliation.setOccupationalRiskManager(Constant.CODE_ARL);
-
+ 
+        // Generar radicado desde Step1
+        String filedNumber = filedService.getNextFiledNumberAffiliation();
+        affiliation.setFiledNumber(filedNumber);
+ 
+        // Crear primero el Affiliate en Step1 y usar su id para cumplir NOT NULL + FK
+        Affiliate affiliateStep1 = saveAffiliateIndependentStep1(dto, filedNumber);
+        affiliation.setIdAffiliate(affiliateStep1.getIdAffiliate());
+ 
         affiliation.setCodeContributantType(Constant.CODE_CONTRIBUTANT_TYPE_INDEPENDENT);
         affiliation.setCodeContributantSubtype(Constant.CODE_CONTRIBUTANT_SUBTYPE_NOT_APPLY);
-
+ 
+        // Log para validar valor de id_affiliate y radicado antes de persistir Step1
+        log.info("createAffiliationIndependentStep1: saving affiliation_dependent with id_affiliate={} and filedNumber={}", affiliation.getIdAffiliate(), affiliation.getFiledNumber());
+ 
         return dependentRepository.save(affiliation);
     }
 
     @Override
+    @Transactional
     public AffiliationDependent createAffiliationIndependentStep2(AffiliationIndependentStep2DTO dto) {
         // Busca la afiliación actual
         AffiliationDependent affiliation = dependentRepository.findById(dto.getIdAffiliation())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Afiliación no encontrada"));
-
-        if (affiliation.getFiledNumber() != null && !affiliation.getFiledNumber().isBlank())
-            return updateIndependentAffiliation(affiliation, dto);
-
+ 
+        // Completar datos de contrato y cotización
         BeanUtils.copyProperties(dto.getContractorData(), affiliation);
         BeanUtils.copyProperties(dto.getSignatoryData(), affiliation);
         BeanUtils.copyProperties(dto.getDataContribution(), affiliation);
@@ -639,29 +707,31 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         affiliation.setRisk(riskInt);
         affiliation.setPriceRisk(dto.getDataContribution().getPrice());
         affiliation.setPendingCompleteFormPila(dto.getFromPila());
-
+ 
         validateIbcDetails(dto);
-
-        //Generar radicado
-        String filedNumber = filedService.getNextFiledNumberAffiliation();
-
-        affiliation.setFiledNumber(filedNumber);
+ 
+        // Radicado: debe provenir del Paso 1; si no existe, error
+        String filedNumber = affiliation.getFiledNumber();
+        if (filedNumber == null || filedNumber.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Radicado no encontrado para la afiliación. Debe generarse en el Paso 1.");
+        }
+ 
         AffiliationDependent responseAffiliation = dependentRepository.save(affiliation);
-
-        //Guardar afiliacion general
-        Affiliate affiliate = saveAffiliateIndependent(dto, responseAffiliation, filedNumber);
-
+ 
+        // Actualizar Affiliate existente creado en Step1 con los datos finales y mantener el radicado
+        Affiliate affiliate = updateAffiliateIndependentStep2(dto, affiliation.getIdAffiliate(), filedNumber);
+ 
         //Asignar poliza empleador
         assignPolicy(affiliate.getIdAffiliate(), responseAffiliation.getIdAffiliateEmployer(),
                 responseAffiliation.getIdentificationDocumentType(),
                 responseAffiliation.getIdentificationDocumentNumber(),
                 Constant.ID_CONTRACTOR_POLICY, affiliate.getCompany());
-
+ 
         // Generar carnet
         cardAffiliatedService.createCardDependent(affiliate, responseAffiliation.getFirstName(),
                 responseAffiliation.getSecondName(), responseAffiliation.getSurname(),
                 responseAffiliation.getSecondSurname());
-
+ 
         SaveGeneralNoveltyRequest request = SaveGeneralNoveltyRequest.builder()
                 .idAffiliation(affiliate.getIdAffiliate())
                 .filedNumber(affiliate.getFiledNumber())
@@ -669,24 +739,19 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
                 .status(Constant.APPLIED)
                 .observation(Constant.AFFILIATION_SUCCESSFUL)
                 .build();
-
+ 
         generalNoveltyServiceImpl.saveGeneralNovelty(request);
-
+ 
         //Enviar correo
         DataEmployerDTO dataEmployerDTO = getDataEmployer(dto.getIdAffiliateEmployer());
         sendEmails.welcomeDependent(affiliation, affiliate.getIdAffiliate(), dataEmployerDTO, 4L);
-
-        /*if(Boolean.TRUE.equals(dto.getFromPila())){
-            DataEmailApplyDTO dataEmail = getDataEmailNovelty(affiliate.getIdAffiliate());
-            sendEmails.emailApplyPILA(dataEmail);
-        }*/
-
+ 
         //Enviar registro del dependiante a Positiva
         insertWorkerIndependent(responseAffiliation, dataEmployerDTO);
-
+ 
         //Actualizar cantidad de trabajadores del empleador
         updateRealNumberWorkers(dataEmployerDTO);
-
+ 
         return responseAffiliation;
     }
 
@@ -706,7 +771,6 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         if (dto.getContractorData().getContractMonthlyValue().compareTo(smlmv) < 0 || dto.getContractorData().getContractMonthlyValue().compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
-
     }
 
     private Affiliate saveAffiliateIndependent(AffiliationIndependentStep2DTO dto, AffiliationDependent
@@ -737,6 +801,61 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             newAffiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
         }
         return affiliateService.createAffiliate(newAffiliate);
+    }
+
+    // Crea el Affiliate al finalizar Step1 (mínimos requeridos, ya con radicado)
+    private Affiliate saveAffiliateIndependentStep1(AffiliationIndependentStep1DTO dto, String filedNumber) {
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(dto.getIdAffiliateEmployer())
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+ 
+        Affiliate newAffiliate = new Affiliate();
+        newAffiliate.setDocumentType(dto.getWorker().getIdentificationDocumentType());
+        newAffiliate.setCompany(affiliateEmployer.getCompany());
+        newAffiliate.setNitCompany(affiliateEmployer.getNitCompany());
+        newAffiliate.setDocumenTypeCompany(affiliateEmployer.getDocumenTypeCompany());
+        newAffiliate.setDocumentNumber(dto.getWorker().getIdentificationDocumentNumber());
+        newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
+        newAffiliate.setAffiliationSubType(Constant.BONDING_TYPE_INDEPENDENT);
+        newAffiliate.setAffiliationDate(LocalDateTime.now());
+        newAffiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_ACTIVE);
+        newAffiliate.setAffiliationCancelled(false);
+        newAffiliate.setStatusDocument(false);
+        // Asignar radicado en Step1
+        newAffiliate.setFiledNumber(filedNumber);
+        newAffiliate.setCoverageStartDate(dto.getCoverageDate());
+        // En Step1 aún no hay riesgo ni fechas de contrato
+        newAffiliate.setRisk(null);
+        newAffiliate.setRetirementDate(null);
+        newAffiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
+        newAffiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
+        return affiliateService.createAffiliate(newAffiliate);
+    }
+
+    // Actualiza el Affiliate existente en Step2 con radicado, riesgo y fechas
+    private Affiliate updateAffiliateIndependentStep2(AffiliationIndependentStep2DTO dto, Long idAffiliate, String filedNumber) {
+        Affiliate affiliateEmployer = affiliateRepository.findByIdAffiliate(dto.getIdAffiliateEmployer())
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_EMPLOYER_NOT_FOUND));
+
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
+
+        // Refrescar datos del empleador por consistencia
+        affiliate.setCompany(affiliateEmployer.getCompany());
+        affiliate.setNitCompany(affiliateEmployer.getNitCompany());
+        affiliate.setDocumenTypeCompany(affiliateEmployer.getDocumenTypeCompany());
+
+        // Asignar radicado y datos finales del contrato
+        affiliate.setFiledNumber(filedNumber);
+        affiliate.setCoverageStartDate(dto.getContractorData().getStartDate());
+        affiliate.setRisk(dto.getDataContribution().getRisk());
+        affiliate.setRetirementDate(dto.getContractorData().getEndDate());
+        if (Boolean.TRUE.equals(dto.getFromPila())) {
+            affiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PILA);
+        } else {
+            affiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
+        }
+        // Persistir actualización
+        return affiliateService.createAffiliate(affiliate);
     }
 
     private String economicActivityMinimumRisk(Long idAffiliateEmployer) {
@@ -778,7 +897,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         BeanUtils.copyProperties(dto, affiliation);
         BeanUtils.copyProperties(dto.getWorker(), affiliation);
         BeanUtils.copyProperties(dto.getWorker().getAddress(), affiliation);
-        if (dto.getEconomicActivityCode() != null) {
+        if (dto.getEconomicActivityCode() != null && !dto.getEconomicActivityCode().isEmpty()) {
             String risk = dto.getEconomicActivityCode().substring(0, 1);
             affiliation.setRisk(Integer.parseInt(risk));
             affiliation.setPriceRisk(riskFeeService.getFeeByRisk(risk).multiply(new BigDecimal(100)));
@@ -790,11 +909,19 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
 
         AffiliationDependent responseAffiliation = dependentRepository.save(affiliation);
 
+        // Get employer data for external integrations
+        DataEmployerDTO dataEmployerDTO = getDataEmployer(dto.getIdAffiliateEmployer());
+
+        // Sync person data to external Positiva system (non-blocking)
+        syncDependentPersonToPositiva(responseAffiliation);
+
+        // Sync worker position (cargo) to external Positiva system (non-blocking)
+        updateWorkerPositionToPositiva(responseAffiliation, dataEmployerDTO);
+
         //Actualizar afiliacion general
         updateAffiliate(affiliation);
 
         //Enviar correo de actualización
-        DataEmployerDTO dataEmployerDTO = getDataEmployer(dto.getIdAffiliateEmployer());
         sendEmails.emailUpdateDependent(affiliation, dataEmployerDTO);
 
         return responseAffiliation;
@@ -912,6 +1039,29 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         return new DataEmployerDTO();
     }
 
+    @Override
+    public List<EconomicActivityHeadquarterDTO> findEconomicActivitiesByHeadquarter(Long idHeadquarter) {
+
+        List<EconomicActivityHeadquarterDTO> economicActivityList = new ArrayList<>();
+
+        MainOffice mainOffice = mainOfficeService.findById(idHeadquarter);
+        List<WorkCenter> workCenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
+
+        if(!workCenterList.isEmpty()) {
+            workCenterList.forEach(workCenter -> {
+                EconomicActivityHeadquarterDTO economicActivityHeadquarterDTO = new EconomicActivityHeadquarterDTO();
+                EconomicActivityDTO economicActivity = economicActivityService.getEconomicActivityByCode(workCenter.getEconomicActivityCode());
+                BeanUtils.copyProperties(economicActivity, economicActivityHeadquarterDTO);
+                economicActivityHeadquarterDTO.setIdWorkCenter(workCenter.getId());
+                economicActivityList.add(economicActivityHeadquarterDTO);
+            });
+        }else{
+            throw new AffiliationError("No hay centros de trabajo para la sede " + mainOffice.getMainOfficeName());
+        }
+
+        return economicActivityList;
+    }
+
     public void insertWorkerDependent(AffiliationDependent dependent, DataEmployerDTO dataEmployerDTO){
         insertPersonToClient(dependent, dataEmployerDTO);
         insertRLDependenteClient(dependent, dataEmployerDTO);
@@ -927,7 +1077,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             PersonRequest request = new PersonRequest();
             request.setIdTipoDoc(user.getIdentificationDocumentType());
             request.setIdPersona(user.getIdentificationDocumentNumber());
-            request.setIdAfp(user.getPensionFundAdministrator()!=null ? user.getPensionFundAdministrator().intValue() : null);
+            request.setIdAfp(Objects.nonNull(user.getPensionFundAdministrator()) ? user.getPensionFundAdministrator().intValue() : null);
             request.setIdPais(Constant.ID_COLOMBIA_COUNTRY);
             request.setIdDepartamento(user.getIdDepartment()!=null ? user.getIdDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(user.getIdCity()));
@@ -961,13 +1111,23 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             request.setIdPersona(dependent.getIdentificationDocumentNumber());
             request.setIdTipoDocEmp(dataEmployerDTO.getIdentificationTypeEmployer());
             request.setIdEmpresa(dataEmployerDTO.getIdentificationNumberEmployer());
-            request.setIndVinculacionLaboral(1); // 1 es para dependientes
+            request.setIndVinculacionLaboral(1); // 1 es para dependiente
             request.setIdOcupacion(findCodeOccupationById(dependent.getIdOccupation()));
             request.setSalarioMensual(dependent.getSalary()!=null ? dependent.getSalary().doubleValue() : 0);
             request.setIdActividadEconomica(dependent.getEconomicActivityCode()!=null ? Integer.parseInt(dependent.getEconomicActivityCode()) : null);
-            request.setIdDepartamento(dependent.getIdDepartment()!=null ? dependent.getIdDepartment().intValue() : null);
-            request.setIdMunicipio(convertIdMunicipality(dependent.getIdCity()));
-            request.setIdSede(1); //Sede creada por defecto al crear el empleador
+            // Usar MainOffice (sede) para obtener idSede Positiva, departamento y ciudad
+            if (dependent.getIdHeadquarter() != null) {
+                MainOffice mainOffice = mainOfficeService.findById(dependent.getIdHeadquarter());
+                Integer idSedePositiva = mainOffice.getIdSedePositiva() != null ? mainOffice.getIdSedePositiva().intValue() : null;
+                request.setIdSede(idSedePositiva != null ? idSedePositiva : 1);
+                request.setIdDepartamento(mainOffice.getIdDepartment() != null ? mainOffice.getIdDepartment().intValue() : null);
+                request.setIdMunicipio(convertIdMunicipality(mainOffice.getIdCity()));
+            } else {
+                // Fallback cuando no hay sede
+                request.setIdSede(1); //Sede creada por defecto al crear el empleado
+                request.setIdDepartamento(dependent.getIdDepartment()!=null ? dependent.getIdDepartment().intValue() : null);
+                request.setIdMunicipio(convertIdMunicipality(dependent.getIdCity()));
+            }
             request.setIdCentroTrabajo(1); //Centro de trabajo creado por defecto al crear el empleador
             request.setFechaInicioVinculacion(dependent.getCoverageDate()!=null ? dependent.getCoverageDate().toString() : LocalDate.now().format(formatter_date));
             request.setTeletrabajo(1);
@@ -1016,8 +1176,11 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
                     dependent.getContractTotalValue().doubleValue() : 0);
             request.setValorMensualContrato(dependent.getSalary()!=null ?
                     dependent.getSalary().doubleValue() : 0);
-            request.setIbc(dependent.getContractIbcValue()!=null ? dependent.getContractIbcValue().doubleValue() : 0);
-            request.setNormalizacion(0); // 0 para no normalizado
+            request.setIbc(
+                    dependent.getContractIbcValue() != null
+                            ? (int) Math.round(dependent.getContractIbcValue().doubleValue())
+                            : 0
+            );            request.setNormalizacion(0);
             Object response = independentContractClient.insert(request);
             log.info("Se inserto el independiente " + dependent.getIdentificationDocumentType() + "-" +
                     dependent.getIdentificationDocumentNumber() + "Respuesta" + response.toString());
@@ -1074,29 +1237,6 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         };
     }
 
-    @Override
-    public List<EconomicActivityHeadquarterDTO> findEconomicActivitiesByHeadquarter(Long idHeadquarter) {
-
-        List<EconomicActivityHeadquarterDTO> economicActivityList = new ArrayList<>();
-
-        MainOffice mainOffice = mainOfficeService.findById(idHeadquarter);
-        List<WorkCenter> workCenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
-
-        if(!workCenterList.isEmpty()) {
-            workCenterList.forEach(workCenter -> {
-                EconomicActivityHeadquarterDTO economicActivityHeadquarterDTO = new EconomicActivityHeadquarterDTO();
-                EconomicActivityDTO economicActivity = economicActivityService.getEconomicActivityByCode(workCenter.getEconomicActivityCode());
-                BeanUtils.copyProperties(economicActivity, economicActivityHeadquarterDTO);
-                economicActivityHeadquarterDTO.setIdWorkCenter(workCenter.getId());
-                economicActivityList.add(economicActivityHeadquarterDTO);
-            });
-        }else{
-            throw new AffiliationError("No hay centros de trabajo para la sede " + mainOffice.getMainOfficeName());
-        }
-
-        return economicActivityList;
-    }
-
     private Integer convertContractClass(String contractQuality){
         if(contractQuality!=null){
             return contractQuality.equalsIgnoreCase("Publico") ? 1 : 2; // 1 para Público
@@ -1127,6 +1267,188 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
 
             if (matcher.find()) {
                 return Integer.parseInt(matcher.group(1));
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Sync dependent worker person updates to external Positiva system.
+     * Non-blocking operation - logs failures but doesn't throw exceptions.
+     * Follows integrations v2 architecture with automatic telemetry.
+     * 
+     * @param affiliation the updated AffiliationDependent entity with latest data
+     */
+    private void syncDependentPersonToPositiva(AffiliationDependent affiliation) {
+        try {
+            log.info("Attempting to sync dependent worker person update to Positiva. Worker={}-{}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber());
+            
+            // Build person request from AffiliationDependent data
+            PersonRequest request = new PersonRequest();
+            
+            // Identity
+            request.setIdTipoDoc(affiliation.getIdentificationDocumentType());
+            request.setIdPersona(affiliation.getIdentificationDocumentNumber());
+            
+            // Personal info
+            request.setNombre1(affiliation.getFirstName());
+            request.setNombre2(affiliation.getSecondName());
+            request.setApellido1(affiliation.getSurname());
+            request.setApellido2(affiliation.getSecondSurname());
+            request.setFechaNacimiento(affiliation.getDateOfBirth() != null ? 
+                    affiliation.getDateOfBirth().atStartOfDay().format(formatter_date) : null);
+            request.setSexo(affiliation.getGender());
+            
+            // Contact
+            request.setTelefonoPersona(affiliation.getPhone1() != null ? 
+                    affiliation.getPhone1().replaceAll("\\s+", "") : "");
+            request.setFaxPersona(null);
+            request.setEmailPersona(affiliation.getEmail());
+            
+            // Address
+            request.setIdPais(Constant.ID_COLOMBIA_COUNTRY);
+            request.setIdDepartamento(affiliation.getIdDepartment() != null ? 
+                    affiliation.getIdDepartment().intValue() : 0);
+            request.setIdMunicipio(convertIdMunicipalitySafe(affiliation.getIdCity()));
+            request.setDireccionPersona(affiliation.getAddress() != null ? 
+                    affiliation.getAddress().replace('#', 'N') : "");
+            request.setIndZona(null); // Zone indicator - to be determined
+            
+            // EPS/AFP
+            request.setIdAfp(affiliation.getPensionFundAdministrator() != null ? 
+                    affiliation.getPensionFundAdministrator().intValue() : 0);
+            request.setIdEps(findEpsCodeSafe(affiliation.getHealthPromotingEntity()));
+            
+            // Audit fields
+            request.setUsuarioAud(Constant.USER_AUD);
+            request.setMaquinaAud(Constant.MAQ_AUD);
+            
+            // Call external system
+            Object response = updatePersonClient.update(request);
+            log.info("Successfully synced dependent worker person update to Positiva. Worker={}-{}, Response={}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber(), 
+                    response);
+                    
+        } catch (Exception ex) {
+            log.warn("Failed to sync dependent worker person update to Positiva (non-blocking). Worker={}-{}, Error={}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber(), 
+                    ex.getMessage());
+            // Non-blocking: don't throw exception, local update should succeed
+        }
+    }
+
+    /**
+     * Convert municipality ID from internal format to Positiva system format.
+     * Safe version that returns 0 if municipality not found (for external sync).
+     * 
+     * @param idMunicipality the internal municipality ID
+     * @return municipality code as Integer, or 0 if not found
+     */
+    private Integer convertIdMunicipalitySafe(Long idMunicipality) {
+        if (idMunicipality != null) {
+            try {
+                Municipality municipality = municipalityRepository.findById(idMunicipality)
+                        .orElse(null);
+                if (municipality != null && municipality.getMunicipalityCode() != null) {
+                    return Integer.parseInt(municipality.getMunicipalityCode());
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to convert municipality ID {}: {}", idMunicipality, ex.getMessage());
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Get EPS code from internal health promoting entity ID.
+     * Safe version that returns null if EPS not found (for external sync).
+     * 
+     * @param idEps the internal EPS ID
+     * @return EPS code as String, or null if not found
+     */
+    private String findEpsCodeSafe(Long idEps) {
+        if (idEps != null) {
+            try {
+                Health eps = healthPromotingEntityRepository.findById(idEps)
+                        .orElse(null);
+                if (eps != null) {
+                    return eps.getCodeEPS();
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to find EPS code for ID {}: {}", idEps, ex.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Update dependent worker position (cargo/occupation) to external Positiva system.
+     * Non-blocking operation - logs failures but doesn't throw exceptions.
+     * Follows integrations v2 architecture with automatic telemetry.
+     * Based on insertRLDependenteClient pattern but simplified for position updates.
+     * 
+     * @param affiliation the updated AffiliationDependent entity with latest data
+     * @param dataEmployerDTO employer data for building the request
+     */
+    private void updateWorkerPositionToPositiva(AffiliationDependent affiliation, DataEmployerDTO dataEmployerDTO) {
+        try {
+            log.info("Attempting to sync dependent worker position update to Positiva. Worker={}-{}, Employer={}-{}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber(),
+                    dataEmployerDTO.getIdentificationTypeEmployer(),
+                    dataEmployerDTO.getIdentificationNumberEmployer());
+            
+            // Build worker position request following RLDependiente pattern
+            UpdateWorkerPositionRequest request = UpdateWorkerPositionRequest.builder()
+                    .idTipoDoc(affiliation.getIdentificationDocumentType())
+                    .idPersona(affiliation.getIdentificationDocumentNumber())
+                    .idTipoDocEmp(dataEmployerDTO.getIdentificationTypeEmployer())
+                    .idEmpresa(dataEmployerDTO.getIdentificationNumberEmployer())
+                    .subEmpresa(dataEmployerDTO.getDecentralizedConsecutive() != null ? 
+                            dataEmployerDTO.getDecentralizedConsecutive().intValue() : 0)
+                    .idTipoVinculacion(convertTipoVinculadoDependent(
+                            affiliation.getIdBondingType(), 
+                            affiliation.getEconomicActivityCode()))
+                    .idOcupacion(findCodeOccupationByIdSafe(affiliation.getIdOccupation()))
+                    .build();
+            
+            // Call external system
+            Object response = updateWorkerPositionClient.update(request);
+            log.info("Successfully synced dependent worker position update to Positiva. Worker={}-{}, Response={}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber(), 
+                    response);
+                    
+        } catch (Exception ex) {
+            log.warn("Failed to sync dependent worker position update to Positiva (non-blocking). Worker={}-{}, Error={}", 
+                    affiliation.getIdentificationDocumentType(), 
+                    affiliation.getIdentificationDocumentNumber(), 
+                    ex.getMessage());
+            // Non-blocking: don't throw exception, local update should succeed
+        }
+    }
+
+    /**
+     * Get occupation code from internal occupation ID.
+     * Safe version that returns 0 if occupation not found (for external sync).
+     * 
+     * @param idOccupation the internal occupation ID
+     * @return occupation code as Integer, or 0 if not found
+     */
+    private Integer findCodeOccupationByIdSafe(Long idOccupation) {
+        if (idOccupation != null) {
+            try {
+                Occupation occupation = occupationRepository.findById(idOccupation)
+                        .orElse(null);
+                if (occupation != null && occupation.getCodeOccupation() != null) {
+                    return Integer.parseInt(occupation.getCodeOccupation());
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to find occupation code for ID {}: {}", idOccupation, ex.getMessage());
             }
         }
         return 0;

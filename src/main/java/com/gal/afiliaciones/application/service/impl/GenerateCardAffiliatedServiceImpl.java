@@ -218,20 +218,61 @@ public class GenerateCardAffiliatedServiceImpl implements GenerateCardAffiliated
     }
 
     public String generateAffiliateCard(Card card) {
-        Specification<AffiliateMercantile> spc = AffiliateMercantileSpecification
-                .findByNumberAndTypeDocument(card.getNitCompany(), card.getDocumentTypeEmployer());
-        List<AffiliateMercantile> mercantileList = affiliateMercantileRepository.findAll(spc);
-
-        if(!mercantileList.isEmpty()) {
-            return getAffiliateCard(card, mercantileList.get(0).getIsVip());
+        // 1) Try mercantile record for the card's company
+        Optional<Boolean> vip = resolveVipFromMercantile(card.getNitCompany(), card.getDocumentTypeEmployer());
+        if (vip.isPresent()) {
+            return getAffiliateCard(card, vip.get());
         }
 
-        Optional<Affiliation> affiliate = affiliationDetailRepository.findByFiledNumber(card.getFiledNumber());
-        if(affiliate.isPresent()){
-            return getAffiliateCard(card, affiliate.get().getIsVip());
+        // 2) If it's a dependent, resolve employer and check employer's vip
+        if (Constant.BONDING_TYPE_DEPENDENT.equals(card.getTypeAffiliation())) {
+            Optional<Boolean> vipFromEmployer = resolveVipForDependent(card);
+            if (vipFromEmployer.isPresent()) {
+                return getAffiliateCard(card, vipFromEmployer.get());
+            }
+        } else {
+            // 3) Fallback: affiliation detail for the affiliate itself
+            Optional<Boolean> vipFromAffiliation = resolveVipFromAffiliationDetail(card.getFiledNumber());
+            if (vipFromAffiliation.isPresent()) {
+                return getAffiliateCard(card, vipFromAffiliation.get());
+            }
         }
-        
+
         throw new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND);
+    }
+
+    private Optional<Boolean> resolveVipFromMercantile(String number, String docType) {
+        if (number == null && docType == null) return Optional.empty();
+        Specification<AffiliateMercantile> spc = AffiliateMercantileSpecification.findByNumberAndTypeDocument(number, docType);
+        List<AffiliateMercantile> list = affiliateMercantileRepository.findAll(spc);
+        return list.isEmpty() ? Optional.empty() : Optional.ofNullable(list.get(0).getIsVip());
+    }
+
+    private Optional<Boolean> resolveVipFromAffiliationDetail(String filedNumber) {
+        if (filedNumber == null) return Optional.empty();
+        Optional<Affiliation> affiliation = affiliationDetailRepository.findByFiledNumber(filedNumber);
+        return affiliation.map(Affiliation::getIsVip);
+    }
+
+    private Optional<Boolean> resolveVipForDependent(Card card) {
+        if (card.getFiledNumber() == null) return Optional.empty();
+        Optional<AffiliationDependent> dependentOpt = dependentRepository.findByFiledNumber(card.getFiledNumber());
+        if (dependentOpt.isEmpty()) return Optional.empty();
+
+        Long idEmployerAffiliate = dependentOpt.get().getIdAffiliateEmployer();
+        if (idEmployerAffiliate == null) return Optional.empty();
+
+        Optional<Affiliate> employerOpt = affiliateRepository.findByIdAffiliate(idEmployerAffiliate);
+        if (employerOpt.isEmpty()) return Optional.empty();
+
+        Affiliate employer = employerOpt.get();
+
+        // try mercantile for employer
+        Optional<Boolean> vip = resolveVipFromMercantile(employer.getNitCompany(), employer.getDocumenTypeCompany());
+        if (vip.isPresent()) return vip;
+
+        // fallback to employer affiliation detail
+        return resolveVipFromAffiliationDetail(employer.getFiledNumber());
     }
 
     private String getAffiliateCard(Card card, Boolean isVip) {
@@ -471,9 +512,8 @@ public class GenerateCardAffiliatedServiceImpl implements GenerateCardAffiliated
         List<Affiliate> affiliateEmployer = affiliateRepository.findAll(spc);
         if(!affiliateEmployer.isEmpty()){
             Affiliate affiliate = affiliateEmployer.get(0);
-            String affiliationType = affiliate.getAffiliationType();
-            if(affiliationType.equalsIgnoreCase(Constant.TYPE_AFFILLATE_EMPLOYER)){
-                return Constant.NI;
+            if(Objects.nonNull(affiliate.getDocumenTypeCompany())){
+                return affiliate.getDocumenTypeCompany();
             }else{
                 Optional<Affiliation> affiliationOpt = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber());
                 return affiliationOpt.isPresent() ? affiliationOpt.get().getIdentificationDocumentType() : "";

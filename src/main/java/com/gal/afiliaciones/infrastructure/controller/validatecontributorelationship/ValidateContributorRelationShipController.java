@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/validateContributorRelationship")
 @RequiredArgsConstructor
 @Tag(name = "validateContributorRelationShip", description = "validar la realacion laboral entre empleador y empleado")
-@CrossOrigin(origins = "*")
 public class ValidateContributorRelationShipController {
 
     private final ValidateContributorRelationShipServiceImpl service;

@@ -411,7 +411,9 @@ public class NoveltyRuafServiceImpl implements NoveltyRuafService {
     }
 
     private String dv(String numberDocument){
-        return String.valueOf(iUserRegisterService.calculateModulo11DV(numberDocument));
+        return numberDocument == null || numberDocument.isEmpty()
+                ? ""
+                : String.valueOf(iUserRegisterService.calculateModulo11DV(numberDocument));
     }
 
     private String validCharacter(String field){

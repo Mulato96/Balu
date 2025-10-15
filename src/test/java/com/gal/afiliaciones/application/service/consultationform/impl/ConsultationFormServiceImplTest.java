@@ -252,7 +252,7 @@ class ConsultationFormServiceImplTest {
         when(userPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(user));
 
         // Act
-        InfoConsultDTO result = consultationFormService.getInfo(typeId, idNumber, affiliationType);
+        InfoConsultDTO result = consultationFormService.getInfo(typeId, idNumber, affiliationType, null);
 
         // Assert
         assertNotNull(result);
@@ -265,7 +265,7 @@ class ConsultationFormServiceImplTest {
                 .thenReturn(List.of());
 
         assertThrows(AffiliationNotFoundError.class, () -> {
-            consultationFormService.getInfo("CC", "123", Constant.EMPLOYEE);
+            consultationFormService.getInfo("CC", "123", Constant.EMPLOYEE, null);
         });
     }
 
@@ -280,7 +280,7 @@ class ConsultationFormServiceImplTest {
         when(userPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundInDataBase.class, () -> {
-            consultationFormService.getInfo("CC", "456", Constant.EMPLOYEE);
+            consultationFormService.getInfo("CC", "456", Constant.EMPLOYEE, null);
         });
     }
         

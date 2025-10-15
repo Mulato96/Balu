@@ -32,6 +32,7 @@ class PolicyServiceImplTest {
 
     @Test
     void testCreatePolicy() {
+
         String idType = "CC";
         String idNumber = "12345";
         LocalDate effectiveDateFrom = LocalDate.now();
@@ -45,6 +46,7 @@ class PolicyServiceImplTest {
                 .thenReturn(expectedPolicy);
 
         Policy result = policyService.createPolicy(idType, idNumber, effectiveDateFrom, idPolicyType, idAffiliate, codeDesentralice, nameCompany);
+
 
         assertEquals(expectedPolicy, result);
         verify(policyDao).createPolicy(idType, idNumber, effectiveDateFrom, idPolicyType, idAffiliate, codeDesentralice, nameCompany);

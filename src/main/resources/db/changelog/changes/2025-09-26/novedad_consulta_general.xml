@@ -1,0 +1,22 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/novedad_consulta_general.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923632371-1">
+        <createTable tableName="novedad_consulta_general">
+            <column autoIncrement="true" name="id" startWith="1192" type="INTEGER">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="novedad_consulta_general_pkey"/>
+            </column>
+            <column name="request_channel" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="filed_number" type="TEXT"/>
+            <column name="affiliation_date" type="date"/>
+            <column name="novelty_type" type="TEXT"/>
+            <column name="status" type="TEXT"/>
+            <column name="observation" type="TEXT"/>
+            <column name="id_affiliate" type="BIGINT"/>
+        </createTable>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923632371-2">
+        <addForeignKeyConstraint baseColumnNames="request_channel" baseTableName="novedad_consulta_general" constraintName="fk_request_channel" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="canal_radicacion" validate="true"/>
+    </changeSet>
+</databaseChangeLog>

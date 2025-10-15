@@ -1,5 +1,9 @@
 package com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,10 +16,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Entity
@@ -270,5 +270,10 @@ public class AffiliateMercantile {
 
     @Column(name = "decentralized_consecutive")
     private Long decentralizedConsecutive;
+
+
+    // Exposición del id de afiliado sin afectar inserciones/actualizaciones
+    @Column(name = "id_affiliate", nullable = false)
+    private Long idAffiliate;
 
 }

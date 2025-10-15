@@ -35,6 +35,15 @@ public class AffiliateMercantileSpecification {
         };
     }
 
+    public static Specification<AffiliateMercantile> findByActivityEconomic(Long id){
+        return (root, query, criteriaBuilder) -> {
+            var economicActivityJoin = root.join("economicActivity");
+            var activityEconomicJoin = economicActivityJoin.join("activityEconomic");
+
+            return criteriaBuilder.equal(activityEconomicJoin.get("id"), id);
+        };
+    }
+
     public static Specification<AffiliateMercantile> findByFiledNumberNull(){
         return((root, query, criteriaBuilder) ->  criteriaBuilder.isNull(root.get("filedNumber")));
     }

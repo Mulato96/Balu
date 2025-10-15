@@ -15,8 +15,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
-import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -31,6 +29,7 @@ import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
 import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
+import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.affiliationtaxidriverindependent.AffiliationTaxiDriverIndependentService;
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
@@ -61,6 +60,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationtaxidriveri
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.WorkCenterAddressIndependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ConsultIndependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.EconomicActivityStep2;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ResponseConsultWorkerDTO;
@@ -106,6 +106,7 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
     private static final List<Long> arrayCausal = new ArrayList<>(Arrays.asList(0L, 1L, 2L));
 
     @Override
+    @Transactional
     public Long createAffiliation(AffiliationTaxiDriverIndependentCreateDTO dto) {
         AffiliationValidations.validateArl(dto.getActualARLContract(), dto.getIs723());
         int age = Period.between(dto.getDateOfBirth(), LocalDate.now()).getYears();
@@ -168,6 +169,25 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
 
         if(Boolean.TRUE.equals(dto.getIs723()))
             affiliation.setSpecialTaxIdentificationNumber(Constant.NIT_CONTRACT_723);
+
+        // Crear registro base en affiliate para cumplir NOT NULL de id_affiliate en affiliation_detail
+        Affiliate baseAffiliate = new Affiliate();
+        baseAffiliate.setDocumentType(affiliation.getIdentificationDocumentType());
+        baseAffiliate.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
+        baseAffiliate.setCompany(affiliation.getCompanyName());
+        baseAffiliate.setNitCompany(affiliation.getIdentificationDocumentNumberContractor());
+        baseAffiliate.setAffiliationDate(LocalDateTime.now());
+        baseAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        baseAffiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER);
+        baseAffiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
+        baseAffiliate.setAffiliationCancelled(false);
+        baseAffiliate.setStatusDocument(false);
+        baseAffiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
+        baseAffiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
+        baseAffiliate.setUserId(user.getId());
+
+        Affiliate savedBaseAffiliate = affiliateService.createAffiliate(baseAffiliate);
+        affiliation.setIdAffiliate(savedBaseAffiliate.getIdAffiliate());
 
         // Persistir la nueva afiliación en la base de datos
         Affiliation newAffiliation = dao.createAffiliation(affiliation);
@@ -347,10 +367,30 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
                 affiliation.setCompanyName(completeCompanyName);
             }
 
-            Affiliate affiliate =  saveAffiliate(affiliation, idUser, filedNumber);
+            // Upsert de Affiliate: actualizar el existente (creado en paso create) o crearlo si no existe
+            Affiliate affiliate;
+            Optional<Affiliate> affiliateOpt = affiliateRepository.findByIdAffiliate(affiliation.getIdAffiliate());
+            if (affiliateOpt.isPresent()) {
+                Affiliate existing = affiliateOpt.get();
+                existing.setDocumentType(affiliation.getIdentificationDocumentType());
+                existing.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
+                existing.setCompany(affiliation.getCompanyName());
+                existing.setNitCompany(affiliation.getIdentificationDocumentNumberContractor());
+                existing.setAffiliationDate(LocalDateTime.now());
+                existing.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+                existing.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER);
+                existing.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
+                existing.setAffiliationCancelled(false);
+                existing.setStatusDocument(false);
+                existing.setUserId(idUser);
+                existing.setFiledNumber(filedNumber);
+                affiliate = affiliateRepository.save(existing);
+            } else {
+                affiliate = saveAffiliate(affiliation, idUser, filedNumber);
+            }
 
             // Guardar documentos
-            String idFolderByEmployer = saveDocuments(affiliation.getFiledNumber(), documents, affiliate.getIdAffiliate());
+            String idFolderByEmployer = saveDocuments(filedNumber, documents, affiliate.getIdAffiliate());
 
             affiliation.setFiledNumber(filedNumber);
             affiliation.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
@@ -693,18 +733,11 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
 
         // Obtener el salario mínimo y calcular el máximo (25 veces el salario mínimo)
         BigDecimal smlmv = new BigDecimal(salaryDTO.getValue());
-        BigDecimal maxValue = smlmv.multiply(new BigDecimal(25));
 
         // Validar que el valor mensual del contrato no sea inferior al salario mínimo
         if (contractMonthlyValue.compareTo(smlmv) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "El valor mensual del contrato no puede ser inferior al salario mínimo.");
-        }
-
-        // Validar que el valor mensual del contrato no sea superior a 25 veces el salario mínimo
-        if (contractMonthlyValue.compareTo(maxValue) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "El valor mensual del contrato no puede ser superior a 25 salarios mínimos.");
         }
     }
 

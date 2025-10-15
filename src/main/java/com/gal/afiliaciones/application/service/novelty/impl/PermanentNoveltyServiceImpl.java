@@ -393,9 +393,14 @@ public class PermanentNoveltyServiceImpl implements PermanentNoveltyService {
     private boolean noveltyWithEconomicActivityAlreadyExist(PermanentNovelty novelty, List<Affiliate> allDependents){
         long numContract = 0L;
         if(!allDependents.isEmpty()){
-            numContract = allDependents.stream().filter(affiliate -> affiliate.getDocumentType().equals(novelty.getContributantIdentificationType()) &&
-                    affiliate.getDocumentNumber().equals(novelty.getContributantIdentification())).map(affiliate -> affiliationDependentRepository.findByFiledNumber(affiliate.getFiledNumber())
-                    .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND))).filter(affiliationDependent -> affiliationDependent.getEconomicActivityCode().equals(novelty.getEconomicActivity().getEconomicActivityCode())).count();
+            numContract = allDependents.stream()
+                    .filter(affiliate -> affiliate.getDocumentType().equals(novelty.getContributantIdentificationType()) &&
+                            affiliate.getDocumentNumber().equals(novelty.getContributantIdentification()) &&
+                            affiliate.getFiledNumber() != null) // Ignore affiliates with null filed_number
+                    .map(affiliate -> affiliationDependentRepository.findByFiledNumber(affiliate.getFiledNumber())
+                            .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND)))
+                    .filter(affiliationDependent -> affiliationDependent.getEconomicActivityCode().equals(novelty.getEconomicActivity().getEconomicActivityCode()))
+                    .count();
         }
         return numContract>0;
     }

@@ -1,0 +1,88 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/backup_affiliation_dependent_null_id_20250924.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923471714-1">
+        <createTable tableName="backup_affiliation_dependent_null_id_20250924">
+            <column name="id" type="BIGINT"/>
+            <column name="id_bonding_type" type="BIGINT"/>
+            <column name="coverage_date" type="date"/>
+            <column name="identification_type" type="TEXT"/>
+            <column name="identification_number" type="TEXT"/>
+            <column name="first_name" type="TEXT"/>
+            <column name="second_name" type="TEXT"/>
+            <column name="surname" type="TEXT"/>
+            <column name="second_surname" type="TEXT"/>
+            <column name="date_of_birth" type="date"/>
+            <column name="age" type="INTEGER"/>
+            <column name="gender" type="TEXT"/>
+            <column name="other_gender" type="TEXT"/>
+            <column name="nationality" type="TEXT"/>
+            <column name="health_promoting_entity" type="BIGINT"/>
+            <column name="pension_fund_administrator" type="BIGINT"/>
+            <column name="occupational_risk_manager" type="TEXT"/>
+            <column name="id_department" type="INTEGER"/>
+            <column name="id_city_municipality" type="INTEGER"/>
+            <column name="id_main_street" type="BIGINT"/>
+            <column name="id_number_main_street" type="BIGINT"/>
+            <column name="id_letter1_main_street" type="BIGINT"/>
+            <column name="bis" type="BOOLEAN"/>
+            <column name="id_letter2_main_street" type="BIGINT"/>
+            <column name="id_cardinal_point_main_street" type="BIGINT"/>
+            <column name="id_number1_second_street" type="BIGINT"/>
+            <column name="id_letter_second_street" type="BIGINT"/>
+            <column name="id_number2_second_street" type="BIGINT"/>
+            <column name="id_cardinal_point2" type="BIGINT"/>
+            <column name="id_horizontal_property1" type="BIGINT"/>
+            <column name="id_number_horizontal_property1" type="BIGINT"/>
+            <column name="id_horizontal_property2" type="BIGINT"/>
+            <column name="id_number_horizontal_property2" type="BIGINT"/>
+            <column name="id_horizontal_property3" type="BIGINT"/>
+            <column name="id_number_horizontal_property3" type="BIGINT"/>
+            <column name="id_horizontal_property4" type="BIGINT"/>
+            <column name="id_number_horizontal_property4" type="BIGINT"/>
+            <column name="address" type="TEXT"/>
+            <column name="phone1" type="TEXT"/>
+            <column name="phone2" type="TEXT"/>
+            <column name="email" type="TEXT"/>
+            <column name="id_work_modality" type="BIGINT"/>
+            <column name="salary" type="numeric(38, 2)"/>
+            <column name="id_occupation" type="INTEGER"/>
+            <column name="id_headquarter" type="BIGINT"/>
+            <column name="id_department_work_center" type="BIGINT"/>
+            <column name="id_city_work_center" type="BIGINT"/>
+            <column name="address_work_center" type="TEXT"/>
+            <column name="economic_activity_code" type="TEXT"/>
+            <column name="filed_number" type="TEXT"/>
+            <column name="risk" type="INTEGER"/>
+            <column name="price_risk" type="numeric(38, 2)"/>
+            <column name="contract_quality" type="TEXT"/>
+            <column name="contract_type" type="TEXT"/>
+            <column name="transport_supply" type="BOOLEAN"/>
+            <column name="start_date" type="date"/>
+            <column name="end_date" type="date"/>
+            <column name="duration" type="TEXT"/>
+            <column name="journey_established" type="TEXT"/>
+            <column name="contract_total_value" type="numeric(38, 2)"/>
+            <column name="contract_ibc_value" type="numeric(38, 2)"/>
+            <column name="identification_document_type_signatory" type="TEXT"/>
+            <column name="identification_document_number_signatory" type="TEXT"/>
+            <column name="first_name_signatory" type="TEXT"/>
+            <column name="second_name_signatory" type="TEXT"/>
+            <column name="surname_signatory" type="TEXT"/>
+            <column name="second_surname_signatory" type="TEXT"/>
+            <column name="occupation_signatory" type="TEXT"/>
+            <column name="code_activity_contract" type="VARCHAR(255)"/>
+            <column name="code_activity_employer" type="VARCHAR(255)"/>
+            <column name="id_employer" type="BIGINT"/>
+            <column name="bulk_upload_affiliation" type="BOOLEAN"/>
+            <column name="code_contributant_type" type="BIGINT"/>
+            <column name="code_contributant_subtype" type="VARCHAR(2)"/>
+            <column name="pending_complete_form_pila" type="BOOLEAN"/>
+            <column name="ibc_percentage" type="numeric(38, 2)"/>
+            <column name="audit" type="JSONB"/>
+            <column name="fecha_registro" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="id_work_center" type="BIGINT"/>
+            <column name="id_affiliate_employer" type="BIGINT"/>
+            <column name="id_affiliate" type="INTEGER"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

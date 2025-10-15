@@ -29,9 +29,7 @@ public class FiltersWorkerManagementDTO {
     private Long idbondingType;
     private LocalDate retiredWorker;
     private Boolean updateRequired;
-
     // Pagination fields
     private Integer page = 0;
     private Integer size = 10;
-
 }

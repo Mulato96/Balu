@@ -126,4 +126,5 @@ public class Certificate {
 
     @Column(name = "independent_workers_number")
     private Integer independentWorkersNumber;
+
 }

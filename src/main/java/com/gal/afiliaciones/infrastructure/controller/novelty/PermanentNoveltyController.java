@@ -29,7 +29,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/novelty")
 @Tag(name = "Permanent-Novelty-Controller", description = "Novedades permanentes")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class PermanentNoveltyController {
 

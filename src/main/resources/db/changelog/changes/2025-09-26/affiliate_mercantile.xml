@@ -1,0 +1,246 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/affiliate_mercantile.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+       
+    <!-- Pre: add column nullable if missing -->
+    <changeSet author="andual" id="1758923417628-pre-add-col">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <columnExists tableName="affiliate_mercantile" columnName="id_affiliate"/>
+            </not>
+        </preConditions>
+        <sql><![CDATA[
+          ALTER TABLE public.affiliate_mercantile
+          ADD COLUMN IF NOT EXISTS id_affiliate INTEGER;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Populate id_affiliate by filed_number -->
+    <changeSet author="andual" id="1758923417628-populate">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <columnExists tableName="affiliate_mercantile" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          UPDATE public.affiliate_mercantile am
+          SET id_affiliate = a.id_affiliate
+          FROM public.affiliate a
+          WHERE am.id_affiliate IS NULL
+            AND a.filed_number = am.filed_number;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Option A: Delete children first (affiliate_activity_economic) for orphaned mercantile rows -->
+    <changeSet author="andual" id="1758923417628-child-clean">
+        <sql><![CDATA[
+          -- Backup orphan child rows
+          CREATE TABLE IF NOT EXISTS public.affiliate_activity_economic_orphan_backup AS
+          SELECT e.*
+          FROM public.affiliate_activity_economic e
+          JOIN public.affiliate_mercantile m ON m.id = e.id_affiliate_mercantile
+          LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+          WHERE a.id_affiliate IS NULL OR m.id_affiliate IS NULL;
+
+          -- Delete orphan child rows
+          DELETE FROM public.affiliate_activity_economic e
+          USING public.affiliate_mercantile m
+          LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+          WHERE e.id_affiliate_mercantile = m.id
+            AND (a.id_affiliate IS NULL OR m.id_affiliate IS NULL);
+        ]]></sql>
+    </changeSet>
+
+    <!-- Backup/delete bad rows: null/missing FK and duplicates by filed_number -->
+    <changeSet author="andual" id="1758923417628-cleanup">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="1"><![CDATA[
+              SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM public.affiliate_mercantile m
+                LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+                WHERE a.id_affiliate IS NULL OR m.id_affiliate IS NULL
+              ) OR EXISTS (
+                SELECT 1 FROM public.affiliate_mercantile
+                GROUP BY filed_number HAVING COUNT(*) > 1
+              ) THEN 1 ELSE 0 END
+            ]]></sqlCheck>
+        </preConditions>
+        <sql><![CDATA[
+          -- Backup FK violations
+          CREATE TABLE IF NOT EXISTS public.affiliate_mercantile_fk_violation_backup AS
+          SELECT m.*
+          FROM public.affiliate_mercantile m
+          LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+          WHERE a.id_affiliate IS NULL OR m.id_affiliate IS NULL;
+
+          -- Delete FK violations
+          DELETE FROM public.affiliate_mercantile m
+          USING (
+            SELECT m.ctid
+            FROM public.affiliate_mercantile m
+            LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+            WHERE a.id_affiliate IS NULL OR m.id_affiliate IS NULL
+          ) z
+          WHERE m.ctid = z.ctid;
+
+          -- Backup duplicates
+          CREATE TABLE IF NOT EXISTS public.affiliate_mercantile_dup_backup AS
+          SELECT * FROM public.affiliate_mercantile
+          WHERE filed_number IN (
+            SELECT filed_number FROM public.affiliate_mercantile
+            GROUP BY filed_number HAVING COUNT(*) > 1
+          );
+
+          -- Delete duplicate rows keeping the first per filed_number
+          WITH ranked AS (
+            SELECT ctid,
+                   filed_number,
+                   ROW_NUMBER() OVER (PARTITION BY filed_number ORDER BY ctid) AS rn
+            FROM public.affiliate_mercantile
+          )
+          DELETE FROM public.affiliate_mercantile m
+          USING ranked r
+          WHERE m.ctid = r.ctid AND r.rn > 1;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Temporarily enable ON DELETE CASCADE on dependent FK to allow cleanup deletes -->
+    <changeSet author="andual" id="1758923417628-fk-cascade-on">
+        <sql><![CDATA[
+          ALTER TABLE public.affiliate_activity_economic
+          DROP CONSTRAINT IF EXISTS fk_affiliate_activity_economic_on_id_affiliate_mercantile;
+
+          ALTER TABLE public.affiliate_activity_economic
+          ADD CONSTRAINT fk_affiliate_activity_economic_on_id_affiliate_mercantile
+          FOREIGN KEY (id_affiliate_mercantile)
+          REFERENCES public.affiliate_mercantile(id)
+          ON DELETE CASCADE
+          ON UPDATE NO ACTION;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Perform deletes again under cascade to clear remaining violations (id or FK chains) -->
+    <changeSet author="andual" id="1758923417628-cleanup-pass2">
+        <sql><![CDATA[
+          -- Delete FK violations (re-run under CASCADE)
+          DELETE FROM public.affiliate_mercantile m
+          USING (
+            SELECT m.ctid
+            FROM public.affiliate_mercantile m
+            LEFT JOIN public.affiliate a ON a.id_affiliate = m.id_affiliate
+            WHERE a.id_affiliate IS NULL OR m.id_affiliate IS NULL
+          ) z
+          WHERE m.ctid = z.ctid;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Restore FK without cascade after minimal cleanup window -->
+    <changeSet author="andual" id="1758923417628-fk-cascade-off">
+        <sql><![CDATA[
+          ALTER TABLE public.affiliate_activity_economic
+          DROP CONSTRAINT IF EXISTS fk_affiliate_activity_economic_on_id_affiliate_mercantile;
+
+          ALTER TABLE public.affiliate_activity_economic
+          ADD CONSTRAINT fk_affiliate_activity_economic_on_id_affiliate_mercantile
+          FOREIGN KEY (id_affiliate_mercantile)
+          REFERENCES public.affiliate_mercantile(id)
+          ON DELETE NO ACTION
+          ON UPDATE NO ACTION;
+        ]]></sql>
+    </changeSet>
+
+    <!-- Enforce NOT NULL after cleanup -->
+    <changeSet author="andual" id="1758923417628-set-not-null">
+        <preConditions onFail="HALT" onError="MARK_RAN">
+            <columnExists tableName="affiliate_mercantile" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          ALTER TABLE public.affiliate_mercantile
+          ALTER COLUMN id_affiliate SET NOT NULL;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923417628-4">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <uniqueConstraintExists tableName="affiliate_mercantile" constraintName="uq_affiliate_mercantile_filed_number"/>
+            </not>
+        </preConditions>
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliate_mercantile_filed_number" tableName="affiliate_mercantile"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923417628-6">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <foreignKeyConstraintExists foreignKeyName="affiliate_mercantile_affiliate_fk"/>
+            </not>
+        </preConditions>
+        <addForeignKeyConstraint baseColumnNames="id_affiliate" baseTableName="affiliate_mercantile" constraintName="affiliate_mercantile_affiliate_fk" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id_affiliate" referencedTableName="affiliate" validate="true"/>
+    </changeSet>
+    
+    <changeSet author="andual (generated)" id="1758921396173-1">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_affiliate_mercantile_filed_inc" tableName="affiliate_mercantile"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_affiliate_mercantile_filed_inc" tableName="affiliate_mercantile" using="btree">
+            <column name="filed_number"/>
+            <column name="sub_type_affiliation"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758921396173-2">
+        <createIndex indexName="idx_aff_mer_doc" tableName="affiliate_mercantile" using="btree">
+            <column name="type_document_identification"/>
+            <column name="number_identification"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758921396173-3">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <indexExists indexName="affiliate_mercantile_id_affiliate_idx" tableName="affiliate_mercantile"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="affiliate_mercantile_id_affiliate_idx" tableName="affiliate_mercantile" using="btree">
+            <column name="id_affiliate"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758921396173-4">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <uniqueConstraintExists tableName="affiliate_mercantile" constraintName="uq_affiliate_mercantile_filed_number"/>
+            </not>
+        </preConditions>
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliate_mercantile_filed_number" tableName="affiliate_mercantile"/>
+    </changeSet>
+
+    
+    <changeSet author="andual (generated)" id="1758923417628-1">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_affiliate_mercantile_filed_inc" tableName="affiliate_mercantile"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_affiliate_mercantile_filed_inc" tableName="affiliate_mercantile" using="btree">
+            <column name="filed_number"/>
+            <column name="sub_type_affiliation"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923417628-2">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_aff_mer_doc" tableName="affiliate_mercantile"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="idx_aff_mer_doc" tableName="affiliate_mercantile" using="btree">
+            <column name="type_document_identification"/>
+            <column name="number_identification"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923417628-3">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <indexExists indexName="affiliate_mercantile_id_affiliate_idx" tableName="affiliate_mercantile"/>
+            </not>
+        </preConditions>
+        <createIndex indexName="affiliate_mercantile_id_affiliate_idx" tableName="affiliate_mercantile" using="btree">
+            <column name="id_affiliate"/>
+        </createIndex>
+    </changeSet>
+ 
+</databaseChangeLog>

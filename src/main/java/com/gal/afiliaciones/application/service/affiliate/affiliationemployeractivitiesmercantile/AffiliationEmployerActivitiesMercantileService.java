@@ -1,8 +1,10 @@
 package com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile;
 
+import java.util.List;
+import java.util.Map;
+
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
-import com.gal.afiliaciones.infrastructure.dto.EmployerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.DateInterviewWebDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.AffiliateMercantileDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
@@ -11,9 +13,6 @@ import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeracti
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.StateAffiliation;
 import com.gal.afiliaciones.infrastructure.dto.typeemployerdocument.DocumentRequestDTO;
-
-import java.util.List;
-import java.util.Map;
 
 public interface AffiliationEmployerActivitiesMercantileService {
 

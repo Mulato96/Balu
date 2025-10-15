@@ -1,8 +1,6 @@
 package com.gal.afiliaciones.infrastructure.security;
 
 import io.netty.channel.ChannelOption;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -17,7 +15,6 @@ import java.time.Instant;
 import java.util.Map;
 
 @Service
-
 public class KeycloakTokenService {
 
     @Value("${keycloak.SERVER.URL}")
@@ -38,7 +35,6 @@ public class KeycloakTokenService {
     private final WebClient webClient;
 
     public KeycloakTokenService(WebClient.Builder builder) {
-        // Un WebClient “básico” (o config genérica). No necesita un filter especial
         ConnectionProvider connectionProvider=ConnectionProvider.builder("shared-pool")
                 .maxIdleTime(Duration.ofSeconds(30))
                 .maxLifeTime(Duration.ofHours(2))

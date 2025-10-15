@@ -1,6 +1,7 @@
 package com.gal.afiliaciones.infrastructure.dto.affiliate;
 
 import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,4 +36,8 @@ public class MainOfficeDTO {
 
     private Long officeManager;
     private Long idAffiliateEmployer;
+
+    // Optional on creation only; ignored on update
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private Long idSedePositiva;
 }

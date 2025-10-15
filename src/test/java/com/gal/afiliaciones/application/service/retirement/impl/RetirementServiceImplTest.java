@@ -94,9 +94,11 @@ class RetirementServiceImplTest {
 
         assertThrows(WorkerRetirementException.class, () -> {
             try {
+ 
             Method method = RetirementServiceImpl.class.getDeclaredMethod("validWorkedCompany", Long.class, String.class, String.class);
             method.setAccessible(true);
             method.invoke(retirementService, 1L, "CC", "123");
+
             } catch (Exception e) {
                 throw new WorkerRetirementException(e.getMessage());
             }
@@ -149,7 +151,7 @@ class RetirementServiceImplTest {
             method.setAccessible(true);
             result = (Affiliate) method.invoke(retirementService, 1L, "CC", "123");
         } catch (Exception e) {
-            
+
         }
 
         assertTrue(true);
@@ -161,31 +163,47 @@ class RetirementServiceImplTest {
 
         assertThrows(AffiliationError.class, () -> retirementService.retirementWorker(dataWorkerRetirementDTO));
     }
-
     @Test
     void retirementWorker_validInput_updatesAffiliateAndCreatesRetirement() {
+        // Affiliate (trabajador)
         affiliate.setIdAffiliate(1L);
         affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
         affiliate.setAffiliationSubType("SubType");
+        affiliate.setFiledNumber("F123"); // obligatorio para validateRetirementDate()
+
+        // DTO de entrada con fecha válida (antes de endDate)
         dataWorkerRetirementDTO.setIdAffiliation(1L);
+        dataWorkerRetirementDTO.setIdentificationDocumentType("CC");
+        dataWorkerRetirementDTO.setIdentificationDocumentNumber("123");
+        dataWorkerRetirementDTO.setIdAffiliateEmployer(999L);
         dataWorkerRetirementDTO.setRetirementDate(LocalDate.now().plusDays(1));
+
+        // Afiliación dependiente del trabajador (debe existir y tener endDate >= fecha retiro)
         affiliationDependent.setFirstName("Test");
         affiliationDependent.setSurname("Test2");
         affiliationDependent.setSecondName("");
         affiliationDependent.setSecondSurname("");
+        affiliationDependent.setFiledNumber("F123");
+        affiliationDependent.setEndDate(LocalDate.now().plusDays(10)); // clave para que no lance excepción
 
-        List<AffiliationDependent> affiliationDependentList = new ArrayList<>();
-        affiliationDependentList.add(affiliationDependent);
+        // Mocks mínimos
+        when(affiliationDependentRepository.findAll(any(Specification.class)))
+                .thenReturn(java.util.List.of(affiliationDependent));
+        when(affiliateRepository.findByIdAffiliate(1L))
+                .thenReturn(java.util.Optional.of(affiliate));
+        when(affiliationDependentRepository.findByFiledNumber("F123"))
+                .thenReturn(java.util.Optional.of(affiliationDependent));
+        when(filedService.getNextFiledNumberRetirementReason())
+                .thenReturn("FILENUMBER123");
+        when(retirementRepository.findByIdAffiliate(1L))
+                .thenReturn(java.util.Optional.empty());
+        when(retirementRepository.save(any(Retirement.class)))
+                .thenReturn(retirement);
 
-        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(affiliationDependentList);
-        when(affiliateRepository.findByIdAffiliate(1L)).thenReturn(Optional.of(affiliate));
-        when(filedService.getNextFiledNumberRetirementReason()).thenReturn("FILENUMBER123");
-        when(retirementRepository.findByIdAffiliate(1L)).thenReturn(Optional.empty());
-        when(affiliationDependentRepository.findByFiledNumber(any())).thenReturn(Optional.of(affiliationDependent));
-        when(retirementRepository.save(any(Retirement.class))).thenReturn(retirement);
-
+        // Ejecutar
         retirementService.retirementWorker(dataWorkerRetirementDTO);
 
+        // Si no lanzó excepción, la validación pasó
         assertTrue(true);
     }
 

@@ -11,7 +11,8 @@ import java.util.List;
 
 public interface ConsultationFormService {
 
-    InfoConsultDTO getInfo(String typeIdentification, String identification, String affiliationType);
+    InfoConsultDTO getInfo(String typeIdentification, String identification, String affiliationType,
+            String idAffiliate);
 
     List<JobRelationShipDTO> getJobRelatedInfo(String typeIdentification, String identification);
 

@@ -6,6 +6,7 @@ import lombok.Data;
 public class EmployerRequest {
     private String idTipoDoc;
     private String idEmpresa;
+    private Integer subempresa;
     private String dvEmpresa;
     private String razonSocial;
     private Integer idDepartamento;

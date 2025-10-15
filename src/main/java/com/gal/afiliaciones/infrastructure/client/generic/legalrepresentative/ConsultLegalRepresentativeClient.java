@@ -1,7 +1,6 @@
 package com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative;
 
 import com.gal.afiliaciones.config.util.AffiliationProperties;
-import com.gal.afiliaciones.infrastructure.client.generic.businessgroup.BusinessGroupResponse;
 import com.gal.afiliaciones.infrastructure.security.BusTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;

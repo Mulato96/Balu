@@ -26,7 +26,7 @@ class FiledServiceImplTest {
     void setUp() {
         sequenceRepository = mock(AffiliateRepository.class);
         consecutiveService = mock(ConsecutiveService.class);
-        filedService = new FiledServiceImpl(sequenceRepository, consecutiveService);
+        filedService = new FiledServiceImpl(consecutiveService, sequenceRepository);
     }
 
     @Test

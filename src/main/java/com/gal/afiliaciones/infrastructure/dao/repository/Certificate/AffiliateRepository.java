@@ -23,6 +23,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffilia
 import com.gal.afiliaciones.infrastructure.dto.affiliate.SingleMembershipCertificateEmployeesView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.SingleMembershipCertificateEmployerView;
 
+
 @Repository
 public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , JpaSpecificationExecutor<Affiliate> {
 
@@ -40,6 +41,17 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
     List<Affiliate> findAllByAffiliationStatus(String status);
 
     List<Affiliate> findAllByAffiliationStatusAndFiledNumberIsNotNull(String status);
+
+    // Query to find affiliates by the 4 parameters for employer-employee query
+    @Query("SELECT a FROM Affiliate a WHERE " +
+           "a.documenTypeCompany = :tDocEmp AND " +
+           "a.nitCompany = :idEmp AND " +
+           "a.documentType = :tDocAfi AND " +
+           "a.documentNumber = :idAfi")
+    List<Affiliate> findByCompanyAndAffiliateDocument(@Param("tDocEmp") String tDocEmp,
+                                                     @Param("idEmp") String idEmp,
+                                                     @Param("tDocAfi") String tDocAfi,
+                                                     @Param("idAfi") String idAfi);
 
     List<Affiliate> findByUserId(Long idUser);
 
@@ -280,6 +292,14 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
     List<SingleMembershipCertificateEmployeesView> findSingleMembershipCertificateEmployees(String nitCompany);
 
     @Query(value = """
+        SELECT count(ca.id)
+        FROM certificate c
+        JOIN certificate_affiliate ca on ca.certificate_id = c.id
+        WHERE c.validator_code = :validatorCode
+        """, nativeQuery = true)
+    Long countAffiliatesByCertificateValidatorCode(String validatorCode);
+
+    @Query(value = """
         SELECT count(a.id_affiliate)
         FROM affiliate a
         WHERE a.nit_company  = :nitCompany
@@ -287,14 +307,6 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
         and a.affiliation_type = :workerAffiliationType
         """, nativeQuery = true)
     Integer countWorkers(String nitCompany, String workerStatus, String workerAffiliationType);
-
-    @Query(value = """
-        SELECT count(ca.id)
-        FROM certificate c
-        JOIN certificate_affiliate ca on ca.certificate_id = c.id
-        WHERE c.validator_code = :validatorCode
-        """, nativeQuery = true)
-    Long countAffiliatesByCertificateValidatorCode(String validatorCode);
 
     @Query(value = """
         select a.* from affiliate a\s
@@ -319,6 +331,16 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
         """,
             nativeQuery = true)
     Page<Affiliate> findDependentsByEmployer(@Param("idAffiliateEmployer") Long idAffiliateEmployer, Pageable pageable);
+
+
+    boolean existsByNitCompanyAndAffiliationType(String nitCompany, String subType);
+
+    boolean existsByDocumentTypeAndDocumentNumberAndAffiliationStatusAndAffiliationType(
+        String documentType,
+        String documentNumber,
+        String affiliationStatus,
+        String affiliationType
+    );
 
     @Query("""
     SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO(
@@ -381,7 +403,8 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
         END,
         a.affiliationSubType,
         a.filedNumber,
-        a.idAffiliate
+        a.idAffiliate,
+        false
     )
     FROM Affiliate a
     LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber
@@ -389,7 +412,7 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
       AND a.documentNumber = :documentNumber
       AND a.affiliationType LIKE 'Empleador%'
       AND a.affiliationStatus = 'Activa'
-    ORDER BY a.filedNumber DESC
+    ORDER BY a.company ASC
     """)
     List<DataBasicEmployerMigratedDTO> findEmployerDataByDocument(
             @Param("documentType") String documentType,
@@ -416,14 +439,49 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
                 END,
                 a.affiliationSubType,
                 a.filedNumber,
-                a.idAffiliate
+                a.idAffiliate, 
+                false
             )
             FROM UserAffiliateDelegate uad 
             LEFT JOIN Affiliate a on uad.idAffiliateEmployer = a.idAffiliate 
             LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber 
             WHERE uad.userId = :userId 
-            ORDER BY a.filedNumber DESC
+            ORDER BY a.company ASC
     """)
     List<DataBasicEmployerMigratedDTO> findEmployerDataByDelegate(@Param("userId") Long userId);
+
+    @Query("""
+        SELECT new com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO(
+            am.typeDocumentIdentification, 
+            am.numberIdentification, 
+            am.digitVerificationDV, 
+            am.businessName, 
+            am.decentralizedConsecutive, 
+            a.affiliationSubType, 
+            a.filedNumber, 
+            a.idAffiliate, 
+            true
+        )
+        FROM BusinessGroup ge
+        JOIN Affiliate a ON ge.idAffiliate = a.idAffiliate
+        JOIN AffiliateMercantile am ON am.filedNumber = a.filedNumber
+        WHERE ge.idBusinessGroup = (
+            SELECT ge2.idBusinessGroup
+            FROM BusinessGroup ge2
+            JOIN Affiliate af ON af.idAffiliate = ge2.idAffiliate
+            WHERE af.documentType = :documentType
+              AND af.documentNumber = :documentNumber
+              AND ge2.isMainCompany = true
+        )
+        AND a.affiliationStatus = 'Activa'
+        ORDER BY a.company ASC
+    """)
+    List<DataBasicEmployerMigratedDTO> findEmployerDataSuperUser(
+            @Param("documentType") String documentType,
+            @Param("documentNumber") String documentNumber
+    );
+
+    Optional<Affiliate> findByDocumentTypeAndDocumentNumber(String documentType, String documentNumber);
+
 
 }

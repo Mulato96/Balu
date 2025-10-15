@@ -23,7 +23,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/mainOffice")
-@CrossOrigin(origins = "*")
 @Tag(name = "main office", description = "MainOffice Management API")
 @AllArgsConstructor
 public class MainOfficeController {
@@ -58,6 +57,7 @@ public class MainOfficeController {
     @DeleteMapping("/deleteMainOffice/{id}/{idAffiliateEmployer}")
     public ResponseEntity<String> deleteMainOffice(@PathVariable Long id, @PathVariable Long idAffiliateEmployer){
         return ResponseEntity.ok().body(mainOfficeService.delete(id, idAffiliateEmployer));
+
     }
 
     @GetMapping("/main-office-official/{document}/{type}")
@@ -78,6 +78,7 @@ public class MainOfficeController {
     @DeleteMapping("/delete-main-office-official/{id}/{number}")
     public ResponseEntity<String> deleteMainOfficeOfficial(@PathVariable Long id, @PathVariable String number){
         return ResponseEntity.ok().body(mainOfficeService.deleteOfficial(id, number));
+
     }
 
 }

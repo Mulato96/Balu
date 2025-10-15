@@ -6,17 +6,15 @@ import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
-import com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.BulkLoadingHelp;
-import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.MainOfficeSpecification;
+import com.gal.afiliaciones.infrastructure.validation.document.ValidationDocument;
 import org.springframework.beans.BeanUtils;
+import org.springframework.cglib.core.Local;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +26,16 @@ import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.economicactivity.CodeCIIUShorterLength;
+import com.gal.afiliaciones.application.service.affiliate.bulkloadingdependentindependent.BulkLoadingHelp;
+import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.RecordLoadBulkService;
+import com.gal.afiliaciones.application.service.affiliationdependent.impl.AffiliationDependentServiceImpl;
+import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
+import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
+import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
+import com.gal.afiliaciones.application.service.policy.PolicyService;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.economicactivity.CodeCIIUShorterLength;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
 import com.gal.afiliaciones.domain.model.Department;
@@ -52,6 +60,14 @@ import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEcon
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.MainOfficeSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.afpeps.FundAfpDTO;
@@ -91,6 +107,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
     private final AffiliateMercantileRepository affiliateMercantileRepository;
     private final IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
 
+
     List<FundEpsDTO> findEpsDTOS;
     List<FundAfpDTO> findAfpDTOS;
     List<LinkedHashMap<String, Object>> findDataRisk;
@@ -99,7 +116,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
     List<MainOffice> allMainOffice;
 
     private static final String ERROR_NOT_FIND_AFFILIATION = "No se econtro la afiliacion del empleador";
-    private static final String DATE_FORMAT_STRING = "dd/MM/yyyy";
+    private static final String DATE_FORMAT_STRING = "yyyy/MM/dd";
 
     @Override
     public ResponseServiceDTO dataFile(MultipartFile file, String type, Long idUser, Long idAffiliateEmployer) {
@@ -187,23 +204,27 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     @Override
     public String consultAffiliation(String type, String number) {
-
-        Specification<Affiliate> specAffiliation = AffiliateSpecification.findByIdentificationTypeAndNumber(type,number);
-        Optional<Affiliate> affiliateOptional =  affiliateRepository.findOne(specAffiliation);
-
-        Affiliate affiliate;
-
-        if(affiliateOptional.isEmpty()){
-
-            specAffiliation = AffiliateSpecification.findByNit(number);
-            affiliateOptional = affiliateRepository.findOne(specAffiliation);
-
-        }
-
-        if(affiliateOptional.isEmpty())
-            throw  new AffiliationError(ERROR_NOT_FIND_AFFILIATION);
-
-        affiliate = affiliateOptional.get();
+    
+            // Filtrar también por tipo de afiliación = Empleador para garantizar unicidad
+            Specification<Affiliate> specAffiliation =
+                    AffiliateSpecification.findByIdentificationTypeAndNumberAndAffiliationType(
+                            type, number, Constant.TYPE_AFFILLATE_EMPLOYER);
+            Optional<Affiliate> affiliateOptional =  affiliateRepository.findOne(specAffiliation);
+    
+            Affiliate affiliate;
+    
+            if(affiliateOptional.isEmpty()){
+    
+                // Fallback por NIT (ya filtra por empleador internamente)
+                specAffiliation = AffiliateSpecification.findByNit(number);
+                affiliateOptional = affiliateRepository.findOne(specAffiliation);
+    
+            }
+    
+            if(affiliateOptional.isEmpty())
+                throw  new AffiliationError(ERROR_NOT_FIND_AFFILIATION);
+    
+            affiliate = affiliateOptional.get();
 
         Specification<AffiliateMercantile> specMercantile = AffiliateMercantileSpecification.findByFieldNumber(affiliate.getFiledNumber());
         Optional<AffiliateMercantile> optionalAffiliation = affiliateMercantileRepository.findOne(specMercantile);
@@ -251,11 +272,13 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
                 listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadIndependent.getDescripcion());
                 listDataExcelIndependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelIndependentDTO.class);
-                listDataExcelIndependentDTO.forEach(this::validStructDataIndependent);
+                listDataExcelIndependentDTO.forEach(data -> validStructDataIndependent(data, affiliation));
                 findDuplicateNumberIdentification(listDataExcelIndependentDTO, null);
                 compareNumberDocumentsToDb(null, listDataExcelIndependentDTO);
+                findDuplicateNumberEmail(listDataExcelIndependentDTO);
+                compareEmailsDB(listDataExcelIndependentDTO);
 
-                bulkLoadingHelp.affiliateData(null, listDataExcelIndependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), type, affiliate);
+                bulkLoadingHelp.affiliateData(null, listDataExcelIndependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), type, affiliate, idUser);
 
                 listDataError = listDataExcelIndependentDTO
                         .stream()
@@ -273,12 +296,12 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
                 listDataMap = excelProcessingServiceData.converterExcelToMap(file,FieldsExcelLoadDependent.getDescripcion());
                 listDataExcelDependentDTO = excelProcessingServiceData.converterMapToClass(listDataMap, DataExcelDependentDTO.class);
-                listDataExcelDependentDTO.forEach(dependent -> validStructDataDependent(dependent, salaryDTO, affiliation));
+                listDataExcelDependentDTO.forEach(dependent -> validStructDataDependent(dependent, salaryDTO, affiliation, affiliate));
 
                 findDuplicateNumberIdentification(null, listDataExcelDependentDTO);
                 compareNumberDocumentsToDb(listDataExcelDependentDTO, null);
 
-                bulkLoadingHelp.affiliateData(listDataExcelDependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), null, type, affiliate);
+                bulkLoadingHelp.affiliateData(listDataExcelDependentDTO.stream().filter(data -> data.getError() == null || data.getError().isEmpty()).toList(), null, type, affiliate, idUser);
 
                 listDataError = listDataExcelDependentDTO
                         .stream()
@@ -329,7 +352,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
-    private void validStructDataDependent(DataExcelDependentDTO dependent, SalaryDTO salary, Object affiliation) {
+    private void validStructDataDependent(DataExcelDependentDTO dependent, SalaryDTO salary, Object affiliation, Affiliate affiliate) {
 
         StringBuilder messagesError =  new StringBuilder();
 
@@ -339,45 +362,45 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         dependent.setPensionFundAdministrator(validAFP(dependent.getPensionFundAdministrator()));
 
         errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getCoverageDate()) , validDateStartCoverage(dependent.getCoverageDate())),"O"));
-        errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getIdentificationDocumentType()) , validTypeNumberIdentification(dependent.getIdentificationDocumentType())),"A"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getIdentificationDocumentNumber()) , validNumberIdentification(dependent.getIdentificationDocumentNumber(), dependent.getIdentificationDocumentType())),"B"));
-        errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getFirstName()) , validName(dependent.getFirstName(), 50)),"E"));
-        errorDependent(messagesError,
-                validLetter(List.of(validOptional(dependent.getSecondName(), 50)),"F"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getSurname())  , validName(dependent.getSurname(), 50)),"C"));
         errorDependent(messagesError,
                 validLetter(List.of(validOptional(dependent.getSecondSurname(), 50)),"D"));
         errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getFirstName()) , validName(dependent.getFirstName(), 50)),"E"));
+        errorDependent(messagesError,
+                validLetter(List.of(validOptional(dependent.getSecondName(), 50)),"F"));
+        errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getDateOfBirth()) , validDateBirtDate(dependent.getDateOfBirth(), dependent.getIdentificationDocumentType())),"G"));
         errorDependent(messagesError,
-                (validAge(dependent.getDateOfBirth())) ? null : messageErrorAge(dependent.getIdentificationDocumentType(), dependent.getIdentificationDocumentNumber()));
-        errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getGender()) , List.of("F", "M", "T", "N", "O").contains(dependent.getGender())),"H"));
-        errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getHealthPromotingEntity())),"M"));
-        errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getPensionFundAdministrator())),"N"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getIdDepartment()) , validDepartment(dependent.getIdDepartment())),"I"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getIdCity()) ,  validMunicipality(dependent.getIdCity())),"J"));
         errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getPhone1()) , dependent.getPhone1().length() == 10 , validNumberPhone(dependent.getPhone1().substring(0, 3))),"L"));
-        errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getIdWorkModality()) , List.of("0", "1", "2", "3").contains(dependent.getIdWorkModality())),"X"));
-        errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getAddress())),"K"));
         errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getSalary()) , validSalary(dependent.getSalary(), salary)),"Q"));
+                validLetter(List.of(isRequested(dependent.getPhone1()) , dependent.getPhone1().length() == 10 , validNumberPhone(dependent.getPhone1().substring(0, 3))),"L"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getHealthPromotingEntity())),"M"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getPensionFundAdministrator())),"N"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getCoverageDate()) , validDateStartCoverage(dependent.getCoverageDate())),"O"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getIdOccupation())),"P"));
         errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getSalary()) , validSalary(dependent.getSalary(), salary)),"Q"));
+        errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getEconomicActivityCode()) , validActivityEconomicDependent(dependent.getEconomicActivityCode(), affiliation)),"R"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getDepartmentWork())),"S"));
+        errorDependent(messagesError,
+                validLetter(List.of(isRequested(dependent.getMunicipalityWork())),"T"));
         errorDependent(messagesError,
                 validLetter(List.of(isRequested(dependent.getEmployerDocumentTypeCodeContractor()) , validTypeNumberIdentification(dependent.getEmployerDocumentTypeCodeContractor())) ,"U"));
         errorDependent(messagesError,
@@ -385,16 +408,20 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         errorDependent(messagesError,
                 (dependent.getIdentificationDocumentNumberContractor().equals("899999061") && !isRequested(dependent.getSubCompany()) ? "W" : null));
         errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getDepartmentWork())),"S"));
+                validLetter(List.of(isRequested(dependent.getIdWorkModality()) , List.of("0", "1", "2", "3").contains(dependent.getIdWorkModality())),"X"));
         errorDependent(messagesError,
-                validLetter(List.of(isRequested(dependent.getMunicipalityWork())),"T"));
+                (validAge(dependent.getDateOfBirth())) ? null : messageErrorAge(dependent.getIdentificationDocumentType(), dependent.getIdentificationDocumentNumber()));
+
+        validDocumentEmployer(dependent, affiliate, messagesError);
+
+        validAddress(dependent.getAddress(), messagesError);
 
         if (!messagesError.isEmpty())
             dependent.setError(messagesError.toString());
 
     }
 
-    private void validStructDataIndependent(DataExcelIndependentDTO independent){
+    private void validStructDataIndependent(DataExcelIndependentDTO independent, Object affiliation){
 
         independent.setError(null);
         StringBuilder messagesError =  new StringBuilder();
@@ -403,65 +430,75 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         independent.setPensionFundAdministrator(validAFP(independent.getPensionFundAdministrator()));
 
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getCoverageDate()) , validDateStartCoverage(independent.getCoverageDate())),"B"));
+                validLetter(List.of(isRequested(independent.getIdentificationDocumentType()) , validTypeNumberIdentification(independent.getIdentificationDocumentType())),"A"));
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getIdentificationDocumentType()) , validTypeNumberIdentification(independent.getIdentificationDocumentType())),"C"));
+                validLetter(List.of(isRequested(independent.getIdentificationDocumentNumber()) , validNumberIdentification(independent.getIdentificationDocumentNumber(), independent.getIdentificationDocumentType())),"B"));
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getIdentificationDocumentNumber()) , validNumberIdentification(independent.getIdentificationDocumentNumber(), independent.getIdentificationDocumentType())),"D"));
+                validLetter(List.of(isRequested(independent.getSurname()) , validName(independent.getSurname(), 100)),"C"));
+        errorIndependent(messagesError,
+                validLetter(List.of(validOptional(independent.getSecondSurname(), 100)),"D"));
         errorIndependent(messagesError,
                 validLetter(List.of(isRequested(independent.getFirstName()) , validName(independent.getFirstName(), 50)),"E"));
         errorIndependent(messagesError,
                 validLetter(List.of(validOptional(independent.getSecondName(), 50)), "F"));
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getSurname()) , validName(independent.getSurname(), 100)),"G"));
+                validLetter(List.of(isRequested(independent.getDateOfBirth()) , validDateBirtDate(independent.getDateOfBirth(), independent.getIdentificationDocumentType())),"G"));
         errorIndependent(messagesError,
-                validLetter(List.of(validOptional(independent.getSecondSurname(), 100)),"H"));
+                validLetter(List.of(isRequested(independent.getGender()) , List.of("F", "M", "T", "N", "O").contains(independent.getGender())),"H"));
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getDateOfBirth()) , validDateBirtDate(independent.getDateOfBirth(), independent.getIdentificationDocumentType())),"I"));
+                validLetter(List.of(isRequested(independent.getEmail()) , validEmail(independent.getEmail())),"I"));
         errorIndependent(messagesError,
-                (validAge(independent.getDateOfBirth())) ? null : messageErrorAge(independent.getIdentificationDocumentType(), independent.getIdentificationDocumentNumber()));
+                validLetter(List.of(isRequested(independent.getIdDepartment()) , validDepartment(independent.getIdDepartment())),"J"));
         errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getGender()) , List.of("F", "M", "T", "N", "O").contains(independent.getGender())),"J"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getHealthPromotingEntity())),"M"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getPensionFundAdministrator())),"N"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getIdDepartment()) , validDepartment(independent.getIdDepartment())),"O"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getIdCity()) , validMunicipality(independent.getIdCity())),"P"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getPhone1()) , independent.getPhone1().length() == 10 , validNumberPhone(independent.getPhone1().substring(0, 3))),"Q"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getEmail()) , validEmail(independent.getEmail())),"R"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getIdOccupation())),"S"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getContractType())),"U"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getTransportSupply())), "V"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getStartDate())  , converterDate(independent.getStartDate()) != null), "W"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getEndDate()) ,  converterDate(independent.getEndDate()) != null),"X"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getContractTotalValue())),"Z"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getCodeActivityContract()) ,  validActivityEconomicIndependent(independent.getCodeActivityContract())) , "AA"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getCodeActivityEmployer())),"AB"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getEmployerDocumentTypeCodeContractor()) , validTypeNumberIdentification(independent.getEmployerDocumentTypeCodeContractor())),"AD"));
-        errorIndependent(messagesError,
-                validLetter(List.of(isRequested(independent.getEmployerDocumentNumber())),"AE"));
+                validLetter(List.of(isRequested(independent.getIdCity()) , validMunicipality(independent.getIdCity())),"K"));
         errorIndependent(messagesError,
                 validLetter(List.of(isRequested(independent.getAddress())),"L"));
         errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getPhone1()) , independent.getPhone1().length() == 10 , validNumberPhone(independent.getPhone1().substring(0, 3))),"M"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getIdOccupation())),"N"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getHealthPromotingEntity())),"O"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getPensionFundAdministrator())),"P"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getContractType())),"Q"));
+        errorIndependent(messagesError,
                 validLetter(List.of(isRequested(independent.getNatureContract())),"R"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getTransportSupply())), "S"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getStartDate())  , converterDate(independent.getStartDate()) != null), "T"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEndDate()) ,  converterDate(independent.getEndDate()) != null),"U"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getContractTotalValue())),"V"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCodeActivityContract()) ,  validActivityEconomicIndependent(independent.getCodeActivityContract())) , "W"));
         errorIndependent(messagesError,
                 validLetter(List.of(isRequested(independent.getDepartmentWork())),"X"));
         errorIndependent(messagesError,
                 validLetter(List.of(isRequested(independent.getMunicipalityWork())),"Y"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCoverageDate()) , validDateStartCoverage(independent.getCoverageDate())),"Z"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEmployerDocumentTypeCodeContractor()) , validTypeNumberIdentification(independent.getEmployerDocumentTypeCodeContractor())),"AA"));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getEmployerDocumentNumber())),"AB"));
+        errorDependent(messagesError,
+                (independent.getEmployerDocumentNumber().equals("899999061") && !isRequested(independent.getSubCompany()) ? "AC" : null));
+        errorIndependent(messagesError,
+                validLetter(List.of(isRequested(independent.getCodeActivityEmployer())),"AD"));
+
+        errorIndependent(messagesError, (validAge(independent.getDateOfBirth())) ? null : messageErrorAge(independent.getIdentificationDocumentType(), independent.getIdentificationDocumentNumber()));
+
+        validAddress(independent.getAddress(), messagesError);
+
+        validDatesCoverageContract(independent.getCoverageDate(),independent.getStartDate(),messagesError);
+
+        validDateStartEnd(independent.getStartDate(), independent.getEndDate(), messagesError);
+
+        independent.setCodeActivityContract(validActivityEconomicIndependent(independent.getCodeActivityContract(), affiliation));
 
         if (!messagesError.isEmpty())
             independent.setError(messagesError.toString());
@@ -544,23 +581,11 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
     }
 
     private boolean validTypeNumberIdentification(String typeNumber){
-        return List.of("CC", "NI",  "CE", "TI", "RC", "PA", "CD", "PE", "SC", "PT").contains(typeNumber);
+        return ValidationDocument.isValidDocument(typeNumber);
     }
 
-    private boolean validNumberIdentification(String number, String type){
-
-        return switch (type) {
-            case "CC", "CE" -> (number.length() >= 3 && number.length() <= 10);
-            case "NI" -> (number.length() >= 9 && number.length() <= 12);
-            case "TI", "RC" -> (number.length() >= 10 && number.length() <= 11);
-            case "PA" -> (number.length() >= 3 && number.length() <= 16);
-            case "CD" -> (number.length() >= 3 && number.length() <= 11);
-            case "PE" -> (number.length() == 15);
-            case "SC" -> (number.length() == 9);
-            case "PT" -> (!number.isEmpty() && number.length() <= 8);
-            default -> false;
-        };
-
+    private boolean validNumberIdentification(String number, String type) {
+        return ValidationDocument.isValid(number, type);
     }
 
     private boolean validName(String name, int length){
@@ -576,12 +601,11 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         return (email.length() <= 100 && email.matches("^[^\\s@]+@(?=[a-zA-Z\\-]+\\.[a-zA-Z]{2,})(?!-)[a-zA-Z\\-]+(?<!-)\\.[a-zA-Z]{2,}$"));
     }
 
-    private boolean validDateStartCoverage(String date){
-
+    private boolean validDateStartCoverage(String date) {
         LocalDate dateNow = LocalDate.now();
         LocalDate dateCoverage = formatDate(date);
-        return (dateCoverage != null && dateCoverage.isBefore(dateNow.plusMonths(1)) && dateCoverage.isAfter(dateNow.plusDays(-1)));
-
+        // Validar si la fecha es posterior a hoy y anterior a un mes después de hoy
+        return (dateCoverage != null && dateCoverage.isAfter(dateNow) && dateCoverage.isBefore(dateNow.plusMonths(1)));
     }
 
     private boolean validSalary(String data, SalaryDTO smlv){
@@ -629,6 +653,20 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
+    private void findDuplicateNumberEmail(List<DataExcelIndependentDTO> dataIndependent){
+
+        StringBuilder messageError =  new StringBuilder();
+        errorIndependent(messageError, "I");
+
+            List<Integer> listIds =  excelProcessingServiceData.findDataDuplicate(dataIndependent, DataExcelIndependentDTO::getEmail, DataExcelIndependentDTO::getIdRecord);
+
+            dataIndependent.forEach(data -> {
+                if (listIds.contains(data.getIdRecord()))
+                    data.setError(messageError.toString());
+            });
+
+    }
+
     private Long bulkCargoTraceability(Long idUser, Affiliate affiliateEmployer, String typeAffiliation, boolean state, String fileName){
 
         RecordLoadBulk recordLoadBulk =  new RecordLoadBulk();
@@ -655,7 +693,7 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
     private String validAFP(String code) {
 
         return  findAfpDTOS.stream()
-                .filter(map -> code.equals(map.getCodeAfp().toString()))
+                .filter(map -> code.equals(map.getIdAfp().toString()))
                 .map(map -> map.getIdAfp().toString())
                 .findFirst()
                 .orElse(null);
@@ -697,6 +735,20 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
                     data.setError(messageError.toString());
             });
         }
+
+    }
+
+    private void compareEmailsDB(List<DataExcelIndependentDTO> dataIndependent){
+
+        StringBuilder messageError = new StringBuilder();
+        errorDependent(messageError, "C");
+
+        //Realiza una consulta a la bd, teniendo como argumento una lista con los numeros de documento
+        List<String> listDocumentAffiliationBD =  dependentRepository.findByEmailIn(dataIndependent.stream().map(DataExcelIndependentDTO::getEmail).toList());
+        dataIndependent.forEach(data -> {
+            if(listDocumentAffiliationBD.contains(data.getIdentificationDocumentNumber()))
+                data.setError(messageError.toString());
+        });
 
     }
 
@@ -758,6 +810,40 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
     }
 
+    private String validActivityEconomicIndependent(String codeActivity, Object affiliation){
+
+        try{
+
+            EconomicActivityDTO economicActivityWorker = findActivityEconomic(codeActivity);
+
+            if(economicActivityWorker == null)
+                return null;
+
+            if(affiliation == null)
+                throw new AffiliationError(ERROR_NOT_FIND_AFFILIATION);
+
+            if(affiliation instanceof AffiliateMercantile affiliateMercantile){
+
+                List<Long> ids = new ArrayList<>(affiliateMercantile.getEconomicActivity()
+                        .stream()
+                        .map(economic -> economic.getActivityEconomic().getId())
+                        .toList());
+
+                ids .add(economicActivityWorker.getId());
+
+               return findAllById(ids);
+
+            }
+
+            return null;
+
+        }catch (CodeCIIUShorterLength exception){
+
+            return null;
+        }
+
+    }
+
     private boolean validActivityEconomicIndependent(String codeActivity){
 
         try{
@@ -791,6 +877,18 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
             return null;
         }
 
+    }
+
+    private String findAllById(List<Long> ids){
+
+        List<EconomicActivity> activities = allActivities.stream()
+                .filter(e -> ids.contains(e.getId()))
+                .toList();
+
+        return activities.stream()
+                .max(Comparator.comparingInt(a -> Integer.parseInt(a.getClassRisk())))
+                .map(a -> a.getEconomicActivityCode())
+                .orElse(null);
     }
 
     private void findAllActivityEconomic(){
@@ -831,41 +929,13 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
         }
     }
 
-    private boolean validCodeHeadquarter(String code, Affiliate affiliate, Object affiliation){
-
-        try {
-
-            MainOffice mainOffice = allMainOffice.stream()
-                    .filter(main -> main.getCode().equals(code))
-                    .findFirst()
-                    .orElse(null);
-
-            if(mainOffice == null)
-                return false;
-
-            if(affiliation == null)
-                return false;
-
-            if(affiliation instanceof AffiliateMercantile affiliateMercantile)
-                return (Objects.equals(affiliateMercantile.getIdMainHeadquarter(), mainOffice.getId())) || (Objects.equals(affiliate.getIdAffiliate(), mainOffice.getIdAffiliate()));
-
-            if(affiliation instanceof Affiliation affiliationDomestic)
-                return Objects.equals(affiliationDomestic.getIdMainHeadquarter(),  mainOffice.getId());
-
-            return false;
-
-        }catch (Exception e){
-            return false;
-        }
-    }
-
     private Optional<Department> findDepartmentById(Long id){
         return departmentRepository.findById(id);
     }
 
     private Optional<Municipality> findMunicipalityById(String id){
         return allMunicipality.stream()
-                .filter(m -> Integer.valueOf(m.getDivipolaCode()).equals(Integer.valueOf(id)))
+                .filter(m -> m.getIdMunicipality().equals(Long.parseLong(id)))
                 .findFirst();
     }
 
@@ -899,6 +969,57 @@ public class BulkLoadingDependentIndependentServiceImpl implements BulkLoadingDe
 
         return conditions.stream().anyMatch(condition -> condition.equals(false)) ? letter : null;
 
+    }
+
+    private void validDocumentEmployer(DataExcelDependentDTO dependent, Affiliate affiliate, StringBuilder sb){
+
+        if(!affiliate.getDocumentNumber().equals(dependent.getIdentificationDocumentNumberContractor())
+        || !affiliate.getDocumentType().equals(dependent.getEmployerDocumentTypeCodeContractor())){
+            sb.append("- El Número de documento empleador no es el correcto, por favor valida nuevamente")
+                    .append(System.lineSeparator());
+        }
+    }
+
+    private void validAddress(String address, StringBuilder sp){
+        if(!address.matches("[A-Za-z0-9#-]+"))
+            sp.append("- Los caracteres ingresados en el campo Dirección son incorrectos. Puedes utilizar los símbolos # y - como separadores")
+                    .append(System.lineSeparator());
+    }
+
+    private void validDatesCoverageContract(String coverageStart, String contractStart, StringBuilder sp){
+
+        try{
+
+            LocalDate coverage = LocalDate.parse(coverageStart);
+            LocalDate contract =  LocalDate.parse(contractStart);
+            LocalDate date = LocalDate.now().plusDays(30);
+
+            if(contract.isAfter(coverage) || coverage.isAfter(date)){
+                sp.append("- La fecha inicio cobertura, no puede ser menor a la fecha inicio contrato ni mayor a 30 días");
+            }
+
+        }catch (Exception e){
+            sp.append("- La fecha inicio cobertura, no puede ser menor a la fecha inicio contrato ni mayor a 30 días");
+            log.error("Error the method validDatesCoverageContract ", e);
+        }
+
+    }
+
+    private void validDateStartEnd(String start, String end, StringBuilder sp){
+
+        try{
+
+            LocalDate dateStart = LocalDate.parse(start);
+            LocalDate  dateEnd = LocalDate.parse(end);
+
+            if(ChronoUnit.DAYS.between(dateStart, dateEnd) < 30)
+                sp.append("- El contrato debe ser mayor a un mes, por favor valida e intenta nuevamente").append(System.lineSeparator());
+
+
+        }catch (Exception e){
+            sp.append("- El contrato debe ser mayor a un mes, por favor valida e intenta nuevamente").append(System.lineSeparator());
+            log.error("Error in the method validDateStartEnd, ", e);
+        }
     }
 
 }

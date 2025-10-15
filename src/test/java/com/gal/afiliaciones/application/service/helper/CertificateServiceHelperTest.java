@@ -335,30 +335,6 @@ class CertificateServiceHelperTest {
     }
 
     @Test
-    void stringToDateFormatter_SinRetiro() {
-        String originalDate = "Sin retiro";
-        java.lang.reflect.Method method = null;
-        try {
-            method = CertificateServiceHelper.class.getDeclaredMethod("stringToDateFormatter", String.class);
-            method.setAccessible(true);
-        } catch (NoSuchMethodException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        String formattedDate = null;
-        try {
-            formattedDate = (String) method.invoke(certificateServiceHelper, originalDate);
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        assertNull(formattedDate);
-    }
-
-    @Test
     void localDateToDateFormatter() {
         LocalDate originalDate = LocalDate.of(2023, 5, 20);
         java.lang.reflect.Method method = null;

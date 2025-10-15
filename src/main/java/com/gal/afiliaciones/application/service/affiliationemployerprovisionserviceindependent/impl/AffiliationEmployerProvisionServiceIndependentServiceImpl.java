@@ -1,5 +1,21 @@
 package com.gal.afiliaciones.application.service.affiliationemployerprovisionserviceindependent.impl;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.affiliationemployerprovisionserviceindependent.AffiliationEmployerProvisionServiceIndependentService;
@@ -19,34 +35,23 @@ import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.*;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.InformationIndependentWorkerDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep1DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep2DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep3DTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ReplacedDocumentDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
 import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.AffiliationValidations;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.util.List;
-import java.util.Optional;
-import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -109,6 +114,11 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         if(Boolean.TRUE.equals(dto.getIs723()))
             affiliationProvisionServiceStep1.setSpecialTaxIdentificationNumber(Constant.NIT_CONTRACT_723);
 
+        // Crear/actualizar Affiliate para cumplir FK id_affiliate NOT NULL
+        Long idUserAffiliate = findIdUserByUserName(getUserName(affiliationProvisionServiceStep1.getIdentificationDocumentType(), affiliationProvisionServiceStep1.getIdentificationDocumentNumber()));
+        Affiliate affiliateCreatedOrUpdated = saveAffiliate(affiliationProvisionServiceStep1, idUserAffiliate, null);
+        affiliationProvisionServiceStep1.setIdAffiliate(affiliateCreatedOrUpdated.getIdAffiliate());
+
         Affiliation affiliation = repositoryAffiliation.save(affiliationProvisionServiceStep1);
         dto.setId(affiliation.getId());
 
@@ -157,10 +167,13 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         }
 
         BigDecimal smlmv = new BigDecimal(salaryDTO.getValue());
-        BigDecimal maxValue = smlmv.multiply(new BigDecimal(25));  // 25 veces el salario mínimo
+
+        // Calcular el valor máximo permitido (25 veces el salario mínimo)
+        BigDecimal maxValue = smlmv.multiply(BigDecimal.valueOf(25));
 
         // Validar que el valor mensual del contrato (monthlyContractValue) esté dentro del rango permitido
-        if (dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(smlmv) < 0 || dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(maxValue) > 0) {
+        BigDecimal contractMonthlyValue = dto.getContractorDataStep2DTO().getContractMonthlyValue();
+        if (contractMonthlyValue.compareTo(smlmv) < 0 || contractMonthlyValue.compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
     }
@@ -183,7 +196,7 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         String filedNumber = filedService.getNextFiledNumberAffiliation();
 
         // Buscar usuario
-        Long idUser = findUser(affiliation);
+        Long idUser = findIdUserByUserName(getUserName(affiliation.getIdentificationDocumentType(), affiliation.getIdentificationDocumentNumber()));
 
         // Asociar a la tabla de afiliaciones
         Affiliate affiliate =  saveAffiliate(affiliation, idUser, filedNumber);
@@ -298,23 +311,41 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         }
     }
 
+    private Long findIdUserByUserName(String userName) {
+        return userPreRegisterRepository.findIdByUserName(userName)
+                    .orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_IN_DATA_BASE));
+    }
+
+    private String getUserName(String docType, String docNumber) {
+        return docType.concat("-").concat(docNumber).concat("-EXT");
+    }
+
     private Affiliate saveAffiliate(Affiliation dto, Long idUser, String filedNumber){
-        Affiliate newAffiliate = new Affiliate();
-        newAffiliate.setDocumentType(dto.getIdentificationDocumentType());
-        newAffiliate.setDocumentNumber(dto.getIdentificationDocumentNumber());
-        newAffiliate.setCompany(dto.getCompanyName());
-        newAffiliate.setNitCompany(dto.getIdentificationDocumentNumberContractor());
-        newAffiliate.setAffiliationDate(LocalDateTime.now());
-        newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
-        newAffiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_PROVISION_SERVICES);
-        newAffiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
-        newAffiliate.setAffiliationCancelled(false);
-        newAffiliate.setStatusDocument(false);
-        newAffiliate.setUserId(idUser);
-        newAffiliate.setFiledNumber(filedNumber);
-        newAffiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
-        newAffiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
-        return affiliateRepository.save(newAffiliate);
+        Affiliate affiliate;
+        if (dto.getIdAffiliate() != null) {
+            affiliate = affiliateRepository.findById(dto.getIdAffiliate()).orElse(new Affiliate());
+        } else {
+            affiliate = new Affiliate();
+            affiliate.setAffiliationDate(LocalDateTime.now());
+            affiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
+            affiliate.setAffiliationCancelled(false);
+            affiliate.setStatusDocument(false);
+            affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+            affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_PROVISION_SERVICES);
+            affiliate.setNoveltyType(Constant.NOVELTY_TYPE_AFFILIATION);
+            affiliate.setRequestChannel(Constant.REQUEST_CHANNEL_PORTAL);
+        }
+
+        affiliate.setDocumentType(dto.getIdentificationDocumentType());
+        affiliate.setDocumentNumber(dto.getIdentificationDocumentNumber());
+        affiliate.setCompany(dto.getCompanyName());
+        affiliate.setNitCompany(dto.getIdentificationDocumentNumberContractor());
+        affiliate.setUserId(idUser);
+        if (filedNumber != null && !filedNumber.isEmpty()) {
+            affiliate.setFiledNumber(filedNumber);
+        }
+
+        return affiliateRepository.save(affiliate);
     }
 
     private void convertDataDtoToIndependent(Affiliation affiliation, ProvisionServiceAffiliationStep1DTO dto){

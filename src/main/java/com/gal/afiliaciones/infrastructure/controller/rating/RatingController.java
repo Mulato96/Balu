@@ -18,7 +18,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/rating")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class RatingController {
 

@@ -22,3 +22,4 @@ public class WorkerManagementPaginatedResponseDTO {
     private boolean isLast;
 
 }
+

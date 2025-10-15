@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/workerretirement")
 @RequiredArgsConstructor
 @Tag(name = "Worker Retirement", description = "Retiro trabajadores")
-@CrossOrigin(origins = "*")
 public class WorkerRetirementController {
 
     private final RetirementService service;
@@ -29,8 +28,8 @@ public class WorkerRetirementController {
     @GetMapping("/findWorkerByEmployer")
     @Operation(summary = "find worker data by identification")
     public ResponseEntity<BodyResponseConfig<DataWorkerRetirementDTO>> findWorker(@RequestParam String documentType,
-                                                                                 @RequestParam String documentNumber,
-                                                                                 @RequestParam Long idAffiliateEmployer) {
+                                                                                  @RequestParam String documentNumber,
+                                                                                  @RequestParam Long idAffiliateEmployer) {
         return ResponseEntity.ok(service.consultWorker(documentType, documentNumber, idAffiliateEmployer));
     }
 

@@ -1,0 +1,150 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/affiliation_dependent.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+        <changeSet author="andual (generated)" id="1758923430554-9">
+        <createIndex indexName="idx_affiliation_dependent_doc" tableName="affiliation_dependent" using="btree">
+            <column name="identification_type"/>
+            <column name="identification_number"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual" id="1758923430554-9a">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="1"><![CDATA[
+              SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM public.affiliation_dependent
+                GROUP BY filed_number HAVING COUNT(*) > 1
+              ) THEN 1 ELSE 0 END
+            ]]></sqlCheck>
+        </preConditions>
+        <sql><![CDATA[
+          CREATE TABLE IF NOT EXISTS public.affiliation_dependent_dup_backup AS
+          SELECT *
+          FROM public.affiliation_dependent
+          WHERE filed_number IN (
+            SELECT filed_number
+            FROM public.affiliation_dependent
+            GROUP BY filed_number
+            HAVING COUNT(*) > 1
+          );
+
+          WITH ranked AS (
+            SELECT ctid,
+                   filed_number,
+                   ROW_NUMBER() OVER (PARTITION BY filed_number ORDER BY ctid) AS rn
+            FROM public.affiliation_dependent
+          )
+          DELETE FROM public.affiliation_dependent ad
+          USING ranked r
+          WHERE ad.ctid = r.ctid
+            AND r.rn > 1;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual" id="1758923430554-10b">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <columnExists tableName="affiliation_dependent" columnName="id_affiliate"/>
+            </not>
+        </preConditions>
+        <sql><![CDATA[
+          ALTER TABLE public.affiliation_dependent
+          ADD COLUMN IF NOT EXISTS id_affiliate INTEGER;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual" id="1758923430554-10c">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <columnExists tableName="affiliation_dependent" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          UPDATE public.affiliation_dependent ad
+          SET id_affiliate = af.id_affiliate
+          FROM public.affiliate af
+          WHERE ad.id_affiliate IS NULL
+            AND af.filed_number = ad.filed_number;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual" id="1758923430554-10d">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <columnExists tableName="affiliation_dependent" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          CREATE TABLE IF NOT EXISTS public.affiliation_dependent_null_aff_backup AS
+          SELECT * FROM public.affiliation_dependent WHERE id_affiliate IS NULL;
+
+          DELETE FROM public.affiliation_dependent WHERE id_affiliate IS NULL;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual" id="1758923430554-10e">
+        <preConditions onFail="HALT" onError="MARK_RAN">
+            <columnExists tableName="affiliation_dependent" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          ALTER TABLE public.affiliation_dependent
+          ALTER COLUMN id_affiliate SET NOT NULL;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-10">
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliation_dependent_filed_number" tableName="affiliation_dependent"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-11">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <not>
+                <columnExists tableName="affiliation_dependent" columnName="id_affiliate"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="affiliation_dependent">
+            <column name="id_affiliate" remarks="Campo que relaciona la afiliacion con su detalle" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-12">
+        <addForeignKeyConstraint baseColumnNames="id_affiliate" baseTableName="affiliation_dependent" constraintName="affiliation_dependent_affiliate_fk" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id_affiliate" referencedTableName="affiliate" validate="true"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-1">
+        <dropUniqueConstraint constraintName="uq_affiliation_dependent_filed_number" tableName="affiliation_dependent"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-2">
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliation_dependent_filed_number" tableName="affiliation_dependent"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-3">
+        <createIndex indexName="idx_affiliation_dependent_employer_active" tableName="affiliation_dependent" using="btree">
+            <column name="id_affiliate_employer"/>
+            <column name="filed_number"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-4">
+        <createIndex indexName="idx_ad_emp_filed_cover" tableName="affiliation_dependent" using="btree">
+            <column name="id_affiliate_employer"/>
+            <column name="filed_number"/>
+            <column name="id_occupation"/>
+            <column name="identification_type"/>
+            <column name="identification_number"/>
+            <column name="first_name"/>
+            <column name="second_name"/>
+            <column name="surname"/>
+            <column name="second_surname"/>
+            <column name="coverage_date"/>
+            <column name="end_date"/>
+            <column defaultValueBoolean="false" name="pending_complete_form_pila"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-5">
+        <createIndex indexName="affiliation_dependent_id_affiliate_idx" tableName="affiliation_dependent" using="btree">
+            <column name="id_affiliate"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-6">
+        <createIndex indexName="idx_affiliation_dependent_filed_inc" tableName="affiliation_dependent" using="btree">
+            <column name="filed_number"/>
+            <column name="id_bonding_type"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-7">
+        <createIndex indexName="idx_aff_dep_pending" tableName="affiliation_dependent" using="btree">
+            <column defaultValueBoolean="false" name="pending_complete_form_pila"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923430554-8">
+        <createIndex indexName="idx_aff_dep_occupation" tableName="affiliation_dependent" using="btree">
+            <column name="id_occupation"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/cancel/affiliate")
 @RequiredArgsConstructor
 @Tag(name = "CancelAffiliation", description = "Cancel affiliation")
-@CrossOrigin(origins = "*")
 public class CancelAffiliateController {
 
     private final ICancelAffiliationService iCancelAffiliationService;

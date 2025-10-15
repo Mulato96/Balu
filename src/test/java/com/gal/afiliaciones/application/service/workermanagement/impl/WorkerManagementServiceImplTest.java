@@ -44,6 +44,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.A
 import com.gal.afiliaciones.infrastructure.dao.repository.dependent.RecordMassiveUpdateWorkerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -96,6 +97,9 @@ class WorkerManagementServiceImplTest {
     
     @Mock
     private RetirementRepository retirementRepository;
+    
+    @Mock
+    private RegistraduriaUnifiedService registraduriaUnifiedService;
 
     @InjectMocks
     private WorkerManagementServiceImpl workerManagementService;
@@ -191,7 +195,6 @@ class WorkerManagementServiceImplTest {
         assertEquals("", WorkerManagementServiceImpl.capitalize(""));
         assertEquals("", WorkerManagementServiceImpl.capitalize(null));
     }
-    
     @Test
     void generateEmloyerCertificate_whenEmployerNotFound_thenReturnEmptyString() {
         // Arrange
@@ -207,14 +210,13 @@ class WorkerManagementServiceImplTest {
         affiliate.setAffiliationSubType("TYPE");
 
         when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
-        
         // Act
         String result = workerManagementService.generateEmloyerCertificate(requestDTO);
-        
+
         // Assert
         assertEquals(null, result);
     }
-    
+
     @Test
     void generateEmloyerCertificate_whenEmployerFound_thenReturnCertificate() {
         // Arrange
@@ -222,6 +224,7 @@ class WorkerManagementServiceImplTest {
         requestDTO.setIdentificationDocumentTypeEmployer("CC");
         requestDTO.setIdentificationDocumentNumberEmployer("123456");
         requestDTO.setAffiliationTypeEmployer("TYPE");
+
         requestDTO.setIdAffiliateEmployer(1L);
 
         Affiliate affiliate = new Affiliate();
@@ -229,15 +232,17 @@ class WorkerManagementServiceImplTest {
         affiliate.setDocumenTypeCompany("NI");
         affiliate.setNitCompany("123456");
         affiliate.setAffiliationSubType("TYPE");
+
         
         when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
         
+
         when(certificateService.createAndGenerateCertificate(any(FindAffiliateReqDTO.class)))
-            .thenReturn("certificate-content");
-        
+                .thenReturn("certificate-content");
+
         // Act
         String result = workerManagementService.generateEmloyerCertificate(requestDTO);
-        
+
         // Assert
         assertEquals("certificate-content", result);
     }

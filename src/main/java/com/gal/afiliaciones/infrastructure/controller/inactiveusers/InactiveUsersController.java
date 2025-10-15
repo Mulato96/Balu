@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/inactive-pre-registred-users")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class InactiveUsersController {
 

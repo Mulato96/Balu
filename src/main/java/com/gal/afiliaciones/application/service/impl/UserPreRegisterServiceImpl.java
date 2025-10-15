@@ -30,6 +30,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.systemparam.SystemPara
 import com.gal.afiliaciones.infrastructure.dto.ExternalUserDTO;
 import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.ResponseUserDTO;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.dto.UpdateCredentialDTO;
 import com.gal.afiliaciones.infrastructure.dto.UpdateEmailExternalUserDTO;
 import com.gal.afiliaciones.infrastructure.dto.UpdatePasswordDTO;
@@ -42,6 +43,7 @@ import com.gal.afiliaciones.infrastructure.enums.TypeUser;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.validation.document.ValidationDocument;
+import org.keycloak.representations.idm.UserRepresentation;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +73,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -182,7 +185,7 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
 
     @Override
     public UserPreRegisterDto consultUser(String identificationType, String identification) {
-        Specification<UserMain> spec = UserSpecifications.hasDocumentTypeAndNumber(identificationType, identification);
+        Specification<UserMain> spec = UserSpecifications.byUsername(structureUsername(identificationType,identification));
         Optional<UserMain> user = iUserPreRegisterRepository.findOne(spec);
         if (user.isPresent()) {
             UserPreRegisterDto dto = new UserPreRegisterDto();
@@ -201,10 +204,11 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
                         identificationType(identificationType).
                         identification(identification).
                         firstName(apiRegistry.getFirstName()).
+                        dateBirth(apiRegistry.getDateBirth()).
                         surname(apiRegistry.getSurname()).
                         phoneNumber("").build();
                 BeanUtils.copyProperties(apiRegistry, userRegistryData);
-                userRegistryData.setSex(findGenderByDescription(apiRegistry.getGender()));
+                userRegistryData.setSex(RegistraduriaUnifiedService.mapGender(apiRegistry.getGender()));
                 userRegistryData.setUserFromRegistry(true);
                 userRegistryData.setStatusPreRegister(false);
                 return userRegistryData;
@@ -581,6 +585,7 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
             userRegistry.setAffectingDate(registry.getAffectingDate());
             userRegistry.setPhoneNumber("");
             userRegistry.setEmail("");
+  
         }
 
         return userRegistry;
@@ -743,20 +748,30 @@ public class UserPreRegisterServiceImpl implements IUserRegisterService {
     @Override
     @Transactional
     public Boolean updateExternalUser(UpdateEmailExternalUserDTO updateUser){
-        Specification<UserMain> spec = UserSpecifications.findExternalUserByDocumentTypeAndNumber(
-                updateUser.getDocumentType(), updateUser.getDocumentNumber());
-        List<UserMain> userList = iUserPreRegisterRepository.findAll(spec);
-        if (!userList.isEmpty()) {
-            if(userList.size()>1)
-                throw new UserAndTypeAlreadyExists("User with more than one registration");
-
-            UserMain user = userList.get(0);
-            //Actualizacion en keycloak
-            if(!user.getEmail().equalsIgnoreCase(updateUser.getEmail())) {
+        Specification<UserMain> usernameSpec = UserSpecifications.byUsername(structureUsername(updateUser.getDocumentType(), updateUser.getDocumentNumber()));
+        Optional<UserMain> userOptional = iUserPreRegisterRepository.findOne(usernameSpec);
+        
+        if (userOptional.isPresent()) {
+            UserMain user = userOptional.get();
+            
+            List<UserRepresentation> keycloakUsers = keycloakService.searchUserByUsernameComplete(user.getUserName());
+            
+            if (keycloakUsers.isEmpty()) {
                 UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
                 BeanUtils.copyProperties(user, userPreRegisterDto);
-                userPreRegisterDto.setEmail(user.getEmail());
-                keycloakService.updateEmailUser(userPreRegisterDto, updateUser.getEmail());
+                userPreRegisterDto.setUserName(user.getUserName());
+                userPreRegisterDto.setFirstName(user.getFirstName() != null ? user.getFirstName() : "Temporal");
+                userPreRegisterDto.setSurname(user.getSurname() != null ? user.getSurname() : "Temporal");
+                userPreRegisterDto.setEmail(updateUser.getEmail());
+                keycloakService.createUser(userPreRegisterDto);
+            } else {
+                if(!user.getEmail().equalsIgnoreCase(updateUser.getEmail())) {
+                    UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
+                    BeanUtils.copyProperties(user, userPreRegisterDto);
+                    userPreRegisterDto.setUserName(user.getUserName());
+                    userPreRegisterDto.setEmail(user.getEmail());
+                    keycloakService.updateEmailUser(userPreRegisterDto, updateUser.getEmail());
+                }
             }
             //Actualizacion tabla usuario
             user.setEmail(updateUser.getEmail());

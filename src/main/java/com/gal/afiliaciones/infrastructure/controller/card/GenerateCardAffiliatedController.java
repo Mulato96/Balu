@@ -21,7 +21,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/consultcard")
-@CrossOrigin(origins = "*")
 @Tag(name = "Consult-card-affiliation", description = "Consular carnet API")
 @AllArgsConstructor
 public class GenerateCardAffiliatedController {

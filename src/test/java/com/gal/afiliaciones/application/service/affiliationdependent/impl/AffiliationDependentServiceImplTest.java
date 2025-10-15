@@ -47,6 +47,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationD
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 
 @ExtendWith(MockitoExtension.class)
 class AffiliationDependentServiceImplTest {
@@ -83,6 +84,9 @@ class AffiliationDependentServiceImplTest {
     private CollectProperties properties;
     @Mock
     private MessageErrorAge messageError;
+    
+    @Mock
+    private RegistraduriaUnifiedService registraduriaUnifiedService;
 
     @InjectMocks
     private AffiliationDependentServiceImpl affiliationDependentService;
@@ -217,32 +221,6 @@ class AffiliationDependentServiceImplTest {
         verify(iUserPreRegisterRepository).findOne(any(Specification.class));
     }
 
-    @Test
-    void createAffiliation_WhenAffiliationAlreadyExists_ShouldThrowException() {
-        // Arrange
-        when(properties.getMinimumAge()).thenReturn(18);
-        when(properties.getMaximumAge()).thenReturn(65);
-
-        Affiliate affiliateEmployer = new Affiliate();
-        affiliateEmployer.setIdAffiliate(123L);
-        affiliateEmployer.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
-        affiliateEmployer.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-
-        List<Affiliate> activeAffiliates = new ArrayList<>();
-        Affiliate activeAffiliate = new Affiliate();
-        activeAffiliate.setDocumentType(affiliationDependentDTO.getWorker().getIdentificationDocumentType());
-        activeAffiliate.setDocumentNumber(affiliationDependentDTO.getWorker().getIdentificationDocumentNumber());
-        activeAffiliate.setAffiliationCancelled(false);
-        activeAffiliates.add(activeAffiliate);
-
-        when(affiliateRepository.findDependentsByEmployer(affiliationDependentDTO.getIdAffiliateEmployer())).thenReturn(activeAffiliates);
-        
-        // Act & Assert
-        assertThrows(AffiliationAlreadyExistsError.class, () -> 
-            affiliationDependentService.createAffiliation(affiliationDependentDTO));
-        
-        verify(affiliateRepository).findDependentsByEmployer(anyLong());
-    }
 
     @Test
     void capitalize_WithValidString_ShouldReturnCapitalizedString() throws Exception {

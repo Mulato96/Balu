@@ -1,0 +1,41 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/novedad_ruaf.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923640285-1">
+        <createTable tableName="novedad_ruaf">
+            <column autoIncrement="true" name="id" startWith="298" type="INTEGER">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="novedad_ruaf_pkey"/>
+            </column>
+            <column name="codigo_arl" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tipo_documento" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numero_identificacion" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="primer_nombre" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="segundo_nombre" type="TEXT"/>
+            <column name="primer_apellido" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="segundo_apellido" type="TEXT"/>
+            <column name="codigo_novedad" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tipo_documento_aportante" type="TEXT"/>
+            <column name="numero_identificacion_aportante" type="TEXT"/>
+            <column name="dv_aportante" type="BIGINT"/>
+            <column name="fecha_desvinculacion_con_aportante" type="date"/>
+            <column name="fecha_novedad" type="date"/>
+            <column name="causal_retiro" type="BIGINT"/>
+            <column name="fecha_reconocimiento_pension" type="date"/>
+            <column name="fecha_fallecimiento" type="date"/>
+            <column name="id_affiliate" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

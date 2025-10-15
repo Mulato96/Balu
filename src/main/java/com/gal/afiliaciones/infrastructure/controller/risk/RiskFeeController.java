@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/RiskFeeController")
 @Tag(name = "Risk-Fee-Controller", description = "Tarifas por riesgo de la actividad economica")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class RiskFeeController {
 

@@ -1,5 +1,30 @@
 package com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.impl;
 
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.NotFoundException;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.FiledWebSocketService;
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
@@ -25,7 +50,10 @@ import com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
-import com.gal.afiliaciones.domain.model.*;
+import com.gal.afiliaciones.domain.model.DateInterviewWeb;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.FamilyMember;
+import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.Danger;
 import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
@@ -33,8 +61,16 @@ import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationAssignmentHistory;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.*;
+import com.gal.afiliaciones.infrastructure.dao.repository.DateInterviewWebRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationAssignRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.DangerRepository;
@@ -44,17 +80,23 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationsview.Affil
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DataDocumentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DateInterviewWebSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.WorkCenterAddressIndependentDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.FullDataMercantileDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.*;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DataDocumentSpecifications;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.AffiliationsFilterDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DocumentsDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DomesticServiceAffiliationStep1DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DomesticServiceAffiliationStep2DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.DomesticServiceResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.ManagementAffiliationDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.ManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.ResponseManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.StateAffiliation;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.VisualizationPendingPerformDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.AddressContractDataStep2DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.AddressIndependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.AddressWorkDataCenterDTO;
@@ -68,10 +110,10 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationindependentvolunteer.D
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentvolunteer.DataIndependentVolunteerResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentvolunteer.DataOccupationVolunteerResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentvolunteer.IndependentVolunteerResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationTaxiDriverContractResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationTaxiDriverContractorResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationTaxiDriverEmployedResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationTaxiDriverIndependentResponseDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationTaxiDriverContractResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.DocumentBase64;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ReplacedDocumentDTO;
@@ -79,6 +121,7 @@ import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceF
 import com.gal.afiliaciones.infrastructure.dto.daily.DataDailyDTO;
 import com.gal.afiliaciones.infrastructure.enums.DocumentNameStandardization;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -312,6 +355,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     }
 
     @Override
+    @Transactional
     public Affiliation createAffiliationStep1(DomesticServiceAffiliationStep1DTO dto) {
 
         UserMain userRegister = userPreRegisterRepository.findByIdentificationTypeAndIdentification(
@@ -352,6 +396,22 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             affiliation.setInitialNumberWorkers(numWorkers);
             affiliation.setIdEmployerSize(affiliateService.getEmployerSize(numWorkers));
 
+            // Generar radicado y crear Affiliate en step1 para cumplir NOT NULL en id_affiliate
+            String filedNumber = affiliation.getFiledNumber();
+            if (filedNumber == null || filedNumber.isBlank()) {
+                filedNumber = filedService.getNextFiledNumberAffiliation();
+                affiliation.setFiledNumber(filedNumber);
+            }
+            Long idUser = findUser(affiliation);
+            Affiliate affiliateEntity;
+            try {
+                // Si ya existe por filedNumber, reutilizar
+                affiliateEntity = findByFieldAffiliate(filedNumber);
+            } catch (AffiliationError e) {
+                // Si no existe, crearlo
+                affiliateEntity = saveAffiliate(affiliation, idUser, filedNumber);
+            }
+            affiliation.setIdAffiliate(affiliateEntity.getIdAffiliate());
             return repositoryAffiliation.save(affiliation);
         }  catch (AffiliationError ex){
             throw new AffiliationError("Error al crear la afiliacion");
@@ -387,14 +447,22 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             Affiliation newAffiliation = getAffiliationById(idAffiliation);
             String identificationDocumentNumber = newAffiliation.getIdentificationDocumentNumber();
 
-            //Generar radicado
-            String filedNumber = filedService.getNextFiledNumberAffiliation();
+            // Usar filedNumber existente (creado en step1) o generar si no existe
+            String filedNumber = newAffiliation.getFiledNumber();
+            Affiliate affiliate;
+            if (filedNumber == null || filedNumber.isBlank()) {
+                filedNumber = filedService.getNextFiledNumberAffiliation();
+                newAffiliation.setFiledNumber(filedNumber);
 
-            // Crear usuario en la tabla usuario
-            Long idUser = findUser(newAffiliation);
+                // Crear usuario en la tabla usuario
+                Long idUser = findUser(newAffiliation);
 
-            // Asociar a la tabla de afiliaciones
-            Affiliate affiliate =  saveAffiliate(newAffiliation, idUser, filedNumber);
+                // Asociar a la tabla de afiliaciones
+                affiliate = saveAffiliate(newAffiliation, idUser, filedNumber);
+            } else {
+                // Recuperar Affiliate ya creado en step1 por filedNumber
+                affiliate = findByFieldAffiliate(filedNumber);
+            }
 
             // Guardar documentos en alfresco
             String idFolderByEmployer = saveDocument(identificationDocumentNumber, document, affiliate.getIdAffiliate(),
@@ -421,6 +489,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             newAffiliation.setIdEmployerSize(1L);
             newAffiliation.setRealNumberWorkers(0L);
 
+            newAffiliation.setIdAffiliate(affiliate.getIdAffiliate());
             return repositoryAffiliation.save(newAffiliation);
         } catch (AffiliationError ex){
             throw new AffiliationError("Error al guardar el documento de la afiliacion");

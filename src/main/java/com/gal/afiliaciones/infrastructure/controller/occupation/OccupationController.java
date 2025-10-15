@@ -16,7 +16,6 @@ import java.util.List;
 @RequestMapping("/occupations")
 @RequiredArgsConstructor
 @Tag(name = "Occupations-Employer-Provision-Service-Independent", description = "CONSULTA OCUPACIONES PARA INDEPENDIENTE PRESTACION DE SERVICIOS")
-@CrossOrigin(origins = "*")
 public class OccupationController {
 
     private final OccupationService occupationService;

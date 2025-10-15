@@ -20,12 +20,12 @@ public class RegistraduriaClient {
 
     @Qualifier("registraduriaWebClient")
     private final WebClient webClient;
-
+    
     private final RegistraduriaKeycloakTokenService registraduriaKeycloakTokenService;
-
+    
     @Value("${registraduria.soap.url}")
     private String registraduriaSoapUrl;
-
+    
     @Value("${registraduria.soap.action}")
     private String registraduriaSoapAction;
 
@@ -36,13 +36,13 @@ public class RegistraduriaClient {
      */
     public Mono<String> consultIdentityCard(String documentNumber) {
         log.info("Calling Registraduria SOAP service for document: {} at URL: {}", documentNumber, registraduriaSoapUrl);
-
+        
         try {
             // Get access token synchronously using the specific service
             String token = registraduriaKeycloakTokenService.getAccessToken();
-
+            
             String soapRequest = buildSoapRequest(documentNumber);
-
+            
             return webClient
                     .post()
                     .uri(registraduriaSoapUrl)
@@ -59,7 +59,7 @@ public class RegistraduriaClient {
                         log.error("Error calling Registraduria SOAP service for document {}: {}", documentNumber, errorMessage);
                     })
                     .onErrorMap(this::mapError);
-
+                    
         } catch (Exception e) {
             log.error("Error obtaining access token for document {}: {}", documentNumber, e.getMessage());
             return Mono.error(new RuntimeException("Error obtaining access token: " + e.getMessage(), e));
@@ -77,16 +77,16 @@ public class RegistraduriaClient {
                 </solicitudConsultaEstadoConsulta>
                 """, documentNumber);
     }
-
+    
     /**
      * Get user-friendly error message
      */
     private String getErrorMessage(Throwable error) {
         if (error instanceof UnknownHostException) {
-            return String.format("Cannot resolve host '%s'. Please check the URL configuration or network connectivity.",
+            return String.format("Cannot resolve host '%s'. Please check the URL configuration or network connectivity.", 
                     extractHostFromUrl(registraduriaSoapUrl));
         } else if (error.getMessage().contains("Failed to resolve")) {
-            return String.format("DNS resolution failed for '%s'. The service URL may be incorrect or the service is not available.",
+            return String.format("DNS resolution failed for '%s'. The service URL may be incorrect or the service is not available.", 
                     extractHostFromUrl(registraduriaSoapUrl));
         } else if (error.getMessage().contains("Connection refused")) {
             return "Connection refused. The service may be down or not accessible from this network.";
@@ -100,7 +100,7 @@ public class RegistraduriaClient {
             return error.getMessage();
         }
     }
-
+    
     /**
      * Map errors to more specific exceptions
      */
@@ -108,7 +108,7 @@ public class RegistraduriaClient {
         String errorMessage = getErrorMessage(error);
         return new RuntimeException("Registraduria service error: " + errorMessage, error);
     }
-
+    
     /**
      * Extract host from URL
      */
@@ -124,5 +124,4 @@ public class RegistraduriaClient {
             return url;
         }
     }
-
-}
+} 

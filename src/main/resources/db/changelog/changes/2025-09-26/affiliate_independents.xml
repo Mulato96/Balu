@@ -1,0 +1,86 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/affiliate_independents.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual" id="1758925025638-drop-view-if-exists">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <viewExists viewName="affiliate_independents"/>
+        </preConditions>
+        <sql>DROP VIEW IF EXISTS affiliate_independents;</sql>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758925025638-1">
+        <createView fullDefinition="false" viewName="affiliate_independents">SELECT DISTINCT ON (aff.id_affiliate) aff.id_affiliate AS main_id,
+    aff.identification_document_type AS tipodoc,
+    aff.identification_document_number AS idpersona,
+    aff.first_name AS nombre1,
+    aff.second_name AS nombre2,
+    aff.surname AS apellido1,
+    aff.second_surname AS apellido2,
+    to_char((aff.date_of_birth)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechanacimiento,
+    aff.gender AS sexo,
+    aff.email AS emailpersona,
+    aff.phone_1 AS telefonopersona,
+    aff.address AS direccion,
+    (NULLIF((aff.department)::text, ''::text))::integer AS iddepartamento,
+    dep.nombre_departamento AS departamento,
+    aff.city_municipality AS int_aff_city_municipality,
+    mun.id_municipio AS int_mun_id_municipio,
+    mun.codigo_municipio AS idmunicipio,
+    mun.nombre_municipio AS municipio,
+    tmpo.id_ocupacion AS idocupacion,
+    tmpo.codigo_ocupacion AS codeocupacion,
+    aff.occupation AS ocupacion,
+    (aff.pension_fund_administrator)::integer AS afp,
+    afp.nombre_afp AS nombreafp,
+    hpe.codigoeps AS eps,
+    hpe.nombreeps,
+    aff.current_arl AS idarl,
+    arl.administradora AS nombrearl,
+    ea.id AS idacteconomica,
+    ea.economic_activity_code AS codeacteconomica,
+    ea.description AS nomacteco,
+    (NULLIF((ea.class_risk)::text, ''::text))::integer AS idsectoreconomico,
+    aff.contract_monthly_value AS salario,
+    'Independiente'::text AS nomvinlaboral,
+    0 AS idtipovinculado,
+    1 AS idsucursal,
+    to_char((aff.contract_start_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechainiciovinculacion,
+    to_char((aff.contract_end_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechafinvinculacion,
+    to_char((a.coverage_start_date)::timestamp with time zone, 'YYYY-MM-DD HH24:MI:SS'::text) AS fechaafiliacionefectiva,
+    COALESCE(aff.identification_document_type_legal_representative, a.document_type_company) AS tpdocempresa,
+    a.nit_company AS affiliate_idempresa,
+    aff.identification_document_number_contractor AS detail_contractor_idempresa,
+    aff.identification_document_number_contractor_legal_representative AS detail_legalrep_idempresa,
+    am.number_identification AS mercantile_idempresa,
+    COALESCE(am.number_identification, aff.identification_document_number_contractor, a.nit_company) AS idempresa,
+    COALESCE(am.business_name, a.company) AS razonsocial,
+    am.id_main_headquarter AS mercantile_id_main_headquarter,
+    mo.id AS main_office_id,
+    COALESCE(mo.address, (am.address)::text, (am.address_contact_company)::text) AS direccionempresa,
+    COALESCE(mo.id_department, am.id_department, ((NULLIF((am.department)::text, ''::text))::integer)::bigint) AS iddepartamentoemp,
+    dep_emp.nombre_departamento AS departamentoemp,
+    COALESCE(mo.id_city, am.id_city, ((NULLIF((am.city_municipality)::text, ''::text))::integer)::bigint) AS idmunicipioemp,
+    mun_emp.nombre_municipio AS municipioemp,
+    COALESCE(mo.phone, (am.phone_one)::text, (am.phone_two)::text, (am.phone_one_contact_company)::text, (am.phone_two_contact_company)::text) AS telefonoempresa,
+    COALESCE(mo.email, (am.email)::text, (am.email_contact_company)::text) AS emailempresa,
+    COALESCE(mo.zone, NULLIF((am.zone_location_employer)::text, ''::text)) AS indzona,
+    wc.zone AS indzona2,
+    COALESCE(am.affiliation_status, a.affiliation_status) AS estadorl,
+    COALESCE(am.affiliation_status, a.affiliation_status) AS estadoempresa,
+    wc.id AS idcentrotrabajo,
+    'BALU'::text AS appsource,
+    aff.id AS sort_order
+   FROM (((((((((((((affiliation_detail aff
+     JOIN affiliate a ON ((aff.id_affiliate = a.id_affiliate)))
+     LEFT JOIN tmp_departamentos dep ON (((NULLIF((aff.department)::text, ''::text))::integer = dep.id_departamento)))
+     LEFT JOIN tmp_municipality mun ON (((NULLIF((aff.city_municipality)::text, ''::text))::integer = mun.id_municipio)))
+     LEFT JOIN tmp_fondos_pensiones afp ON ((aff.pension_fund_administrator = afp.id_afp)))
+     LEFT JOIN tmp_health hpe ON ((aff.health_promoting_entity = hpe.id)))
+     LEFT JOIN tmp_arl arl ON (((aff.current_arl)::text = (arl.codigo)::text)))
+     LEFT JOIN economic_activity ea ON ((aff.code_main_economic_activity = (ea.economic_activity_code)::text)))
+     LEFT JOIN affiliate_mercantile am ON ((((aff.identification_document_type_contractor)::text = (am.type_document_identification)::text) AND ((aff.identification_document_number_contractor)::text = (am.number_identification)::text))))
+     LEFT JOIN main_office mo ON ((am.id_main_headquarter = mo.id)))
+     LEFT JOIN work_center wc ON ((mo.id = wc.id_main_office)))
+     LEFT JOIN tmp_departamentos dep_emp ON ((COALESCE(mo.id_department, am.id_department, ((NULLIF((am.department)::text, ''::text))::integer)::bigint) = dep_emp.id_departamento)))
+     LEFT JOIN tmp_municipality mun_emp ON ((COALESCE(mo.id_city, am.id_city, ((NULLIF((am.city_municipality)::text, ''::text))::integer)::bigint) = mun_emp.id_municipio)))
+     LEFT JOIN tmp_ocupaciones tmpo ON ((tmpo.nombre_ocupacion = (aff.occupation)::text)));</createView>
+    </changeSet>
+</databaseChangeLog>

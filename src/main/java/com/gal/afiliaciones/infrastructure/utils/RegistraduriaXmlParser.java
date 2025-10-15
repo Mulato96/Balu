@@ -3,6 +3,8 @@ package com.gal.afiliaciones.infrastructure.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Slf4j
 @Component
 public class RegistraduriaXmlParser {
@@ -97,8 +99,8 @@ public class RegistraduriaXmlParser {
         }
 
         return xml.replaceAll("\\s+", " ")
-                .replaceAll(">\\s+<", "><")
-                .trim();
+                 .replaceAll(">\\s+<", "><")
+                 .trim();
     }
 
     /**
@@ -124,5 +126,4 @@ public class RegistraduriaXmlParser {
         String errorCode = extractXmlValue(xml, "codError");
         return "1".equals(errorCode);
     }
-
-}
+} 

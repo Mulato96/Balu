@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.RolesUserService;
+import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
 import com.gal.afiliaciones.application.service.login.AuthService;
 import com.gal.afiliaciones.config.ex.AffiliationsExceptionBase;
@@ -13,6 +14,7 @@ import com.gal.afiliaciones.config.ex.PasswordExpiredException;
 import com.gal.afiliaciones.config.ex.validationpreregister.*;
 import com.gal.afiliaciones.config.util.AffiliationProperties;
 import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.domain.model.PersonaPositivaTmp;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
@@ -22,6 +24,7 @@ import com.gal.afiliaciones.infrastructure.client.generic.userportal.ConsultUser
 import com.gal.afiliaciones.infrastructure.client.generic.userportal.UserPortalResponse;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.personasPositiva.PersonaPositivaTmpRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.ResponseUserDTO;
@@ -33,6 +36,7 @@ import com.gal.afiliaciones.infrastructure.utils.Constant;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,13 +54,13 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
-@Transactional(noRollbackFor = AffiliationsExceptionBase.class)
 @Slf4j
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -64,6 +68,7 @@ public class AuthServiceImpl implements AuthService {
     private final RestTemplate restTemplate;
     private final AffiliationProperties affiliationProperties;
     private final IUserPreRegisterRepository userPreRegisterRepository;
+    private final PersonaPositivaTmpRepository personaPositivaTmpRepository;
     private final RolesUserService rolesUserService;
     private final HttpServletRequest request;
     private final IUserRegisterService userRegisterService;
@@ -74,23 +79,29 @@ public class AuthServiceImpl implements AuthService {
     private final AffiliateMercantileRepository affiliateMercantileRepository;
     private final AffiliationEmployerActivitiesMercantileService affiliationEmployerActivitiesMercantileService;
 
+    private final AffiliateService affiliateService;
     private static final String NAME_SCREEN_OTP = "login";
+    @Transactional(noRollbackFor = AffiliationsExceptionBase.class)
     public Map<String, Object> login(String documentType, String username, String password, TypeUser userType) {
         try {
 
             UserMain user = userPreRegisterRepository.findOne(UserSpecifications.byUsername(structureUserName(documentType,username,userType)))
                     .orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_LOGIN));
-            Boolean isInArrearsStatus = webClient.checkUserArrearsStatus(
-                    user.getIdentification(), user.getIdentificationType());
+            Boolean isInArrearsStatus =false;
+            //   Boolean isInArrearsStatus = webClient.checkUserArrearsStatus(
 
-            Optional<String> verifySessions = verifySessions(user.getEmail());
+
+           //         user.getIdentification(), user.getIdentificationType());
 
             if(user.getIsImport() == Boolean.TRUE){
                 throw new PasswordExpiredException(Constant.PASSWORD_EXPIRED);
             }
 
-            if(verifySessions.isPresent())
-                throw new DuplicateSessionException(verifySessions.get());
+            if(!properties.isAllowMultipleSessions()){
+                Optional<String> verifySessions = verifySessions(user.getEmail());
+                if(verifySessions.isPresent())
+                    throw new DuplicateSessionException(verifySessions.get());
+            }
 
             if (user.getLockoutTime() != null && user.getLockoutTime().isAfter(LocalDateTime.now())) {
                 throw new LoginAttemptsError(Duration.between(LocalDateTime.now(), user.getLockoutTime()).toHours()+" horas y "+Duration.between(LocalDateTime.now(), user.getLockoutTime()).toMinutesPart()+" minutos");
@@ -169,7 +180,7 @@ public class AuthServiceImpl implements AuthService {
                         .orElseThrow(() -> new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_LOGIN));
                 user.setLoginAttempts(user.getLoginAttempts() + 1);
                 if (user.getLoginAttempts() >= Constant.MAX_LOGIN_ATTEMPTS) {
-                    user.setLockoutTime(LocalDateTime.now().plusHours(12));
+                    user.setLockoutTime(LocalDateTime.now().plusMinutes(30));
                 }
                 userPreRegisterRepository.save(user);
 
@@ -200,6 +211,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Scheduled(cron = "${cron.execute.scheduled}")
+    @Transactional(noRollbackFor = AffiliationsExceptionBase.class)
     public void passwordExpired() {
         LocalDateTime today = LocalDateTime.now();
         int daysForcedUpdatePassword = userRegisterService.findDaysForcedUpdatePassword();

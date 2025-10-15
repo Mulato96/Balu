@@ -13,5 +13,6 @@ public class GeneralConsultDTO {
 
     private String nameOrBusinessName;
     private String affiliationType;
+    private String idAffiliate;
 
 }

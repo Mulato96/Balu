@@ -1,8 +1,9 @@
 package com.gal.afiliaciones.config.util;
 
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import lombok.Data;
 
 @Component
 @Data
@@ -186,6 +187,7 @@ public class CollectProperties {
     @Value("${customer.service.url}")
     private String customerServiceUrl;
 
+
     @Value("${max.concurrent.meetings}")
     private long maxConcurrentMeetings;
 
@@ -227,5 +229,17 @@ public class CollectProperties {
 
     @Value("${cut.three}")
     private int cutSettlementThree;
+
+    @Value("${auth.allow-multiple-sessions:false}")
+    private boolean allowMultipleSessions;
+
+    @Value("${recaudos.contributor.data.url}")
+    private String contributorDataConsultUrl;
+
+    @Value("${recaudos.member.data.url}")
+    private String memberDataConsultUrl;
+
+    @Value("${recaudos.bank.log.url}")
+    private String bankLogConsultUrl;
 
 }

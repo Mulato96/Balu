@@ -30,7 +30,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/AffiliationEmployerDomesticServiceIndependentController")
-@CrossOrigin(origins = "*")
 @Tag(name = "Affiliation-Employer-Domestic-Service-Independent-Controller", description = "GESTIÓN DE AFILIACIONES PROCESO EMPLEADOR SERVICIO DOMÉSTICO E INDEPENDIENTES")
 @AllArgsConstructor
 public class AffiliationEmployerDomesticServiceIndependentController {

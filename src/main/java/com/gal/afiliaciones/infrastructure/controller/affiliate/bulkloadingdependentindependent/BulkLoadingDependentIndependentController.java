@@ -21,7 +21,6 @@ import java.util.List;
 
 @RestController
 @AllArgsConstructor
-@CrossOrigin(origins = "*")
 @RequestMapping("/loadingbulk")
 public class BulkLoadingDependentIndependentController {
 

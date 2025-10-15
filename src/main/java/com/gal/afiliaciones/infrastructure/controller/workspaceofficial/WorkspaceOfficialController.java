@@ -25,7 +25,6 @@ import java.util.List;
 @RequestMapping("/workspaceofficial")
 @RequiredArgsConstructor
 @Tag(name = "Options workspace official", description = "Opciones espacio de trabajo del funcionario")
-@CrossOrigin(origins = "*")
 public class WorkspaceOfficialController {
 
     private final WorkspaceOfficialService service;

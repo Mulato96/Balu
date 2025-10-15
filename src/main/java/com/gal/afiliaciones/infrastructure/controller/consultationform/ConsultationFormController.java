@@ -27,7 +27,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/consultationForm")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class ConsultationFormController {
 
@@ -38,9 +37,10 @@ public class ConsultationFormController {
     @GetMapping("getInfo")
     public ResponseEntity<BodyResponseConfig<InfoConsultDTO>> getInfo(@Param("identification") String identification,
                                                                       @Param("typeIdentification") String typeIdentification,
-                                                                      @Param("affiliationType") String affiliationType) {
+                    @Param("affiliationType") String affiliationType,
+                    @Param("idAffiliate") String idAffiliate) {
         return new ResponseEntity<>(
-                new BodyResponseConfig<>(service.getInfo(typeIdentification, identification, affiliationType), "info"), HttpStatus.OK);
+                new BodyResponseConfig<>(service.getInfo(typeIdentification, identification, affiliationType, idAffiliate), "info"), HttpStatus.OK);
     }
 
     @GetMapping("getJobRelatedInfo")

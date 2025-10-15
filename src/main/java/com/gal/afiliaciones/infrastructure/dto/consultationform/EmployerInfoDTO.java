@@ -37,4 +37,5 @@ public class EmployerInfoDTO implements InfoConsultDTO {
     private String typeInfo;
     private Boolean isActive;
     private String filedNumber;
+    private String id_employer_size;
 }

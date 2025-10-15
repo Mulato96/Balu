@@ -154,5 +154,4 @@ public class IdentityCardConsultationService {
         log.debug("Extracted identity card error code: '{}'", errorCode);
         return errorCode;
     }
-
-}
+} 

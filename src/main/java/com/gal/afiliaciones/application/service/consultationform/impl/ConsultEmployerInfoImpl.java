@@ -16,9 +16,11 @@ import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDepende
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.HistoryOptionsRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
@@ -33,17 +35,15 @@ import com.gal.afiliaciones.infrastructure.dto.consultationform.*;
 import com.gal.afiliaciones.infrastructure.dto.retirementreason.RegisteredAffiliationsDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -124,13 +124,61 @@ public class ConsultEmployerInfoImpl implements ConsultEmployerInfo {
 
                 economyACtivities = affiliateMercantile.getEconomicActivity()
                         .stream()
-                        .map(economic ->{
-                            RegisteredAffiliationsDTO dto = new RegisteredAffiliationsDTO();
-                            BeanUtils.copyProperties(economic.getActivityEconomic(), dto);
-                            dto.setTypeActivity(economic.getIsPrimary());
-                            return dto;
+                        .map(affiliateActivityEconomic -> {
+                            EconomicActivity economicActivity = affiliateActivityEconomic.getActivityEconomic();
+                            boolean activityType = affiliateActivityEconomic.getIsPrimary();
+
+                            return RegisteredAffiliationsDTO.builder()
+                                    .classRisk(economicActivity.getClassRisk())
+                                    .codeCIIU(economicActivity.getCodeCIIU())
+                                    .additionalCode(economicActivity.getAdditionalCode())
+                                    .description(economicActivity.getDescription())
+                                    .economicActivityCode(economicActivity.getClassRisk()
+                                            + economicActivity.getCodeCIIU() +
+                                            economicActivity.getAdditionalCode())
+                                    .typeActivity(activityType)
+                                    .build();
                         })
+                        .collect(Collectors.toMap(
+                            RegisteredAffiliationsDTO::getEconomicActivityCode,
+                            dto -> dto,
+                            (existing, replacement) -> existing // Mantener el primer elemento en caso de duplicados
+                        ))
+                        .values()
+                        .stream()
                         .toList();
+            } else {
+
+                Optional<Affiliation> optionalAffiliation = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber());
+
+                if(optionalAffiliation.isPresent()){
+                    return  optionalAffiliation.get().getEconomicActivity()
+                            .stream()
+                            .map(affiliateActivityEconomic -> {
+                                EconomicActivity economicActivity = affiliateActivityEconomic.getActivityEconomic();
+                                boolean activityType = affiliateActivityEconomic.getIsPrimary();
+
+                                return RegisteredAffiliationsDTO.builder()
+                                        .classRisk(economicActivity.getClassRisk())
+                                        .codeCIIU(economicActivity.getCodeCIIU())
+                                        .additionalCode(economicActivity.getAdditionalCode())
+                                        .description(economicActivity.getDescription())
+                                        .economicActivityCode(economicActivity.getClassRisk()
+                                                + economicActivity.getCodeCIIU() +
+                                                economicActivity.getAdditionalCode())
+                                        .typeActivity(activityType)
+                                        .build();
+                            })
+                            .collect(Collectors.toMap(
+                                    RegisteredAffiliationsDTO::getEconomicActivityCode,
+                                    dto -> dto,
+                                    (existing, replacement) -> existing // Mantener el primer elemento en caso de duplicados
+                            ))
+                            .values()
+                            .stream()
+                            .toList();
+                }
+                economyACtivities = List.of();
             }
         }
         return economyACtivities;

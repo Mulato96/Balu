@@ -1,0 +1,53 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/certificate.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923488318-1">
+        <addColumn tableName="certificate">
+            <column name="addressed_to" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-2">
+        <addColumn tableName="certificate">
+            <column name="risk_rate" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-3">
+        <addColumn tableName="certificate">
+            <column name="address" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-4">
+        <addColumn tableName="certificate">
+            <column name="department" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-5">
+        <addColumn tableName="certificate">
+            <column name="email" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-6">
+        <addColumn tableName="certificate">
+            <column name="phone" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-7">
+        <addColumn tableName="certificate">
+            <column name="created_at" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-8">
+        <addColumn tableName="certificate">
+            <column name="dependent_workers_number" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-9">
+        <addColumn tableName="certificate">
+            <column name="independent_workers_number" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923488318-10">
+        <addColumn tableName="certificate">
+            <column name="vinculation_subtype" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

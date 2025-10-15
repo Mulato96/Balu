@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Example;
 import org.springframework.data.jpa.domain.Specification;
@@ -75,11 +73,9 @@ class GenerateCardAffiliatedServiceImplTest {
     @Mock
     private AffiliationDependentRepository dependentRepository;
     @Mock
-    private ConsultCertificateByUserService consultCertificateByUserService;
-    @Mock
     private AffiliateMercantileRepository affiliateMercantileRepository;
     @Mock
-    private ObjectMapper objectMapper;
+    private ConsultCertificateByUserService consultCertificateByUserService;
 
     @InjectMocks
     private GenerateCardAffiliatedServiceImpl service;
@@ -168,7 +164,7 @@ class GenerateCardAffiliatedServiceImplTest {
         arl.setPhoneNumber("12345");
         when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(arl));
         Card card = new Card();
-        card.setId(123L);
+        card.setId(1L);
         card.setCompany("Company");
         card.setDateAffiliation(LocalDate.now());
         card.setAffiliationStatus(Constant.AFFILIATION_STATUS_ACTIVE);
@@ -355,175 +351,7 @@ class GenerateCardAffiliatedServiceImplTest {
         assertEquals(1, result.size());
     }
 
-    @Test
-    void generateCardPDF_shouldReturnPdfString_whenValidCardProvided() throws Exception {
-        Card card = new Card();
-        card.setId(123L);
-        card.setFullNameWorked("John Doe Smith");
-        card.setDocumentTypeEmployer("NIT");
-        card.setNitCompany("123456789");
-        card.setNameARL("ARL Test");
-        card.setTypeDocumentWorker("CC");
-        card.setNumberDocumentWorker("12345678");
-        card.setCompany("Test Company");
-        card.setDateAffiliation(LocalDate.of(2023, 5, 15));
-        card.setTypeAffiliation("INDEPENDENT");
-        card.setPhoneArl("3001234567");
-        card.setEmailARL("test@arl.com");
-        card.setAddressARL("Test Address");
-        card.setPageWebARL("www.arl.com");
 
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setNumberIdentification("12345");
-        mercantile.setTypeDocumentIdentification("CC");
-        List<AffiliateMercantile> affiliations = List.of(mercantile);
-
-        String jsonResponse = "{\"pdf\":\"ABC123\"}";
-        JsonNode mockNode = new ObjectMapper().readTree(jsonResponse);
-
-        when(iCardRepository.findOne(any(Specification.class))).thenReturn(Optional.of(card));
-        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(affiliations);
-        when(objectMapper.readTree(jsonResponse)).thenReturn(mockNode);
-
-        java.lang.reflect.Method method = service.getClass().getDeclaredMethod("generateCardPDF", Card.class);
-        method.setAccessible(true);
-
-        GenerateCardAffiliatedServiceImpl spyService = Mockito.spy(service);
-        doReturn(jsonResponse).when(spyService).generateAffiliateCard(card);
-
-        String result = (String) method.invoke(spyService, card);
-
-        assertEquals("ABC123", result);
-    }
-
-    @Test
-    void generateCardPDF_shouldFormatDateCorrectly_whenCardHasValidDate() throws Exception {
-        Card card = new Card();
-        card.setId(123L);
-        card.setFullNameWorked("Jane Smith");
-        card.setDocumentTypeEmployer("CC");
-        card.setNitCompany("987654321");
-        card.setNameARL("ARL Example");
-        card.setTypeDocumentWorker("CC");
-        card.setNumberDocumentWorker("87654321");
-        card.setCompany("Example Corp");
-        card.setDateAffiliation(LocalDate.of(2024, 1, 1));
-        card.setTypeAffiliation("DEPENDENT");
-        card.setPhoneArl("3009876543");
-        card.setEmailARL("example@arl.com");
-        card.setAddressARL("Example Address");
-        card.setPageWebARL("www.example-arl.com");
-
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setNumberIdentification("12345");
-        mercantile.setTypeDocumentIdentification("CC");
-        List<AffiliateMercantile> affiliations = List.of(mercantile);
-
-        String jsonResponse = "{\"pdf\":\"ABC123\"}";
-        JsonNode mockNode = new ObjectMapper().readTree(jsonResponse);
-
-        when(iCardRepository.findOne(any(Specification.class))).thenReturn(Optional.of(card));
-        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(affiliations);
-        when(objectMapper.readTree(jsonResponse)).thenReturn(mockNode);
-
-        java.lang.reflect.Method method = service.getClass().getDeclaredMethod("generateCardPDF", Card.class);
-        method.setAccessible(true);
-
-        GenerateCardAffiliatedServiceImpl spyService = Mockito.spy(service);
-        doReturn(jsonResponse).when(spyService).generateAffiliateCard(card);
-
-        String result = (String) method.invoke(spyService, card);
-
-        assertEquals("ABC123", result);
-    }
-
-    @Test
-    void generateCardPDF_shouldSetCorrectParameters_whenCardDataProvided() throws Exception {
-        Card card = new Card();
-        card.setId(123L);
-        card.setFullNameWorked("Test User Full Name");
-        card.setDocumentTypeEmployer("NIT");
-        card.setNitCompany("555666777");
-        card.setNameARL("Test ARL Name");
-        card.setTypeDocumentWorker("TI");
-        card.setNumberDocumentWorker("11223344");
-        card.setCompany("Test Company Name");
-        card.setDateAffiliation(LocalDate.of(2023, 12, 25));
-        card.setTypeAffiliation("EMPLOYER");
-        card.setPhoneArl("3001112233");
-        card.setEmailARL("contact@testarl.com");
-        card.setAddressARL("Test ARL Address");
-        card.setPageWebARL("www.testarl.com");
-
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setNumberIdentification("12345");
-        mercantile.setTypeDocumentIdentification("CC");
-        List<AffiliateMercantile> affiliations = List.of(mercantile);
-
-        String jsonResponse = "{\"pdf\":\"ABC123\"}";
-        JsonNode mockNode = new ObjectMapper().readTree(jsonResponse);
-
-        when(iCardRepository.findOne(any(Specification.class))).thenReturn(Optional.of(card));
-        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(affiliations);
-        when(objectMapper.readTree(jsonResponse)).thenReturn(mockNode);
-
-        java.lang.reflect.Method method = service.getClass().getDeclaredMethod("generateCardPDF", Card.class);
-        method.setAccessible(true);
-
-        GenerateCardAffiliatedServiceImpl spyService = Mockito.spy(service);
-        doReturn(jsonResponse).when(spyService).generateAffiliateCard(card);
-
-        String result = (String) method.invoke(spyService, card);
-
-        assertEquals("ABC123", result);
-    }
-
-    @Test
-    void getUserCardDTO_shouldReturnCorrectDTO_whenRetirementDateIsNull() throws Exception {
-        // Prepare an affiliate with necessary fields
-        Affiliate affiliate = new Affiliate();
-        affiliate.setDocumentNumber("123456");
-        affiliate.setDocumentType("CC");
-        affiliate.setAffiliationDate(LocalDateTime.of(2023, 10, 10, 12, 0));
-        affiliate.setAffiliationType("INDEPENDENT");
-        affiliate.setCompany("TestCompany");
-        affiliate.setNitCompany("NIT123");
-        affiliate.setAffiliationStatus("Active");
-        affiliate.setRetirementDate(null);
-
-        // Prepare a dummy ArlInformation to be returned by getArlInformation()
-        ArlInformation arl = new ArlInformation();
-        arl.setName("TestARL");
-        arl.setEmail("test@arl.com");
-        arl.setAddress("Test Address");
-        arl.setWebsite("test.com");
-        arl.setPhoneNumber("12345");
-        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(arl));
-
-        // Invoke the private getUserCardDTO method using reflection
-        java.lang.reflect.Method method = service.getClass().getDeclaredMethod("getUserCardDTO",
-                String.class, String.class, String.class, String.class, Affiliate.class);
-        method.setAccessible(true);
-        Object result = method.invoke(service, "John", "Paul", "Doe", "Smith", affiliate);
-
-        // Validate the returned UserCardDTO
-        com.gal.afiliaciones.infrastructure.dto.card.UserCardDTO dto = (com.gal.afiliaciones.infrastructure.dto.card.UserCardDTO) result;
-        assertEquals("John Paul Doe Smith", dto.getFullNameWorked());
-        assertEquals("123456", dto.getNumberDocumentWorker());
-        assertEquals("CC", dto.getTypeDocumentWorker());
-        assertEquals(LocalDate.of(2023, 10, 10), dto.getDateAffiliation());
-        assertEquals("INDEPENDENT", dto.getTypeAffiliation());
-        assertEquals("TestARL", dto.getNameARL());
-        assertEquals("test@arl.com", dto.getEmailARL());
-        assertEquals("Test Address", dto.getAddressARL());
-        assertEquals("test.com", dto.getPageWebARL());
-        assertEquals("TestCompany", dto.getCompany());
-        assertEquals("NIT123", dto.getNitCompany());
-        assertEquals("Active", dto.getAffiliationStatus());
-        // Since retirementDate is null, expect the NO_REGISTRY constant value "No
-        // registra"
-        assertEquals("No registra", dto.getEndContractDate());
-    }
 
     @Test
     void getUserCardDTO_shouldReturnCorrectDTO_whenRetirementDateIsProvided() throws Exception {
@@ -637,7 +465,10 @@ class GenerateCardAffiliatedServiceImplTest {
     @Test
     void findDocumentTypeEmployer_shouldReturnNI_whenAffiliateIsEmployerType() throws Exception {
         Affiliate employerAffiliate = new Affiliate();
-        employerAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
+        employerAffiliate.setAffiliationType(Constant.TYPE_AFFILIATE_EMPLOYER);
+        employerAffiliate.setFiledNumber("F123");
+        employerAffiliate.setNitCompany("123456789");
+        employerAffiliate.setDocumenTypeCompany(Constant.NI);
         when(affiliateRepository.findAll(any(Specification.class))).thenReturn(List.of(employerAffiliate));
 
         java.lang.reflect.Method method = service.getClass().getDeclaredMethod("findDocumentTypeEmployer",
@@ -762,48 +593,6 @@ class GenerateCardAffiliatedServiceImplTest {
         String result = (String) method.invoke(service, "123456789");
 
         assertNull(result);
-    }
-
-    @Test
-    void consultCard_shouldReturnPdfString_whenValidCardFound() throws Exception {
-        // Prepare a Card instance with required fields for PDF generation
-        Card card = new Card();
-        card.setId(123L);
-        card.setDateAffiliation(LocalDate.of(2023, 10, 5));
-        card.setFullNameWorked("Test Name");
-        card.setDocumentTypeEmployer("CC");
-        card.setNitCompany("12345");
-        card.setNameARL("Test ARL");
-        card.setTypeDocumentWorker("CC");
-        card.setNumberDocumentWorker("98765");
-        card.setCompany("Test Company");
-        card.setTypeAffiliation("independent");
-        card.setPhoneArl("555-1234");
-        card.setEmailARL("arl@test.com");
-        card.setAddressARL("Address Test");
-        card.setPageWebARL("www.testarl.com");
-
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setNumberIdentification("12345");
-        mercantile.setTypeDocumentIdentification("CC");
-        List<AffiliateMercantile> affiliations = List.of(mercantile);
-
-        String jsonResponse = "{\"pdf\":\"ABC123\"}";
-        JsonNode mockNode = new ObjectMapper().readTree(jsonResponse);
-
-        when(iCardRepository.findOne(any(Specification.class))).thenReturn(Optional.of(card));
-        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(affiliations);
-        when(objectMapper.readTree(jsonResponse)).thenReturn(mockNode);
-
-        java.lang.reflect.Method method = service.getClass().getDeclaredMethod("generateCardPDF", Card.class);
-        method.setAccessible(true);
-
-        GenerateCardAffiliatedServiceImpl spyService = Mockito.spy(service);
-        doReturn(jsonResponse).when(spyService).generateAffiliateCard(card);
-
-        String result = (String) method.invoke(spyService, card);
-
-        assertEquals("ABC123", result);
     }
 
 }

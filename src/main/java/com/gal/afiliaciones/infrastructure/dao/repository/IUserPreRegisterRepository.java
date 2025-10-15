@@ -1,6 +1,9 @@
 package com.gal.afiliaciones.infrastructure.dao.repository;
 
-import com.gal.afiliaciones.domain.model.UserMain;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,9 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.gal.afiliaciones.domain.model.UserMain;
 
 @Repository
 public interface IUserPreRegisterRepository extends JpaRepository<UserMain, Long> , JpaSpecificationExecutor<UserMain> {
@@ -55,6 +56,7 @@ public interface IUserPreRegisterRepository extends JpaRepository<UserMain, Long
             """)
     void updateLastDateUpdate(@Param("id")Long id, @Param("lastUpdate")LocalDateTime lastUpdate);
 
+
     @Query(value = """
         SELECT u.* 
         FROM public.usuario u
@@ -64,5 +66,9 @@ public interface IUserPreRegisterRepository extends JpaRepository<UserMain, Long
         """, nativeQuery = true)
     Optional<UserMain> findByDocumentoNormalizado(@Param("doc") String documento);
 
+
+
+    @Query(value = "select u.id from usuario u where u.nombre_usuario = :userName", nativeQuery = true)
+    Optional<Long> findIdByUserName(@Param("userName") String userName);
 
 }

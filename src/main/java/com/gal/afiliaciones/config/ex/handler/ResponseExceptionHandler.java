@@ -1,3 +1,4 @@
+
 package com.gal.afiliaciones.config.ex.handler;
 
 import com.gal.afiliaciones.config.ex.*;
@@ -5,7 +6,6 @@ import com.gal.afiliaciones.config.ex.Error;
 import com.gal.afiliaciones.config.ex.sat.SatUpstreamError;
 import com.gal.afiliaciones.config.ex.sat.SatError;
 import com.gal.afiliaciones.config.ex.addoption.ActivityMaxSizeException;
-import com.gal.afiliaciones.config.ex.affiliation.*;
 import com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco;
 import com.gal.afiliaciones.config.ex.cancelaffiliation.CancelAffiliationNotFoundException;
 import com.gal.afiliaciones.config.ex.cancelaffiliation.DateCancelAffiliationException;
@@ -19,7 +19,6 @@ import com.gal.afiliaciones.config.ex.generalnovelty.GeneralNoveltyException;
 import com.gal.afiliaciones.config.ex.otp.OtpCodeExpired;
 import com.gal.afiliaciones.config.ex.otp.OtpCodeInvalid;
 import com.gal.afiliaciones.config.ex.typeemployerdocumentrequested.TypeEmployerDocumentRequested;
-import com.gal.afiliaciones.config.ex.validationpreregister.*;
 import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException;
 import com.gal.afiliaciones.config.ex.workspaceofficial.WorkspaceOptionOfficialException;
 import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementNotFoundException;
@@ -27,6 +26,10 @@ import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementValidationE
 import com.gal.afiliaciones.config.ex.workerdisplacement.DisplacementConflictException;
 import com.gal.afiliaciones.infrastructure.dto.MessageResponse;
 import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -39,10 +42,54 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.gal.afiliaciones.config.ex.BusException;
+import com.gal.afiliaciones.config.ex.DocumentsFromCollectionNotFoundExcepcion;
+import com.gal.afiliaciones.config.ex.ErrorExpirationTemporalPass;
+import com.gal.afiliaciones.config.ex.IndependentRelationShipException;
+import com.gal.afiliaciones.config.ex.IndependenteFormException;
+import com.gal.afiliaciones.config.ex.LoginException;
+import com.gal.afiliaciones.config.ex.NotFoundException;
+import com.gal.afiliaciones.config.ex.NoveltyException;
+import com.gal.afiliaciones.config.ex.PasswordExpiredException;
+import com.gal.afiliaciones.config.ex.PolicyException;
+import com.gal.afiliaciones.config.ex.UpdateNotFoundException;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
+import com.gal.afiliaciones.config.ex.affiliation.ErrorAffiliationProvisionService;
+import com.gal.afiliaciones.config.ex.affiliation.FamilyMemeberError;
+import com.gal.afiliaciones.config.ex.affiliation.IBCException;
+import com.gal.afiliaciones.config.ex.affiliation.ResponseMessageAffiliation;
+import com.gal.afiliaciones.config.ex.affiliation.WSConsultIndependentWorkerFound;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.config.ex.validationpreregister.DuplicateSessionException;
+import com.gal.afiliaciones.config.ex.validationpreregister.EmailAlreadyExists;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorAssignmentResourceKeycloak;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCodeValidationExpired;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorContainDataPersonal;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCreateResourceKeycloak;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCreateSequence;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCreateUserKeycloak;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorDocumentConditions;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorDocumentType;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorFindCard;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorGetResourceKeycloak;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorNumberAttemptsExceeded;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorUpdateUserKeycloak;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorValidateCode;
+import com.gal.afiliaciones.config.ex.validationpreregister.InactiveStatusError;
+import com.gal.afiliaciones.config.ex.validationpreregister.LastUpdatedException;
+import com.gal.afiliaciones.config.ex.validationpreregister.LoginAttemptsError;
+import com.gal.afiliaciones.config.ex.validationpreregister.PendingAffiliationError;
+import com.gal.afiliaciones.config.ex.validationpreregister.PhoneAlreadyExists;
+import com.gal.afiliaciones.config.ex.validationpreregister.UserAndTypeAlreadyExists;
+import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
+import com.gal.afiliaciones.config.ex.validationpreregister.UserNotRegisteredException;
+import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException;
+import com.gal.afiliaciones.config.ex.workspaceofficial.WorkspaceOptionOfficialException;
+import com.gal.afiliaciones.infrastructure.dto.MessageResponse;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestControllerAdvice
@@ -439,8 +486,12 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Exception> handleGeneralException(Exception exception) {
-        return new ResponseEntity<>(new Exception(exception.getMessage(), exception.getCause()), HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ErrorResponse> handleGeneralException(Exception exception) {
+        log.error("Unhandled exception occurred: {}", exception.getMessage(), exception);
+        return new ResponseEntity<>(
+            new ErrorResponse(Error.Type.UNKNOWN_ERROR, 
+                "Internal server error: " + exception.getMessage()), 
+            HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @ExceptionHandler(GeneralNoveltyException.class)
@@ -535,6 +586,7 @@ public class ResponseExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(new ErrorResponse(exception.getError().getType(), exception.getError().getMessage()),
                 exception.getHttpStatus());
     }
+
 
     @ExceptionHandler(value = {DateUpdateException.class})
     public ResponseEntity<ErrorResponse> handlerDateUpdateEx(DateUpdateException exception) {

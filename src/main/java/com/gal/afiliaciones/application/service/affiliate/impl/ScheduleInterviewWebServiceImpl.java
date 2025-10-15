@@ -409,7 +409,7 @@ public class ScheduleInterviewWebServiceImpl implements ScheduleInterviewWebServ
         templateSendEmailsDTO.setFieldNumber(affiliateMercantile.getFiledNumber());
 
         sendEmails.confirmationInterviewWeb(templateSendEmailsDTO);
-        sendEmailOfficial(idAffiliation, dateInterview);
+//        sendEmailOfficial(idAffiliation, dateInterview);
 
     }
 

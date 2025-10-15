@@ -35,7 +35,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/affiliationemployeractivitiesmercantile")
-@CrossOrigin(origins = "*")
 @AllArgsConstructor
 public class AffiliationEmployerActivitiesMercantileController {
 
@@ -133,7 +132,5 @@ public class AffiliationEmployerActivitiesMercantileController {
         return ResponseEntity.ok().body(message);
 
     }
-
-
 
 }

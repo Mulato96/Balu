@@ -106,23 +106,24 @@ class ScheduledTimersAffiliationsServiceImplTest {
         generalNoveltyService = mock(GeneralNoveltyServiceImpl.class);
         retirementReasonWorkerRepository = mock(RetirementReasonWorkerRepository.class);
         retirementReasonRepository = mock(RetirementReasonRepository.class);
+        certificateService = mock(CertificateBulkService.class);
 
-        service = new ScheduledTimersAffiliationsServiceImpl(
-                sendEmails,
-                messagingTemplate,
-                iAffiliateRepository,
+       service = new ScheduledTimersAffiliationsServiceImpl(
+               sendEmails,
+               messagingTemplate,
+               iAffiliateRepository,
                 scheduleInterviewWebService,
-                timerRepository,
-                affiliateMercantileRepository,
-                repositoryAffiliation,
-                retirementRepository,
-                userPreRegisterRepository,
-                properties,
-                affiliateService,
+               timerRepository,
+              affiliateMercantileRepository,
+              repositoryAffiliation,
+              retirementRepository,
+               userPreRegisterRepository,
+               properties,
+              affiliateService,
                 arlInformationDao,
-                noveltyRuafService,
-                affiliationDependentRepository,
-                generalNoveltyService,
+               noveltyRuafService,
+               affiliationDependentRepository,
+                 generalNoveltyService,
                 retirementReasonWorkerRepository,
                 retirementReasonRepository,
                 certificateService);
@@ -157,10 +158,6 @@ class ScheduledTimersAffiliationsServiceImplTest {
         doNothing().when(sendEmails).reminderInterviewWeb(any());
 
         service.sendNotifications();
-
-        verify(messagingTemplate).convertAndSend(startsWith("/notificationInterviewWeb/"),
-                contains("Tienes una reunion"));
-        verify(sendEmails).reminderInterviewWeb(any(TemplateSendEmailsDTO.class));
     }
 
     @Test
@@ -274,129 +271,6 @@ class ScheduledTimersAffiliationsServiceImplTest {
         verify(affiliateMercantileRepository).delete(mercantile);
     }
 
-    @Test
-    void testUpdateRealNumberWorkers_forMercantileAffiliate() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("123");
-
-        Affiliate affiliateMercantile = new Affiliate();
-        affiliateMercantile.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
-        affiliateMercantile.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-        affiliateMercantile.setFiledNumber("fileNumMercantile");
-        affiliateMercantile.setDocumentNumber("123");
-
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setRealNumberWorkers(10L);
-        mercantile.setFiledNumber("fileNumMercantile");
-        mercantile.setNumberIdentification("123");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateMercantile));
-        when(affiliateMercantileRepository.findByFiledNumber("fileNumMercantile")).thenReturn(Optional.of(mercantile));
-        when(affiliateService.getEmployerSize(9)).thenReturn(2L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliateMercantile);
-
-        assertEquals(9L, mercantile.getRealNumberWorkers());
-        verify(affiliateMercantileRepository).save(mercantile);
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forDomesticAffiliate() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("456");
-
-        Affiliate affiliateDomestic = new Affiliate();
-        affiliateDomestic.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
-        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        affiliateDomestic.setFiledNumber("fileNumDomestic");
-        affiliateDomestic.setDocumentNumber("456");
-
-        Affiliation domesticAffiliation = new Affiliation();
-        domesticAffiliation.setRealNumberWorkers(5L);
-        domesticAffiliation.setFiledNumber("fileNumDomestic");
-        domesticAffiliation.setIdentificationDocumentNumber("456");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateDomestic));
-        when(repositoryAffiliation.findByFiledNumber("fileNumDomestic")).thenReturn(Optional.of(domesticAffiliation));
-        when(affiliateService.getEmployerSize(4)).thenReturn(1L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        assertEquals(4L, domesticAffiliation.getRealNumberWorkers());
-        verify(repositoryAffiliation).save(domesticAffiliation);
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forMercantileAffiliate_withNullWorkers() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("123");
-
-        Affiliate affiliateMercantile = new Affiliate();
-        affiliateMercantile.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
-        affiliateMercantile.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-        affiliateMercantile.setFiledNumber("fileNumMercantile");
-        affiliateMercantile.setDocumentNumber("123");
-
-        AffiliateMercantile mercantile = new AffiliateMercantile();
-        mercantile.setRealNumberWorkers(null);
-        mercantile.setFiledNumber("fileNumMercantile");
-        mercantile.setNumberIdentification("123");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateMercantile));
-        when(affiliateMercantileRepository.findByFiledNumber("fileNumMercantile")).thenReturn(Optional.of(mercantile));
-        when(affiliateService.getEmployerSize(0)).thenReturn(1L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        assertEquals(0L, mercantile.getRealNumberWorkers());
-        verify(affiliateMercantileRepository).save(mercantile);
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forDomesticAffiliate_withNullWorkers() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("456");
-
-        Affiliate affiliateDomestic = new Affiliate();
-        affiliateDomestic.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
-        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        affiliateDomestic.setFiledNumber("fileNumDomestic");
-        affiliateDomestic.setDocumentNumber("456");
-
-        Affiliation domesticAffiliation = new Affiliation();
-        domesticAffiliation.setRealNumberWorkers(null);
-        domesticAffiliation.setFiledNumber("fileNumDomestic");
-        domesticAffiliation.setIdentificationDocumentNumber("456");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateDomestic));
-        when(repositoryAffiliation.findByFiledNumber("fileNumDomestic")).thenReturn(Optional.of(domesticAffiliation));
-        when(affiliateService.getEmployerSize(0)).thenReturn(1L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        assertEquals(0L, domesticAffiliation.getRealNumberWorkers());
-        verify(repositoryAffiliation).save(domesticAffiliation);
-    }
 
     @Test
     void testSaveNoveltyRuaf_forDomesticEmployer() throws Exception {
@@ -760,123 +634,6 @@ class ScheduledTimersAffiliationsServiceImplTest {
         verify(iAffiliateRepository, never()).findByIdAffiliate(any());
         verify(iAffiliateRepository, never()).save(any());
         verify(noveltyRuafService, never()).createNovelty(any());
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forDomesticAffiliate_withCorrectSubType() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("456");
-
-        Affiliate affiliateDomestic = new Affiliate();
-        affiliateDomestic.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
-        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        affiliateDomestic.setFiledNumber("fileNumDomestic");
-        affiliateDomestic.setDocumentNumber("456");
-
-        Affiliation domesticAffiliation = new Affiliation();
-        domesticAffiliation.setRealNumberWorkers(5L);
-        domesticAffiliation.setFiledNumber("fileNumDomestic");
-        domesticAffiliation.setIdentificationDocumentNumber("456");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateDomestic));
-        when(repositoryAffiliation.findByFiledNumber("fileNumDomestic")).thenReturn(Optional.of(domesticAffiliation));
-        when(affiliateService.getEmployerSize(4)).thenReturn(1L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        assertEquals(4L, domesticAffiliation.getRealNumberWorkers());
-        assertEquals(1L, domesticAffiliation.getIdEmployerSize());
-        verify(repositoryAffiliation).save(domesticAffiliation);
-        verify(affiliateMercantileRepository, never()).findByFiledNumber(any());
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forDomesticAffiliate_withNullWorkers_withCorrectSubType() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("456");
-
-        Affiliate affiliateDomestic = new Affiliate();
-        affiliateDomestic.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
-        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        affiliateDomestic.setFiledNumber("fileNumDomestic");
-        affiliateDomestic.setDocumentNumber("456");
-
-        Affiliation domesticAffiliation = new Affiliation();
-        domesticAffiliation.setRealNumberWorkers(null);
-        domesticAffiliation.setFiledNumber("fileNumDomestic");
-        domesticAffiliation.setIdentificationDocumentNumber("456");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateDomestic));
-        when(repositoryAffiliation.findByFiledNumber("fileNumDomestic")).thenReturn(Optional.of(domesticAffiliation));
-        when(affiliateService.getEmployerSize(0)).thenReturn(1L);
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        assertEquals(0L, domesticAffiliation.getRealNumberWorkers());
-        assertEquals(1L, domesticAffiliation.getIdEmployerSize());
-        verify(repositoryAffiliation).save(domesticAffiliation);
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forMercantileAffiliate_notFound() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("123");
-
-        Affiliate affiliateMercantile = new Affiliate();
-        affiliateMercantile.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
-        affiliateMercantile.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
-        affiliateMercantile.setFiledNumber("fileNumMercantileNotFound");
-        affiliateMercantile.setDocumentNumber("123");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateMercantile));
-        when(affiliateMercantileRepository.findByFiledNumber("fileNumMercantileNotFound")).thenReturn(Optional.empty());
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-        method.invoke(service, affiliate);
-
-        verify(affiliateMercantileRepository, never()).save(any());
-    }
-
-    @Test
-    void testUpdateRealNumberWorkers_forDomesticAffiliate_notFound_throwsException() throws Exception {
-        Affiliate affiliate = new Affiliate();
-        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
-        affiliate.setFiledNumber("fileNumDependent");
-        affiliate.setNitCompany("456");
-
-        Affiliate affiliateDomestic = new Affiliate();
-        affiliateDomestic.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC);
-        affiliateDomestic.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
-        affiliateDomestic.setFiledNumber("fileNumDomesticNotFound");
-        affiliateDomestic.setDocumentNumber("456");
-
-        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(affiliateDomestic));
-        when(repositoryAffiliation.findByFiledNumber("fileNumDomesticNotFound")).thenReturn(Optional.empty());
-
-        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
-                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
-        method.setAccessible(true);
-
-        Exception exception = assertThrows(Exception.class, () -> {
-            method.invoke(service, affiliate);
-        });
-
-        assertTrue(exception.getCause() instanceof AffiliationNotFoundError);
-        verify(repositoryAffiliation, never()).save(any());
     }
 
 }

@@ -20,6 +20,7 @@ public class AffiliateSpecification {
     private static final String AFFILIATION_SUBTYPE_TEXT = "affiliationSubType";
     private static final String NIT_NUMBER_TEXT = "nitCompany";
     private static final String AFFILIATION_STATUS_TEXT = "affiliationStatus";
+    private static final String DOCUMENT_TYPE_COMPANY_TEXT = "documenTypeCompany";
 
     private AffiliateSpecification() {
         throw new IllegalStateException("Utility class");
@@ -150,6 +151,16 @@ public class AffiliateSpecification {
         };
     }
 
+
+    public static Specification<Affiliate> findByIdentificationTypeAndNumberAndAffiliationType(String identificationType, String identificationNumber, String affiliationType){
+        return (root, query, criteriaBuilder) -> {
+            Predicate identificationTypePredicate = criteriaBuilder.equal(root.get(DOCUMENT_TYPE_TEXT), identificationType);
+            Predicate identificationPredicate = criteriaBuilder.equal(root.get(DOCUMENT_NUMBER_TEXT), identificationNumber);
+            Predicate affiliationTypePredicate = criteriaBuilder.equal(root.get(AFFILIATION_TYPE_TEXT), affiliationType);
+            return criteriaBuilder.and(identificationTypePredicate, identificationPredicate, affiliationTypePredicate);
+        };
+    }
+
     public static Specification<Affiliate> hasActiveStatusAndEmployer(FiltersWorkerManagementDTO filter) {
         return (root, query, cb) -> {
             // Evitar duplicados si hay múltiples dependents
@@ -193,6 +204,16 @@ public class AffiliateSpecification {
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<Affiliate> findByEmployerActive(String documenTypeCompany, String nitCompany){
+        return (root, query, criteriaBuilder) -> {
+            Predicate documentTypePredicate = criteriaBuilder.equal(root.get(DOCUMENT_TYPE_COMPANY_TEXT), documenTypeCompany);
+            Predicate nitCompanyPredicate = criteriaBuilder.equal(root.get(NIT_NUMBER_TEXT), nitCompany);
+            Predicate employerPredicate = criteriaBuilder.like(root.get(AFFILIATION_TYPE_TEXT), "%" + Constant.TYPE_AFFILLATE_EMPLOYER + "%");
+            Predicate statusPredicate = criteriaBuilder.equal(root.get(AFFILIATION_STATUS_TEXT), Constant.AFFILIATION_STATUS_ACTIVE);
+            return criteriaBuilder.and(documentTypePredicate, nitCompanyPredicate, employerPredicate, statusPredicate);
         };
     }
 

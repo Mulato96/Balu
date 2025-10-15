@@ -6,7 +6,10 @@ import java.time.LocalDate;
 
 public interface PolicyDao {
 
-    Policy createPolicy(String idType, String idNumber, LocalDate effectiveDateFrom, Long idPolicyType, Long idAffiliate, Long decentralizedConsecutive, String nameCompany);
-    Policy createPolicyDependent(String idType, String idNumber, LocalDate effectiveDateFrom, Long idAffiliate, String code, String nameCompany);
+
+    Policy createPolicy(String idType, String idNumber, LocalDate effectiveDateFrom, Long idPolicyType,
+                        Long idAffiliate, Long decentralizedConsecutive, String nameCompany);
+    Policy createPolicyDependent(String idType, String idNumber, LocalDate effectiveDateFrom, Long idAffiliate,
+                                 String code, String nameCompany);
 
 }

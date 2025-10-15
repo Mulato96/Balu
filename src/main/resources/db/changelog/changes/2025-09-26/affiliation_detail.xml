@@ -1,0 +1,100 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/affiliation_detail.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758923442799-6">
+        <createIndex indexName="idx_aff_det_doc" tableName="affiliation_detail" using="btree">
+            <column name="identification_document_type"/>
+            <column name="identification_document_number"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-7">
+        <createIndex indexName="affiliation_detail_id_affiliate_idx" tableName="affiliation_detail" using="btree">
+            <column name="id_affiliate"/>
+        </createIndex>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-8">
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliation_detail_filed_number" tableName="affiliation_detail"/>
+    </changeSet>
+    <changeSet author="andual" id="1758923442799-8pre">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <columnExists tableName="affiliation_detail" columnName="id_affiliate"/>
+        </preConditions>
+        <sql><![CDATA[
+          -- Populate missing id_affiliate by matching filed_number with affiliate
+          UPDATE public.affiliation_detail d
+          SET id_affiliate = a.id_affiliate
+          FROM public.affiliate a
+          WHERE d.id_affiliate IS NULL
+            AND a.filed_number = d.filed_number;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual" id="1758923442799-8a">
+        <preConditions onFail="MARK_RAN" onError="MARK_RAN">
+            <sqlCheck expectedResult="1"><![CDATA[
+              SELECT CASE WHEN EXISTS (
+                SELECT 1 FROM public.affiliation_detail d
+                LEFT JOIN public.affiliate a ON a.id_affiliate = d.id_affiliate
+                WHERE a.id_affiliate IS NULL OR d.id_affiliate IS NULL
+              ) OR EXISTS (
+                SELECT 1 FROM public.affiliation_detail
+                GROUP BY filed_number HAVING COUNT(*) > 1
+              ) THEN 1 ELSE 0 END
+            ]]></sqlCheck>
+        </preConditions>
+        <sql><![CDATA[
+          -- Backup FK violations (null or missing affiliate)
+          CREATE TABLE IF NOT EXISTS public.affiliation_detail_fk_violation_backup AS
+          SELECT d.*
+          FROM public.affiliation_detail d
+          LEFT JOIN public.affiliate a ON a.id_affiliate = d.id_affiliate
+          WHERE a.id_affiliate IS NULL OR d.id_affiliate IS NULL;
+
+          -- Delete FK violations
+          DELETE FROM public.affiliation_detail d
+          USING (
+            SELECT d.ctid
+            FROM public.affiliation_detail d
+            LEFT JOIN public.affiliate a ON a.id_affiliate = d.id_affiliate
+            WHERE a.id_affiliate IS NULL OR d.id_affiliate IS NULL
+          ) z
+          WHERE d.ctid = z.ctid;
+
+          -- Backup duplicates by filed_number
+          CREATE TABLE IF NOT EXISTS public.affiliation_detail_dup_backup AS
+          SELECT *
+          FROM public.affiliation_detail
+          WHERE filed_number IN (
+            SELECT filed_number FROM public.affiliation_detail
+            GROUP BY filed_number HAVING COUNT(*) > 1
+          );
+
+          -- Delete duplicate rows keeping the first per filed_number
+          WITH ranked AS (
+            SELECT ctid,
+                   filed_number,
+                   ROW_NUMBER() OVER (PARTITION BY filed_number ORDER BY ctid) AS rn
+            FROM public.affiliation_detail
+          )
+          DELETE FROM public.affiliation_detail d
+          USING ranked r
+          WHERE d.ctid = r.ctid AND r.rn > 1;
+        ]]></sql>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-9">
+        <addForeignKeyConstraint baseColumnNames="id_affiliate" baseTableName="affiliation_detail" constraintName="affiliation_detail_affiliate_fk" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id_affiliate" referencedTableName="affiliate" validate="true"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-1">
+        <setTableRemarks remarks="." tableName="affiliation_detail"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-2">
+        <modifyDataType columnName="id_affiliate" newDataType="bigint" tableName="affiliation_detail"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-3">
+        <addNotNullConstraint columnDataType="bigint" columnName="id_affiliate" tableName="affiliation_detail" validate="true"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-4">
+        <dropUniqueConstraint constraintName="uq_affiliation_detail_filed_number" tableName="affiliation_detail"/>
+    </changeSet>
+    <changeSet author="andual (generated)" id="1758923442799-5">
+        <addUniqueConstraint columnNames="filed_number" constraintName="uq_affiliation_detail_filed_number" tableName="affiliation_detail"/>
+    </changeSet>
+</databaseChangeLog>

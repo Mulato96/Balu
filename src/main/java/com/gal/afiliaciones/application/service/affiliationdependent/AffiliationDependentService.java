@@ -8,7 +8,6 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationI
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationIndependentStep2DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.HeadquarterDataDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.RequestSearchEconomicActivitiesDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityHeadquarterDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
@@ -27,5 +26,7 @@ public interface AffiliationDependentService {
     AffiliationDependent createAffiliationIndependentStep2(AffiliationIndependentStep2DTO dto);
     List<EconomicActivityDTO> findEconomicActivitiesByEmployer(Long idAffiliateEmployer);
     List<EconomicActivityHeadquarterDTO> findEconomicActivitiesByHeadquarter(Long idHeadquarter);
+
+    List<AffiliationDependent> findByIdHeadquarter(Long idHeadquarter);
 
 }

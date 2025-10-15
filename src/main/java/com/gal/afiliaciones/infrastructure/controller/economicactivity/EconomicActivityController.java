@@ -22,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/activity/economic")
 @RequiredArgsConstructor
 @Tag(name = "EconomicActivity", description = "get economic activity by code CIIU and name ")
-@CrossOrigin(origins = "*")
 public class EconomicActivityController {
     private final IEconomicActivityService iEconomicActivityService;
 

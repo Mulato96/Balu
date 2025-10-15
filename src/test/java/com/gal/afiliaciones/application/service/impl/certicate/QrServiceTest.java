@@ -107,6 +107,9 @@ class QrServiceTest {
     @MockBean
     private OccupationRepository occupationRepository;
 
+    @MockBean
+    private ICertificateAffiliateRepository certificateAffiliateRepository;
+
     @Autowired
     private CertificateServiceImpl qrService;
 
@@ -116,8 +119,6 @@ class QrServiceTest {
     @MockBean
     private CollectProperties properties;
 
-    @MockBean
-    private ICertificateAffiliateRepository certificateAffiliateRepository;
 
     private QrDocument qrDocument;
     private Card card;

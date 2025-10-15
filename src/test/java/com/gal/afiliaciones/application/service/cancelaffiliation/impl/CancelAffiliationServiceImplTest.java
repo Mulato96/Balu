@@ -44,6 +44,7 @@ class CancelAffiliationServiceImplTest {
 
     @Mock
     private AffiliateRepository affiliateRepository;
+
     @Mock
     private IUserPreRegisterRepository userMainRepository;
     @Mock

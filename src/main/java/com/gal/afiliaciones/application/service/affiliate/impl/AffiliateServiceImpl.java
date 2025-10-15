@@ -126,6 +126,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DateInterviewWebSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
+import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationResponseDTO;
@@ -148,6 +149,7 @@ import com.gal.afiliaciones.infrastructure.dto.municipality.MunicipalityDTO;
 import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
 import com.gal.afiliaciones.infrastructure.dto.sat.AffiliationWorkerIndependentArlDTO;
 import com.gal.afiliaciones.infrastructure.enums.DocumentNameStandardization;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.utils.KeyCloakProvider;
 
@@ -204,6 +206,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     private final VolunteerRelationshipClient insertVolunteerClient;
     private final FamilyMemberRepository familyMemberRepository;
     private final OccupationDecree1563Repository occupationVolunteerRepository;
+    private final RegistraduriaUnifiedService registraduriaUnifiedService;
     private final KeyCloakProvider keyCloakProvider;
 
     private static final List<Long> arrayCausal = new ArrayList<>(Arrays.asList(0L, 1L, 2L));
@@ -226,6 +229,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     private static final DateTimeFormatter formatter_period = java.time.format.DateTimeFormatter.ofPattern("yyyyMM");
     private static final String RESPONSE_LABEL = " Respuesta: ";
 
+
     @Override
     public List<UserAffiliateDTO> findAffiliationsByTypeAndNumber(String documentType, String documentNumber) {
         List<UserAffiliateDTO> userAffiliateDTOList = new ArrayList<>();
@@ -233,6 +237,11 @@ public class AffiliateServiceImpl implements AffiliateService {
                 documentNumber);
         if (!affiliateList.isEmpty()) {
             affiliateList.forEach(affiliate -> {
+                // Ignore affiliates with null filed_number
+                if (affiliate.getFiledNumber() == null) {
+                    return;
+                }
+                
                 UserAffiliateDTO userAffiliateDTO = new UserAffiliateDTO();
                 BeanUtils.copyProperties(affiliate, userAffiliateDTO);
                 if (affiliate.getAffiliationType().equals(Constant.TYPE_AFFILLATE_INDEPENDENT)) {
@@ -279,6 +288,11 @@ public class AffiliateServiceImpl implements AffiliateService {
                 return new ArrayList<>();
 
             for (Affiliate affiliate : affiliatesWithoutDependents) {
+                // Ignore affiliates with null filed_number
+                if (affiliate.getFiledNumber() == null) {
+                    continue;
+                }
+                
                 DataStatusAffiliationDTO data = new DataStatusAffiliationDTO();
                 // Busca por radicado en afiliaciones de independientes o domesticos
                 Optional<Affiliation> affiliation = repositoryAffiliation.findByFiledNumber(affiliate.getFiledNumber());
@@ -338,8 +352,8 @@ public class AffiliateServiceImpl implements AffiliateService {
             Affiliation affiliation = optionalAffiliation.get();
             Affiliate affiliate = findByFieldAffiliate(affiliation.getFiledNumber());
 
-            if (Boolean.TRUE.equals(affiliate.getAffiliationCancelled())
-                    || Boolean.TRUE.equals(affiliate.getStatusDocument())) {
+            if (Boolean.TRUE.equals(affiliate.getAffiliationCancelled()) ||
+                    Boolean.TRUE.equals(affiliate.getStatusDocument())) {
                 throw new AffiliationError(Constant.ERROR_AFFILIATION);
             }
 
@@ -381,7 +395,7 @@ public class AffiliateServiceImpl implements AffiliateService {
 
                 //Enviar registro de la poliza a Positiva
                 insertPolicyToClient(policy, affiliation.getIdentificationDocumentType(),
-                            affiliation.getIdentificationDocumentNumber());
+                        affiliation.getIdentificationDocumentNumber());
             } else {
                 generateEmployerPolicy(affiliation.getIdentificationDocumentType(),
                         affiliation.getIdentificationDocumentNumber(), affiliate.getIdAffiliate(), 0L,
@@ -706,7 +720,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     }
 
     private void insertEmployerAndLegalRepresentativeMercantile(AffiliateMercantile affiliateMercantile,
-                                                                Affiliate affiliate, UserMain userLegalRepresentative) {
+                                                                 Affiliate affiliate, UserMain userLegalRepresentative) {
         insertPersonToClient(userLegalRepresentative);
         insertEmployerMercantileToClient(affiliateMercantile, affiliate, userLegalRepresentative);
         insertLegalRepresentativeMercantileClient(userLegalRepresentative, affiliateMercantile);
@@ -967,8 +981,7 @@ public class AffiliateServiceImpl implements AffiliateService {
         return response;
     }
 
-    public Boolean affiliateBUs(String idTipoDoc, String idAfiliado)
-            throws MessagingException, IOException, IllegalAccessException {
+    public Boolean affiliateBUs(String idTipoDoc, String idAfiliado) throws MessagingException, IOException, IllegalAccessException {
         log.info("Iniciando proceso de afiliación para tipoDoc: {}, idAfiliado: {}", idTipoDoc, idAfiliado);
 
         List<AffiliateCompanyResponse> responses = consult.consultAffiliate(idTipoDoc, idAfiliado).block();
@@ -979,6 +992,15 @@ public class AffiliateServiceImpl implements AffiliateService {
 
         for (AffiliateCompanyResponse response : responses) {
             log.info("Procesando afiliado con documento: {}", response.getIdPersona());
+            boolean existsEmployer = affiliateRepository.existsByNitCompanyAndAffiliationType(
+                    response.getIdEmpresa(),
+                    "Empleador"
+            );
+            if (!existsEmployer) {
+                log.warn("El empleador con tipoDoc: {} y NIT: {} no existe como 'Empleador' en la base de datos.",
+                        response.getTpDocEmpresa(), response.getIdEmpresa());
+                continue;
+            }
 
             String filedNumber = filedService.getNextFiledNumberAffiliation();
             String bondingSubtype = map(response.getIdTipoVinculado());
@@ -1002,7 +1024,8 @@ public class AffiliateServiceImpl implements AffiliateService {
 
             Optional<Municipality> municipalityId = municipalityRepository.findByIdDepartmentAndMunicipalityCode(
                     response.getIdDepartamento() != null ? response.getIdDepartamento().longValue() : null,
-                    formattedMunicipalityCode);
+                    formattedMunicipalityCode
+            );
 
             if (municipalityId.isEmpty()) {
                 log.warn("No se encontró municipio para departamento: {}, municipio: {}",
@@ -1020,11 +1043,10 @@ public class AffiliateServiceImpl implements AffiliateService {
                 List<PersonResponse> responsesPerson = clientPerson.consult(idTipoDoc, idAfiliado).block();
 
                 assert responsesPerson != null;
-                for (PersonResponse responsePerson : responsesPerson) {
+                for(PersonResponse responsePerson: responsesPerson){
                     LocalDate dateBirth = DateUtils.formatToIsoDate(responsePerson.getFechaNacimiento());
-                    Specification<UserMain> usernameSpec = UserSpecifications.byUsername(
-                            structureUsername(responsePerson.getIdTipoDoc(), responsePerson.getIdPersona()));
-                    if (iUserPreRegisterRepository.count(usernameSpec) == 0) {
+                    Specification<UserMain> usernameSpec = UserSpecifications.byUsername(structureUsername(responsePerson.getIdTipoDoc(), responsePerson.getIdPersona()));
+                    if (iUserPreRegisterRepository.count(usernameSpec) == 0){
                         UserMain userMain = getUserMain(responsePerson, dateBirth);
                         userMain.setAge(AgeCalculatorInt.calculate(dateBirth));
                         UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
@@ -1035,11 +1057,10 @@ public class AffiliateServiceImpl implements AffiliateService {
                         }
                         BeanUtils.copyProperties(userMain, userPreRegisterDto);
                         iUserRegisterService.userPreRegister(userPreRegisterDto);
-                        Specification<UserMain> usernameSpecSave = UserSpecifications.byUsername(structureUsername(
-                                userPreRegisterDto.getIdentificationType(), userPreRegisterDto.getIdentification()));
+                        Specification<UserMain> usernameSpecSave = UserSpecifications.byUsername(structureUsername(userPreRegisterDto.getIdentificationType(), userPreRegisterDto.getIdentification()));
                         Optional<UserMain> user = iUserPreRegisterRepository.findOne(usernameSpecSave);
 
-                        user.ifPresent(main -> webClient.assignRolesToUser(main.getId(), List.of(649L)));
+                        user.ifPresent(main -> webClient.assignRolesToUser(main.getId(), List.of(679L)));
 
                     }
 
@@ -1065,6 +1086,7 @@ public class AffiliateServiceImpl implements AffiliateService {
                         .occupation(response.getOcupacion())
                         .department(
                                 response.getIdDepartamento() != null ? response.getIdDepartamento().longValue() : null)
+                        .department(response.getIdDepartamento() != null ? response.getIdDepartamento().longValue() : null)
                         .cityMunicipality(municipalityId.map(Municipality::getIdMunicipality).orElse(null))
                         .address(response.getDireccion())
                         .healthPromotingEntity(epsId.map(Health::getId).orElse(null))
@@ -1147,11 +1169,11 @@ public class AffiliateServiceImpl implements AffiliateService {
             affiliateRepository.save(affiliate);
             log.info("Afiliado registrado con filedNumber: {}", filedNumber);
 
-            if (isIndependent) {
+            if (isIndependent){
                 policyService.createPolicy(affiliate.getDocumentType(),
-                        affiliate.getDocumentNumber(), LocalDate.now(), null, affiliate.getIdAffiliate(), 0L,
-                        affiliate.getCompany());
-            } else {
+                        affiliate.getDocumentNumber(), LocalDate.now(), null, affiliate.getIdAffiliate(),
+                        0L, affiliate.getCompany());
+            }else {
                 assignPolicy(affiliate.getIdAffiliate(), affiliate.getNitCompany(), affiliate.getDocumentType(),
                         affiliate.getDocumentNumber(), Constant.ID_EMPLOYER_POLICY, affiliate.getCompany());
             }
@@ -1209,8 +1231,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     }
 
     public static String map(Integer idTipoVinculado) {
-        if (idTipoVinculado == null)
-            return null;
+        if (idTipoVinculado == null) return null;
 
         return switch (idTipoVinculado) {
             case 0, 6, 10, 11, 13, 37, 38, 42, 43 -> Constant.SUBTYPE_AFFILIATE_INDEPENDENT_PROVISION_SERVICES;
@@ -1223,10 +1244,8 @@ public class AffiliateServiceImpl implements AffiliateService {
             default -> null;
         };
     }
-
     public static String mapStatus(String status) {
-        if (status == null)
-            return null;
+        if (status == null) return null;
 
         return switch (status) {
             case "Activo" -> "Activa";
@@ -1285,7 +1304,6 @@ public class AffiliateServiceImpl implements AffiliateService {
             }
             return null;
         }
-
         public static LocalDate formatToIsoDate(String rawDateTime) {
             DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
             LocalDateTime dateTime = LocalDateTime.parse(rawDateTime, inputFormatter);
@@ -1295,22 +1313,21 @@ public class AffiliateServiceImpl implements AffiliateService {
 
     public class AgeCalculator {
         public static String calculate(LocalDate birthDate) {
-            if (birthDate == null)
-                return null;
+            if (birthDate == null) return null;
             return String.valueOf(Period.between(birthDate, LocalDate.now()).getYears());
         }
     }
 
     public class AgeCalculatorInt {
         public static Integer calculate(LocalDate birthDate) {
-            if (birthDate == null)
-                return 0;
+            if (birthDate == null) return 0;
             return Period.between(birthDate, LocalDate.now()).getYears();
         }
     }
 
+
     private void assignPolicy(Long idAffiliate, String nitEmployer, String identificationTypeDependent,
-            String identificationNumberDependent, Long idPolicyType, String nameCompany) {
+                              String identificationNumberDependent, Long idPolicyType, String nameCompany) {
         Specification<Affiliate> spc = AffiliateSpecification.findByNitEmployer(nitEmployer);
         Affiliate affiliateEmployer = affiliateRepository.findOne(spc)
                 .orElseThrow(() -> new AffiliateNotFound("Employer affiliate not found"));
@@ -1325,6 +1342,7 @@ public class AffiliateServiceImpl implements AffiliateService {
         policyService.createPolicyDependent(identificationTypeDependent, identificationNumberDependent, LocalDate.now(),
                 idAffiliate, policyEmployer.getCode(), nameCompany);
     }
+
 
     private String structureUsername(String documentType, String documentNumber) {
         return documentType + "-" + documentNumber + "-" + EXT;
@@ -1776,16 +1794,21 @@ public class AffiliateServiceImpl implements AffiliateService {
     }
 
     private void consultRegistry(String identification, Employer723ClientDTO dataEmployer){
-        UserDtoApiRegistry userRegistry = iUserRegisterService.searchUserInNationalRegistry(identification);
-        if (userRegistry.getFirstName() != null && !userRegistry.getFirstName().isBlank()) {
-            dataEmployer.setRazonSocial(userRegistry.getFirstName() + " " + userRegistry.getSurname());
+        List<RegistryOfficeDTO> registries = registraduriaUnifiedService.searchUserInNationalRegistry(identification);
+
+        if (!registries.isEmpty()) {
+            RegistryOfficeDTO userRegistry = registries.get(0);
+            dataEmployer.setRazonSocial(userRegistry.getFirstName() + " " + userRegistry.getFirstLastName());
             dataEmployer.setIdTipoDocRepLegal(Constant.CC);
             dataEmployer.setIdRepresentanteLegal(identification);
             dataEmployer.setNombre1RepresentanteLegal(userRegistry.getFirstName());
             dataEmployer.setNombre2RepresentanteLegal(userRegistry.getSecondName());
-            dataEmployer.setApellido1RepresentanteLegal(userRegistry.getSurname());
-            dataEmployer.setApellido2RepresentanteLegal(userRegistry.getSecondSurname());
-            dataEmployer.setFechaNacimiento(userRegistry.getDateBirth().format(formatter_date));
+            dataEmployer.setApellido1RepresentanteLegal(userRegistry.getFirstLastName());
+            dataEmployer.setApellido2RepresentanteLegal(userRegistry.getSecondLastName());
+            LocalDate birthDate = userRegistry.getBirthDate() != null && !userRegistry.getBirthDate().isEmpty()
+                    ? LocalDate.parse(userRegistry.getBirthDate(), formatter_date) :
+                    LocalDate.of(1981, 1, 1);
+            dataEmployer.setFechaNacimiento(birthDate.format(formatter_date));
             dataEmployer.setSexo(userRegistry.getGender().substring(0, 1).toUpperCase());
         }
     }

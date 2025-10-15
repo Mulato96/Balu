@@ -15,7 +15,6 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/updateIndependentInfoEmployee")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class UpdateInfoEmployeeIndependentController {
 

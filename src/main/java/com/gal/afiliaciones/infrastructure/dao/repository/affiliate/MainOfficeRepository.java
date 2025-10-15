@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MainOfficeRepository extends JpaRepository<MainOffice, Long>, JpaSpecificationExecutor<MainOffice> {
@@ -17,4 +18,7 @@ public interface MainOfficeRepository extends JpaRepository<MainOffice, Long>, J
 
     @Query(value = "SELECT nextval('main_office_id_seq')", nativeQuery = true)
     long nextConsecutiveCodeMainOffice();
+
+    // Fast path: returns one record deterministically (LIMIT 1)
+    Optional<MainOffice> findFirstByIdAffiliateAndMainTrueOrderByIdAsc(Long idAffiliate);
 }

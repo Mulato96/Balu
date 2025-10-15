@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/keycloak")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class KeycloakController {
 
     private final KeycloakService service;

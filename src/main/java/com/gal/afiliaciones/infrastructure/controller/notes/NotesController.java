@@ -18,7 +18,6 @@ import java.util.List;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/notes")
-@CrossOrigin(origins = "*")
 public class NotesController {
 
     private final NotesService notesService;

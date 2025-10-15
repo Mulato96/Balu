@@ -1,0 +1,31 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="src/main/resources/db/changelog/changes/2025-09-26/comparacion_archivos_recaudo_model.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:pro="http://www.liquibase.org/xml/ns/pro" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+    <changeSet author="andual (generated)" id="1758925031410-1">
+        <createView fullDefinition="false" viewName="comparacion_archivos_recaudo_model">SELECT COALESCE((r.numero_planilla)::text, (lb.numero_planilla)::text) AS numero_planilla,
+    r.number_receipt AS numero_recibo,
+    r.created_at AS fecha_pila,
+    r.valor_cotizacion AS valor_pila,
+    lb.created_at AS fecha_log,
+    lb.valor_planilla AS valor_log,
+        CASE
+            WHEN ((r.valor_cotizacion)::double precision = (lb.valor_planilla)::double precision) THEN r.valor_cotizacion
+            ELSE (0)::bigint
+        END AS valor_conciliacion,
+    COALESCE(pc.status, 'N/A'::character varying) AS estado_conciliacion,
+        CASE
+            WHEN (((pc.status)::text &lt;&gt; 'Exitoso'::text) OR (pc.status IS NULL)) THEN 'Diferencias detectadas en archivos procesados pila y log'::text
+            ELSE 'Sin diferencias'::text
+        END AS observaciones,
+    COALESCE((((lb.valor_planilla)::double precision - (r.valor_cotizacion)::double precision))::text, 'N/A'::text) AS diferencia_valor_conciliacion,
+    pc.conciliation_date AS fecha_conciliacion,
+        CASE
+            WHEN ((r.numero_planilla)::text IS NOT NULL) THEN 'PILA'::text
+            ELSE 'LOG'::text
+        END AS tipo
+   FROM ((recaudo r
+     FULL JOIN log_bancario lb ON (((lb.numero_planilla)::text = (r.numero_planilla)::text)))
+     LEFT JOIN payment_conciliation pc ON (((pc.id_pila = r.id) OR (pc.id_bank_logs = lb.id))))
+  WHERE (((r.tipo_recaudo)::text = ANY (ARRAY[('DETAIL'::character varying)::text, ('INDIVIDUAL'::character varying)::text])) OR (r.numero_planilla IS NULL))
+  ORDER BY COALESCE((r.numero_planilla)::text, (lb.numero_planilla)::text) DESC;</createView>
+    </changeSet>
+</databaseChangeLog>

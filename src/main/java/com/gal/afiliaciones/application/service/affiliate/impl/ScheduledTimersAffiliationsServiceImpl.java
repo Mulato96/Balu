@@ -43,9 +43,11 @@ import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNovelty
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.DataContributorDTO;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.NoveltyRuafDTO;
 import com.gal.afiliaciones.infrastructure.dto.workerretirement.DataWorkerRetirementDTO;
+import com.gal.afiliaciones.infrastructure.dto.novelty.WorkerRetirementNoveltyRequest;
+import com.gal.afiliaciones.infrastructure.client.generic.novelty.WorkerRetirementNoveltyClient;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -64,7 +66,6 @@ import java.util.Optional;
 import java.util.Set;
 
 @Service
-@AllArgsConstructor
 @Slf4j
 public class ScheduledTimersAffiliationsServiceImpl {
 
@@ -86,6 +87,10 @@ public class ScheduledTimersAffiliationsServiceImpl {
     private final RetirementReasonWorkerRepository retirementReasonWorkerRepository;
     private final RetirementReasonRepository retirementReasonRepository;
     private final CertificateBulkService certificateService;
+    private final WorkerRetirementNoveltyClient workerRetirementNoveltyClient;
+
+    // Test-only: when set, the next retirement() execution will process only this affiliateId, then clear it.
+    private final java.util.concurrent.atomic.AtomicReference<Long> testFilterAffiliateId = new java.util.concurrent.atomic.AtomicReference<>(null);
 
     private static final String NOT_FOUND_AFFILIATE = "Not found affiliate";
 
@@ -157,8 +162,8 @@ public class ScheduledTimersAffiliationsServiceImpl {
         }
     }
 
-    private boolean calculateTime(LocalTime dateLastAttempt) {
-        return Duration.between(dateLastAttempt, LocalTime.now()).toHours() <= 24;
+    private boolean calculateTime(LocalTime dateLastAttempt){
+        return Duration.between(dateLastAttempt, LocalTime.now()).toHours() <= properties.getLimitUploadDocumentsRegularization();
     }
 
     private boolean calculateDate(LocalDate date) {
@@ -318,8 +323,14 @@ public class ScheduledTimersAffiliationsServiceImpl {
 
         LocalDate today = LocalDate.now();
 
+        Long onlyAffiliateId = testFilterAffiliateId.getAndSet(null);
+        if (onlyAffiliateId != null) {
+            log.info("[Cron][Retirement] Test filter active. Processing only affiliateId={}", onlyAffiliateId);
+        }
+
         retirementListi.stream()
-                .filter(retirement -> today.equals(retirement.getRetirementDate()))
+                .filter(retirement -> (onlyAffiliateId != null) || today.equals(retirement.getRetirementDate()))
+                .filter(retirement -> onlyAffiliateId == null || retirement.getIdAffiliate().equals(onlyAffiliateId))
                 .forEach(retirement -> {
                     DataWorkerRetirementDTO dataWorker = new DataWorkerRetirementDTO();
                     Affiliate affiliateToRetired = updateAffiliate(retirement.getIdAffiliate());
@@ -368,16 +379,19 @@ public class ScheduledTimersAffiliationsServiceImpl {
                         generalNoveltyServiceImpl.saveGeneralNovelty(request);
                     }
 
+                    // External novelty integration (non-blocking)
+                    trySendWorkerRetirementNoveltyCron(affiliateToRetired);
+
                 });
     }
 
-    private String retirementReason(Long idRetirementReason, String AffiliationType) {
+    private String retirementReason(Long idRetirementReason, String affiliationType) {
 
-        if (AffiliationType.equals(Constant.TYPE_AFFILLATE_EMPLOYER)) {
+        if (affiliationType.equals(Constant.TYPE_AFFILLATE_EMPLOYER)) {
             RetirementReason reasonWorker = retirementReasonRepository.findById(idRetirementReason)
                     .orElseThrow(() -> new WorkerRetirementException("Motivo de retiro no encontrado"));
             return reasonWorker.getReason();
-        } else if (AffiliationType.contains(Constant.EMPLOYEE)) {
+        } else if (affiliationType.contains(Constant.EMPLOYEE)) {
             RetirementReasonWorker reasonWorker = retirementReasonWorkerRepository.findById(idRetirementReason)
                     .orElseThrow(() -> new WorkerRetirementException("Motivo de retiro no encontrado"));
             return reasonWorker.getReason();
@@ -500,32 +514,189 @@ public class ScheduledTimersAffiliationsServiceImpl {
         };
     }
 
-    private void updateRealNumberWorkers(Affiliate affiliateWorker) {
-        Specification<Affiliate> spcEmployer = AffiliateSpecification.findByNitEmployer(affiliateWorker.getNitCompany());
-        List<Affiliate> affiliateEmployer = iAffiliateRepository.findAll(spcEmployer);
-        if(!affiliateEmployer.isEmpty()) {
-            Affiliate affiliate = affiliateEmployer.get(0);
-            if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
-                AffiliateMercantile affiliationMercantile = affiliateMercantileRepository
-                        .findByFiledNumber(affiliate.getFiledNumber()).orElse(null);
-                if (affiliationMercantile != null) {
-                    Long realNumWorkers = affiliationMercantile.getRealNumberWorkers() != null
-                            ? affiliationMercantile.getRealNumberWorkers() - 1L
-                            : 0L;
-                    affiliationMercantile.setRealNumberWorkers(realNumWorkers);
-                    affiliationMercantile.setIdEmployerSize(affiliateService.getEmployerSize(realNumWorkers.intValue()));
-                    affiliateMercantileRepository.save(affiliationMercantile);
-                }
-            } else {
-                Affiliation affiliation = repositoryAffiliation.findByFiledNumber(affiliate.getFiledNumber())
-                        .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
 
-                Long realNumWorkers = affiliation.getRealNumberWorkers() != null ? affiliation.getRealNumberWorkers() - 1L
-                        : 0L;
-                affiliation.setRealNumberWorkers(realNumWorkers);
-                affiliation.setIdEmployerSize(affiliateService.getEmployerSize(realNumWorkers.intValue()));
-                repositoryAffiliation.save(affiliation);
+
+    // Removed test-only single-run method in favor of a one-time filter flag used by the existing cron
+
+    private void trySendWorkerRetirementNoveltyCron(Affiliate affiliateToRetired) {
+        try {
+            if (workerRetirementNoveltyClient != null) {
+                CompanyIdentityByNit identity = resolveEmployerAffiliationDataByNit(affiliateToRetired.getNitCompany());
+
+                WorkerRetirementNoveltyRequest request = new WorkerRetirementNoveltyRequest();
+                request.setIdTipoDocEmp(identity.companyDocumentType);
+                request.setIdEmpresa(affiliateToRetired.getNitCompany());
+                request.setSubempresa(0);
+                request.setIdTipoDocPers(affiliateToRetired.getDocumentType());
+                request.setIdPersona(affiliateToRetired.getDocumentNumber());
+                int tipoVinculacion = Constant.TYPE_AFFILLATE_DEPENDENT.equals(affiliateToRetired.getAffiliationType()) ? 1 : 2;
+                request.setTipoVinculacion(tipoVinculacion);
+                request.setFechaRetiro(LocalDate.now().toString());
+
+                workerRetirementNoveltyClient.send(request);
+            } else {
+                log.debug("WorkerRetirementNoveltyClient not configured; skipping novelty integration in cron");
             }
+        } catch (Exception ex) {
+            log.warn("Worker retirement novelty integration failed (cron path): {}", ex.getMessage());
+        }
+    }
+
+    private static class CompanyIdentityByNit {
+        private final String companyDocumentType;
+        private final String employerFiledNumber;
+
+        private CompanyIdentityByNit(String companyDocumentType, String employerFiledNumber) {
+            this.companyDocumentType = companyDocumentType;
+            this.employerFiledNumber = employerFiledNumber;
+        }
+    }
+
+    private CompanyIdentityByNit resolveEmployerAffiliationDataByNit(String nitCompany) {
+        try {
+            Specification<Affiliate> spcAffiliate = AffiliateSpecification.findByNitEmployer(nitCompany);
+            Affiliate employerAffiliate = iAffiliateRepository.findOne(spcAffiliate)
+                    .orElseThrow(() -> new AffiliateNotFoundException("Employer affiliate not found for nit: " + nitCompany));
+
+            String filed = employerAffiliate.getFiledNumber();
+
+            Optional<AffiliateMercantile> mercantileOpt = affiliateMercantileRepository.findByFiledNumber(filed);
+            if (mercantileOpt.isPresent()) {
+                String docTypeCompany = mercantileOpt.get().getTypeDocumentIdentification();
+                log.info("[WorkerRetirementIntegration][Cron][ProbeByNit] nit={} employerSubtype={} companyDocType(Mercantile)={} filedNumber={}",
+                        nitCompany, employerAffiliate.getAffiliationSubType(), docTypeCompany, filed);
+                return new CompanyIdentityByNit(docTypeCompany, filed);
+            }
+
+            Optional<Affiliation> domOpt = repositoryAffiliation.findByFiledNumber(filed);
+            if (domOpt.isPresent()) {
+                String docTypeCompany = domOpt.get().getIdentificationDocumentType();
+                log.info("[WorkerRetirementIntegration][Cron][ProbeByNit] nit={} employerSubtype={} companyDocType(Domestic)={} filedNumber={}",
+                        nitCompany, employerAffiliate.getAffiliationSubType(), docTypeCompany, filed);
+                return new CompanyIdentityByNit(docTypeCompany, filed);
+            }
+
+            throw new AffiliateNotFoundException("Employer affiliation details not found for nit: " + nitCompany);
+        } catch (Exception e) {
+            log.warn("[WorkerRetirementIntegration][Cron][ProbeByNit] Failed to resolve company affiliation by nit {}: {}", nitCompany, e.getMessage());
+            throw e;
+        }
+    }
+
+    // Backward-compatible constructor used by tests and environments without integration client
+    public ScheduledTimersAffiliationsServiceImpl(
+            SendEmails sendEmails,
+            SimpMessagingTemplate messagingTemplate,
+            AffiliateRepository iAffiliateRepository,
+            ScheduleInterviewWebService scheduleInterviewWebService,
+            IAffiliationCancellationTimerRepository timerRepository,
+            AffiliateMercantileRepository affiliateMercantileRepository,
+            IAffiliationEmployerDomesticServiceIndependentRepository repositoryAffiliation,
+            RetirementRepository retirementRepository,
+            IUserPreRegisterRepository userPreRegisterRepository,
+            CollectProperties properties,
+            AffiliateService affiliateService,
+            ArlInformationDao arlInformationDao,
+            NoveltyRuafService noveltyRuafService,
+            AffiliationDependentRepository affiliationDependentRepository,
+            GeneralNoveltyServiceImpl generalNoveltyServiceImpl,
+            RetirementReasonWorkerRepository retirementReasonWorkerRepository,
+            RetirementReasonRepository retirementReasonRepository,
+            CertificateBulkService certificateService
+    ) {
+        this.sendEmails = sendEmails;
+        this.messagingTemplate = messagingTemplate;
+        this.iAffiliateRepository = iAffiliateRepository;
+        this.scheduleInterviewWebService = scheduleInterviewWebService;
+        this.timerRepository = timerRepository;
+        this.affiliateMercantileRepository = affiliateMercantileRepository;
+        this.repositoryAffiliation = repositoryAffiliation;
+        this.retirementRepository = retirementRepository;
+        this.userPreRegisterRepository = userPreRegisterRepository;
+        this.properties = properties;
+        this.affiliateService = affiliateService;
+        this.arlInformationDao = arlInformationDao;
+        this.noveltyRuafService = noveltyRuafService;
+        this.affiliationDependentRepository = affiliationDependentRepository;
+        this.generalNoveltyServiceImpl = generalNoveltyServiceImpl;
+        this.retirementReasonWorkerRepository = retirementReasonWorkerRepository;
+        this.retirementReasonRepository = retirementReasonRepository;
+        this.certificateService = certificateService;
+        this.workerRetirementNoveltyClient = null;
+    }
+
+    // Primary constructor for DI when integration dependencies are available
+    @Autowired
+    public ScheduledTimersAffiliationsServiceImpl(
+            SendEmails sendEmails,
+            SimpMessagingTemplate messagingTemplate,
+            AffiliateRepository iAffiliateRepository,
+            ScheduleInterviewWebService scheduleInterviewWebService,
+            IAffiliationCancellationTimerRepository timerRepository,
+            AffiliateMercantileRepository affiliateMercantileRepository,
+            IAffiliationEmployerDomesticServiceIndependentRepository repositoryAffiliation,
+            RetirementRepository retirementRepository,
+            IUserPreRegisterRepository userPreRegisterRepository,
+            CollectProperties properties,
+            AffiliateService affiliateService,
+            ArlInformationDao arlInformationDao,
+            NoveltyRuafService noveltyRuafService,
+            AffiliationDependentRepository affiliationDependentRepository,
+            GeneralNoveltyServiceImpl generalNoveltyServiceImpl,
+            RetirementReasonWorkerRepository retirementReasonWorkerRepository,
+            RetirementReasonRepository retirementReasonRepository,
+            CertificateBulkService certificateService,
+            com.gal.afiliaciones.infrastructure.client.generic.novelty.WorkerRetirementNoveltyClient workerRetirementNoveltyClient
+    ) {
+        this.sendEmails = sendEmails;
+        this.messagingTemplate = messagingTemplate;
+        this.iAffiliateRepository = iAffiliateRepository;
+        this.scheduleInterviewWebService = scheduleInterviewWebService;
+        this.timerRepository = timerRepository;
+        this.affiliateMercantileRepository = affiliateMercantileRepository;
+        this.repositoryAffiliation = repositoryAffiliation;
+        this.retirementRepository = retirementRepository;
+        this.userPreRegisterRepository = userPreRegisterRepository;
+        this.properties = properties;
+        this.affiliateService = affiliateService;
+        this.arlInformationDao = arlInformationDao;
+        this.noveltyRuafService = noveltyRuafService;
+        this.affiliationDependentRepository = affiliationDependentRepository;
+        this.generalNoveltyServiceImpl = generalNoveltyServiceImpl;
+        this.retirementReasonWorkerRepository = retirementReasonWorkerRepository;
+        this.retirementReasonRepository = retirementReasonRepository;
+        this.certificateService = certificateService;
+        this.workerRetirementNoveltyClient = workerRetirementNoveltyClient;
+    }
+
+    private void updateRealNumberWorkers(Affiliate affiliate){
+        // Resolve employer affiliation by nitCompany using existing resolver (supports any company doc type)
+        CompanyIdentityByNit identity = resolveEmployerAffiliationDataByNit(affiliate.getNitCompany());
+        String employerFiled = identity.employerFiledNumber;
+
+        // Try mercantile first
+        Optional<AffiliateMercantile> merc = affiliateMercantileRepository.findByFiledNumber(employerFiled);
+        if (merc.isPresent()) {
+            AffiliateMercantile m = merc.get();
+            Long current = m.getRealNumberWorkers() != null ? m.getRealNumberWorkers() : 0L;
+            Long realNumWorkers = current > 0 ? current - 1L : 0L;
+            m.setRealNumberWorkers(realNumWorkers);
+            m.setIdEmployerSize(affiliateService.getEmployerSize(realNumWorkers.intValue()));
+            affiliateMercantileRepository.save(m);
+            return;
+        }
+
+        // Fallback to domestic affiliation (if present). If not present, skip (could be an affiliation-dependent context)
+        Optional<Affiliation> dom = repositoryAffiliation.findByFiledNumber(employerFiled);
+        if (dom.isPresent()) {
+            Affiliation affiliation = dom.get();
+            Long current = affiliation.getRealNumberWorkers() != null ? affiliation.getRealNumberWorkers() : 0L;
+            Long realNumWorkers = current > 0 ? current - 1L : 0L;
+            affiliation.setRealNumberWorkers(realNumWorkers);
+            affiliation.setIdEmployerSize(affiliateService.getEmployerSize(realNumWorkers.intValue()));
+            repositoryAffiliation.save(affiliation);
+        } else {
+            log.info("[Cron][updateRealNumberWorkers] No employer domestic affiliation found for filedNumber={}, skipping decrement (likely dependent context)", employerFiled);
         }
     }
 
