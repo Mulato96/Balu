@@ -17,6 +17,8 @@ import com.gal.afiliaciones.application.service.IValidationService;
 import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReason;
+import com.gal.afiliaciones.infrastructure.controller.massive_withdrawal.dto.DocumentDTO;
+import com.gal.afiliaciones.infrastructure.controller.massive_withdrawal.dto.UploadResponseDTO;
 import com.gal.afiliaciones.infrastructure.dao.repository.HistoricoCarguesMasivosRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
@@ -31,10 +33,13 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.time.LocalDateTime;
 
@@ -69,16 +74,17 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
     }
 
     @Override
-    public void uploadFile(MultipartFile file, Long employerId) {
+    public UploadResponseDTO uploadFile(MultipartFile file, Long employerId) {
         validateFile(file);
-        processExcelFile(file, employerId);
+        return processExcelFile(file, employerId);
     }
 
-    private void processExcelFile(MultipartFile file, Long employerId) {
+    private UploadResponseDTO processExcelFile(MultipartFile file, Long employerId) {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             int totalRows = sheet.getPhysicalNumberOfRows();
             int errorCount = 0;
+            int validCount = 0;
 
             HistoricoCarguesMasivos historico = new HistoricoCarguesMasivos();
             historico.setFechaCargue(LocalDateTime.now());
@@ -120,6 +126,7 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
                         retirement.setIdRetirementReason(reason.getId());
 
                         retirementRepository.save(retirement);
+                        validCount++;
                     } catch (Exception e) {
                         errorCount++;
                         addErrorToRow(row, e.getMessage());
@@ -134,9 +141,23 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
 
             historico.setCantidadErrores(errorCount);
             historico.setEstado(errorCount > 0 ? "CON_ERRORES" : "EXITOSO");
-            historicoCarguesMasivosRepository.save(historico);
+            HistoricoCarguesMasivos savedHistorico = historicoCarguesMasivosRepository.save(historico);
 
-            generateErrorFile(errorRows);
+            UploadResponseDTO response = new UploadResponseDTO();
+            response.setIdDocument(savedHistorico.getId().toString());
+            response.setRecordsTotal(totalRows - 1);
+            response.setRecordsValid(validCount);
+            response.setRecordsError(errorCount);
+
+            if (!errorRows.isEmpty()) {
+                byte[] errorFile = generateErrorFile(errorRows);
+                DocumentDTO documentDTO = new DocumentDTO();
+                documentDTO.setNombre("errores_retiro_masivo.xlsx");
+                documentDTO.setArchivo(Base64.getEncoder().encodeToString(errorFile));
+                response.setDocument(documentDTO);
+            }
+
+            return response;
 
         } catch (IOException e) {
             throw new RuntimeException("Failed to process Excel file.", e);
@@ -175,11 +196,11 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
         cell.setCellValue(error);
     }
 
-    private void generateErrorFile(List<Row> errorRows) {
+    private byte[] generateErrorFile(List<Row> errorRows) {
         if (errorRows.isEmpty()) {
-            return;
+            return new byte[0];
         }
-        try (Workbook workbook = new XSSFWorkbook()) {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Errores");
             for (int i = 0; i < errorRows.size(); i++) {
                 Row newRow = sheet.createRow(i);
@@ -189,10 +210,8 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
                     newCell.setCellValue(errorRow.getCell(j).getStringCellValue());
                 }
             }
-            Path file = Paths.get(fileStorageLocation).resolve("errores_retiro_masivo.xlsx");
-            try (FileOutputStream fileOut = new FileOutputStream(file.toFile())) {
-                workbook.write(fileOut);
-            }
+            workbook.write(out);
+            return out.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to generate error file.", e);
         }

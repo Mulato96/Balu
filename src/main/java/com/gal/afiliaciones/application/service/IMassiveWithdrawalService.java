@@ -10,7 +10,7 @@ public interface IMassiveWithdrawalService {
 
     Resource downloadTemplate();
 
-    void uploadFile(MultipartFile file, Long employerId);
+    com.gal.afiliaciones.infrastructure.controller.massive_withdrawal.dto.UploadResponseDTO uploadFile(MultipartFile file, Long employerId);
 
     List<HistoricoCarguesMasivos> getHistory(Long employerId);
 }
