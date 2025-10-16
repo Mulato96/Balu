@@ -2806,4 +2806,345 @@ class AffiliateServiceImplTest {
         Long result = (Long) method.invoke(affiliateService, emptyList);
         assertThat(result).isNull();
     }
+
+
+    @Test
+    void testAffiliateBUs_dependentWorkerAffiliation_success() throws Exception {
+        // Arrange
+        String idTipoDoc = "CC";
+        String idAfiliado = "123456789";
+        String nitEmpresa = "900123456";
+        String filedNumber = "SOL_AFI_2025000009999";
+
+        AffiliateCompanyResponse response = new AffiliateCompanyResponse();
+        response.setIdPersona(idAfiliado);
+        response.setTipoDoc(idTipoDoc);
+        response.setIdEmpresa(nitEmpresa);
+        response.setRazonSocial("Test Employer Inc.");
+        response.setNomVinLaboral("Dependiente");
+        response.setIdTipoVinculado(3); // Dependiente
+        response.setEstadoRl("Activo");
+        response.setFechaNacimiento("1995-03-15 00:00:00");
+        response.setFechaAfiliacionEfectiva("2023-01-10 00:00:00");
+        response.setFechaInicioVinculacion("2023-01-01 00:00:00");
+        response.setIdDepartamento(5);
+        response.setIdMunicipio(1);
+        response.setEps("EPS001");
+        response.setIdActEconomica(9876L);
+        response.setOcupacion("Developer");
+        response.setIdOcupacion(42);
+
+        when(consultAffiliateCompanyClient.consultAffiliate(idTipoDoc, idAfiliado))
+                .thenReturn(reactor.core.publisher.Mono.just(List.of(response)));
+        when(affiliateRepository.existsByNitCompanyAndAffiliationType(nitEmpresa, "Empleador")).thenReturn(true);
+        when(filedService.getNextFiledNumberAffiliation()).thenReturn(filedNumber);
+
+        Municipality mockMunicipality = new Municipality();
+        mockMunicipality.setIdMunicipality(1L);
+        when(municipalityRepository.findByIdDepartmentAndMunicipalityCode(5L, "001"))
+                .thenReturn(Optional.of(mockMunicipality));
+
+        Health mockHealth = new Health();
+        mockHealth.setId(1L);
+        when(healthPromotingEntityRepository.findByCodeEPS("EPS001")).thenReturn(Optional.of(mockHealth));
+
+        ArlInformation mockArl = new ArlInformation();
+        mockArl.setCode("ARL_CODE");
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(mockArl));
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setIdAffiliate(10L);
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(employerAffiliate));
+
+        Policy employerPolicy = new Policy();
+        employerPolicy.setCode("EMP_POLICY_123");
+        employerPolicy.setIdPolicyType(Constant.ID_EMPLOYER_POLICY);
+        when(policyRepository.findByIdAffiliate(10L)).thenReturn(List.of(employerPolicy));
+
+        // Act
+        boolean result = affiliateService.affiliateBUs(idTipoDoc, idAfiliado);
+
+        // Assert
+        assertThat(result).isTrue();
+
+        ArgumentCaptor<AffiliationDependent> dependentCaptor = ArgumentCaptor.forClass(AffiliationDependent.class);
+        verify(affiliationDependentRepository).save(dependentCaptor.capture());
+        AffiliationDependent savedDependent = dependentCaptor.getValue();
+        assertThat(savedDependent.getFiledNumber()).isEqualTo(filedNumber);
+        assertThat(savedDependent.getIdentificationDocumentNumber()).isEqualTo(idAfiliado);
+        assertThat(savedDependent.getIdBondingType()).isEqualTo(1L); // Dependiente maps to 1
+
+        ArgumentCaptor<Affiliate> affiliateCaptor = ArgumentCaptor.forClass(Affiliate.class);
+        verify(affiliateRepository).save(affiliateCaptor.capture());
+        Affiliate savedAffiliate = affiliateCaptor.getValue();
+        assertThat(savedAffiliate.getFiledNumber()).isEqualTo(filedNumber);
+        assertThat(savedAffiliate.getAffiliationType()).isEqualTo("Trabajador Dependiente");
+        assertThat(savedAffiliate.getAffiliationSubType()).isEqualTo(Constant.BONDING_TYPE_DEPENDENT);
+
+        verify(policyService).createPolicyDependent(eq(idTipoDoc), eq(idAfiliado), any(LocalDate.class), anyLong(), eq("EMP_POLICY_123"), eq("Test Employer Inc."));
+        verify(cardAffiliatedService).createCardDependent(any(Affiliate.class), any(), isNull(), any(), isNull());
+    }
+
+    @Test
+    void testAffiliateBUs_handlesMissingEpsAndMunicipalityGracefully() throws Exception {
+        // Arrange
+        String idTipoDoc = "CC";
+        String idAfiliado = "123456789";
+        String nitEmpresa = "900123456";
+        String filedNumber = "SOL_AFI_2025000009998";
+
+        AffiliateCompanyResponse response = new AffiliateCompanyResponse();
+        response.setIdPersona(idAfiliado);
+        response.setTipoDoc(idTipoDoc);
+        response.setIdEmpresa(nitEmpresa);
+        response.setRazonSocial("Test Employer Inc.");
+        response.setNomVinLaboral("Dependiente");
+        response.setIdTipoVinculado(3); // Dependiente
+        response.setEstadoRl("Activo");
+        response.setFechaNacimiento("1995-03-15 00:00:00");
+        response.setFechaAfiliacionEfectiva("2023-01-10 00:00:00");
+        response.setFechaInicioVinculacion("2023-01-01 00:00:00");
+        response.setIdDepartamento(99); // Non-existent department
+        response.setIdMunicipio(99);   // Non-existent municipality
+        response.setEps("EPS_UNKNOWN"); // Non-existent EPS
+
+        when(consultAffiliateCompanyClient.consultAffiliate(idTipoDoc, idAfiliado))
+                .thenReturn(reactor.core.publisher.Mono.just(List.of(response)));
+        when(affiliateRepository.existsByNitCompanyAndAffiliationType(nitEmpresa, "Empleador")).thenReturn(true);
+        when(filedService.getNextFiledNumberAffiliation()).thenReturn(filedNumber);
+
+        // Mock repositories to return empty for EPS and Municipality
+        when(municipalityRepository.findByIdDepartmentAndMunicipalityCode(any(), any())).thenReturn(Optional.empty());
+        when(healthPromotingEntityRepository.findByCodeEPS("EPS_UNKNOWN")).thenReturn(Optional.empty());
+
+        ArlInformation mockArl = new ArlInformation();
+        mockArl.setCode("ARL_CODE");
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(mockArl));
+
+        // Act
+        boolean result = affiliateService.affiliateBUs(idTipoDoc, idAfiliado);
+
+        // Assert
+        assertThat(result).isTrue();
+
+        ArgumentCaptor<AffiliationDependent> dependentCaptor = ArgumentCaptor.forClass(AffiliationDependent.class);
+        verify(affiliationDependentRepository).save(dependentCaptor.capture());
+        AffiliationDependent savedDependent = dependentCaptor.getValue();
+        assertThat(savedDependent.getIdCity()).isNull(); // Should be null as municipality was not found
+        assertThat(savedDependent.getHealthPromotingEntity()).isNull(); // Should be null as EPS was not found
+
+        verify(affiliateRepository).save(any(Affiliate.class));
+    }
+
+    @Test
+    void testAffiliateBUs_newUserCreationFlow() throws Exception {
+        // Arrange
+        String idTipoDoc = "CC";
+        String idAfiliado = "111222333";
+        String nitEmpresa = "900123456";
+        String filedNumber = "SOL_AFI_2025000009997";
+
+        AffiliateCompanyResponse affiliateResponse = new AffiliateCompanyResponse();
+        affiliateResponse.setIdPersona(idAfiliado);
+        affiliateResponse.setTipoDoc(idTipoDoc);
+        affiliateResponse.setIdEmpresa(nitEmpresa);
+        affiliateResponse.setRazonSocial("Test Employer Inc.");
+        affiliateResponse.setNomVinLaboral("Independiente");
+        affiliateResponse.setIdTipoVinculado(1);
+        affiliateResponse.setEstadoRl("Activo");
+        affiliateResponse.setFechaNacimiento("1990-01-01 00:00:00");
+        affiliateResponse.setFechaAfiliacionEfectiva("2023-01-10 00:00:00");
+        affiliateResponse.setFechaInicioVinculacion("2023-01-01 00:00:00");
+
+        PersonResponse personResponse = new PersonResponse();
+        personResponse.setIdTipoDoc(idTipoDoc);
+        personResponse.setIdPersona(idAfiliado);
+        personResponse.setNombre1("Nuevo");
+        personResponse.setApellido1("Usuario");
+        personResponse.setFechaNacimiento("1990/01/01 00:00:00");
+        personResponse.setSexo("F");
+        personResponse.setEmailPersona("nuevo.usuario@example.com");
+
+        when(consultAffiliateCompanyClient.consultAffiliate(idTipoDoc, idAfiliado))
+                .thenReturn(reactor.core.publisher.Mono.just(List.of(affiliateResponse)));
+        when(affiliateRepository.existsByNitCompanyAndAffiliationType(nitEmpresa, "Empleador")).thenReturn(true);
+        when(filedService.getNextFiledNumberAffiliation()).thenReturn(filedNumber);
+        when(clientPerson.consult(idTipoDoc, idAfiliado)).thenReturn(reactor.core.publisher.Mono.just(List.of(personResponse)));
+
+        // Simulate user does not exist
+        when(iUserPreRegisterRepository.count(any(Specification.class))).thenReturn(0L);
+
+        UserMain createdUser = new UserMain();
+        createdUser.setId(500L);
+        // Simulate user is found after creation
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(createdUser));
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new ArlInformation()));
+        when(healthPromotingEntityRepository.findByCodeEPS(any())).thenReturn(Optional.of(new Health()));
+        when(municipalityRepository.findByIdDepartmentAndMunicipalityCode(any(), any())).thenReturn(Optional.of(new Municipality()));
+
+        // Act
+        boolean result = affiliateService.affiliateBUs(idTipoDoc, idAfiliado);
+
+        // Assert
+        assertThat(result).isTrue();
+
+        // Verify that the user pre-registration service was called
+        verify(iUserRegisterService).userPreRegister(any(UserPreRegisterDto.class));
+
+        // Verify that roles were assigned to the newly created user
+        verify(webClient).assignRolesToUser(eq(500L), anyList());
+
+        // Verify affiliation details are saved
+        verify(affiliationDetailRepository).save(any(Affiliation.class));
+        verify(affiliateRepository).save(any(Affiliate.class));
+    }
+
+    @Test
+    void testSing_independentAffiliation_success() {
+        // Arrange
+        String filedNumber = "SOL_AFI_2025000008888";
+        Affiliation affiliation = new Affiliation();
+        affiliation.setFiledNumber(filedNumber);
+        affiliation.setTypeAffiliation(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        affiliation.setStageManagement("DOCUMENTAL_REVIEW");
+        affiliation.setIdentificationDocumentType("CC");
+        affiliation.setIdentificationDocumentNumber("11223344");
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setFiledNumber(filedNumber);
+        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        affiliate.setAffiliationSubType(Constant.BONDING_TYPE_INDEPENDENT);
+        affiliate.setAffiliationCancelled(false);
+        affiliate.setStatusDocument(false);
+        affiliate.setUserId(99L);
+        affiliate.setIdAffiliate(88L);
+        affiliate.setCompany("Independent Worker Co.");
+
+        UserMain userMain = new UserMain();
+        userMain.setIdentificationType("CC");
+        userMain.setIdentification("11223344");
+
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(mercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(rolesUserService.findByName(Constant.BONDING_TYPE_INDEPENDENT)).thenReturn(new Role());
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(userMain));
+        when(policyService.createPolicy(any(), any(), any(), isNull(), anyLong(), anyLong(), anyString())).thenReturn(new Policy());
+
+        // Act
+        affiliateService.sing(filedNumber);
+
+        // Assert
+        verify(repositoryAffiliation).save(affiliation);
+        assertThat(affiliation.getStageManagement()).isEqualTo(Constant.ACCEPT_AFFILIATION);
+
+        verify(affiliateRepository).save(affiliate);
+        assertThat(affiliate.getAffiliationStatus()).isEqualTo(Constant.AFFILIATION_STATUS_ACTIVE);
+        assertThat(affiliate.getCoverageStartDate()).isEqualTo(LocalDate.now().plusDays(1));
+
+        verify(rolesUserService).updateRoleUser(99L, null);
+        verify(cardAffiliatedService).createCardWithoutOtp(filedNumber);
+        verify(policyService).createPolicy(eq("CC"), eq("11223344"), any(LocalDate.class), isNull(), eq(88L), eq(0L), eq("Independent Worker Co."));
+        verify(timerRepository).delete(any(AffiliationCancellationTimer.class));
+        verify(generalNoveltyServiceImpl).saveGeneralNovelty(any());
+        verify(sendEmails).welcome(any(), anyLong(), anyString(), anyString());
+    }
+
+    @Test
+    void testSing_mercantileAffiliation_success() {
+        // Arrange
+        String filedNumber = "SOL_AFI_2025000007777";
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setFiledNumber(filedNumber);
+        mercantile.setStageManagement("DOCUMENTAL_REVIEW");
+        mercantile.setAffiliationCancelled(false);
+        mercantile.setStatusDocument(false);
+        mercantile.setIdUserPreRegister(101L);
+        mercantile.setTypeDocumentIdentification("NI");
+        mercantile.setNumberIdentification("900800700");
+        mercantile.setDecentralizedConsecutive(0L);
+        mercantile.setBusinessName("Mercantile Corp");
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setFiledNumber(filedNumber);
+        affiliate.setIdAffiliate(77L);
+        affiliate.setCompany("Mercantile Corp");
+
+        UserMain userMain = new UserMain();
+        userMain.setFirstName("Legal");
+        userMain.setSurname("Rep");
+
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(mercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(mercantile));
+        when(iUserPreRegisterRepository.findById(101L)).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(rolesUserService.findByName(Constant.NAME_CONTRIBUTOR_TYPE_EMPLOYER)).thenReturn(new Role());
+        when(policyService.createPolicy(any(), any(), any(), any(), any(), any(), any())).thenReturn(new Policy());
+
+        // Act
+        affiliateService.sing(filedNumber);
+
+        // Assert
+        verify(mercantileRepository).save(mercantile);
+        assertThat(mercantile.getStageManagement()).isEqualTo(Constant.ACCEPT_AFFILIATION);
+        assertThat(mercantile.getAffiliationStatus()).isEqualTo(Constant.AFFILIATION_STATUS_ACTIVE);
+
+        verify(affiliateRepository).save(affiliate);
+        assertThat(affiliate.getAffiliationStatus()).isEqualTo(Constant.AFFILIATION_STATUS_ACTIVE);
+        assertThat(affiliate.getCoverageStartDate()).isEqualTo(LocalDate.now().plusDays(1));
+
+        verify(rolesUserService).updateRoleUser(101L, null);
+        verify(policyService, times(2)).createPolicy(eq("NI"), eq("900800700"), any(LocalDate.class), any(), eq(77L), eq(0L), eq("Mercantile Corp"));
+        verify(sendEmails).welcomeMercantile(any());
+    }
+
+    @Test
+    void testRegularizationDocuments_success() throws IOException {
+        // Arrange
+        String filedNumber = "SOL_AFI_2025000006666";
+        List<MultipartFile> documents = List.of(mock(MultipartFile.class));
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setFiledNumber(filedNumber);
+        affiliate.setAffiliationCancelled(false);
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_PROVISION_SERVICES);
+        affiliate.setIdAffiliate(66L);
+        affiliate.setDocumentNumber("666666");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setFiledNumber(filedNumber);
+        affiliation.setIdentificationDocumentNumber("666666");
+
+        com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO alfrescoResponse = new com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO();
+        alfrescoResponse.setIdNewFolder("newFolderId");
+        alfrescoResponse.setDocuments(List.of(new ReplacedDocumentDTO("docId", "docName.pdf")));
+
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(properties.getAffiliationProvisionServicesFolderId()).thenReturn("provisionServicesFolderId");
+        when(alfrescoService.uploadAffiliationDocuments(anyString(), anyString(), anyList())).thenReturn(alfrescoResponse);
+        when(documentNameStandardizationService.getName(anyString(), anyString(), anyString())).thenReturn("standardized_docName.pdf");
+
+        // Act
+        com.gal.afiliaciones.infrastructure.dto.affiliate.RegularizationDTO result = affiliateService.regularizationDocuments(filedNumber, documents);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getIdAffiliation()).isEqualTo(affiliation.getId());
+        assertThat(result.getIdFolderAlfresco()).isEqualTo("newFolderId");
+
+        verify(repositoryAffiliation).save(affiliation);
+        assertThat(affiliation.getIdFolderAlfresco()).isEqualTo("newFolderId");
+        assertThat(affiliation.getStageManagement()).isEqualTo(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+        assertThat(affiliation.getDateRegularization()).isNotNull();
+
+        verify(affiliateRepository).save(affiliate);
+        assertThat(affiliate.getStatusDocument()).isFalse();
+
+        verify(timerRepository).delete(any(AffiliationCancellationTimer.class));
+        verify(dataDocumentRepository, atLeastOnce()).delete(any(DataDocumentAffiliate.class));
+        verify(dataDocumentRepository).save(any(DataDocumentAffiliate.class));
+    }
 }
