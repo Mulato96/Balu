@@ -49,6 +49,8 @@ CREATE TABLE historico_cargues_masivos (
     cantidad_registros INT,
     cantidad_errores INT,
     usuario_cargue VARCHAR(100),
+    archivo_cargado BYTEA,
+    archivo_errores BYTEA,
     CONSTRAINT fk_id_empleador
         FOREIGN KEY (id_empleador) REFERENCES affiliate(id_affiliate)
 );

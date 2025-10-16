@@ -89,6 +89,7 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
             HistoricoCarguesMasivos historico = new HistoricoCarguesMasivos();
             historico.setFechaCargue(LocalDateTime.now());
             historico.setNombreArchivo(file.getOriginalFilename());
+            historico.setArchivoCargado(file.getBytes());
             historico.setCantidadRegistros(totalRows - 1); // Exclude header
             historico.setUsuarioCargue(getCurrentUser());
             Affiliate employer = affiliateRepository.findById(employerId)
@@ -151,6 +152,8 @@ public class MassiveWithdrawalServiceImpl implements IMassiveWithdrawalService {
 
             if (!errorRows.isEmpty()) {
                 byte[] errorFile = generateErrorFile(errorRows);
+                savedHistorico.setArchivoErrores(errorFile);
+                historicoCarguesMasivosRepository.save(savedHistorico);
                 DocumentDTO documentDTO = new DocumentDTO();
                 documentDTO.setNombre("errores_retiro_masivo.xlsx");
                 documentDTO.setArchivo(Base64.getEncoder().encodeToString(errorFile));

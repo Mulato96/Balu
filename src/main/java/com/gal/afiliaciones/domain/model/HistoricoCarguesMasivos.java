@@ -48,4 +48,12 @@ public class HistoricoCarguesMasivos {
 
     @Column(name = "usuario_cargue")
     private String usuarioCargue;
+
+    @jakarta.persistence.Lob
+    @Column(name = "archivo_cargado", columnDefinition = "BLOB")
+    private byte[] archivoCargado;
+
+    @jakarta.persistence.Lob
+    @Column(name = "archivo_errores", columnDefinition = "BLOB")
+    private byte[] archivoErrores;
 }
