@@ -39,3 +39,18 @@ CREATE SEQUENCE IF NOT EXISTS consecutive_worker_displacement_seq
   START WITH 1
   NO CYCLE
   CACHE 1;
+
+CREATE TABLE historico_cargues_masivos (
+    id BIGSERIAL PRIMARY KEY,
+    fecha_cargue TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    estado VARCHAR(20),
+    id_empleador BIGINT,
+    nombre_archivo VARCHAR(255),
+    cantidad_registros INT,
+    cantidad_errores INT,
+    usuario_cargue VARCHAR(100),
+    archivo_cargado BYTEA,
+    archivo_errores BYTEA,
+    CONSTRAINT fk_id_empleador
+        FOREIGN KEY (id_empleador) REFERENCES affiliate(id_affiliate)
+);
