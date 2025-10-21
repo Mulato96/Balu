@@ -2062,4 +2062,82 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
 
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    @DisplayName("createAffiliationStep1 should throw UserNotFoundInDataBase when user does not exist")
+    void createAffiliationStep1_userNotFound() {
+        DomesticServiceAffiliationStep1DTO dto = new DomesticServiceAffiliationStep1DTO();
+        dto.setIdentificationDocumentType("CC");
+        dto.setIdentificationDocumentNumber("12345");
+        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification("CC", "12345")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundInDataBase.class, () -> service.createAffiliationStep1(dto));
+    }
+
+    @Test
+    @DisplayName("createAffiliationStep1 should throw AffiliationError for age out of range")
+    void createAffiliationStep1_ageOutOfRange() {
+        DomesticServiceAffiliationStep1DTO dto = new DomesticServiceAffiliationStep1DTO();
+        dto.setIdentificationDocumentType("CC");
+        dto.setIdentificationDocumentNumber("12345");
+        UserMain user = new UserMain();
+        user.setDateBirth(LocalDate.now().minusYears(17));
+        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification("CC", "12345")).thenReturn(Optional.of(user));
+        when(properties.getMinimumAge()).thenReturn(18);
+        when(properties.getMaximumAge()).thenReturn(65);
+
+        assertThrows(AffiliationError.class, () -> service.createAffiliationStep1(dto));
+    }
+
+    @Test
+    @DisplayName("createAffiliationStep1 should create affiliation successfully")
+    void createAffiliationStep1_success() {
+        DomesticServiceAffiliationStep1DTO dto = new DomesticServiceAffiliationStep1DTO();
+        dto.setIdentificationDocumentType("CC");
+        dto.setIdentificationDocumentNumber("12345");
+        UserMain user = new UserMain();
+        user.setDateBirth(LocalDate.now().minusYears(30));
+        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification("CC", "12345")).thenReturn(Optional.of(user));
+        when(properties.getMinimumAge()).thenReturn(18);
+        when(properties.getMaximumAge()).thenReturn(65);
+        when(affiliateService.findAffiliatesByTypeAndNumber(anyString(), anyString())).thenReturn(new ArrayList<>());
+        when(repositoryAffiliation.save(any(Affiliation.class))).thenAnswer(i -> i.getArgument(0));
+
+        Affiliation result = service.createAffiliationStep1(dto);
+
+        assertNotNull(result);
+        verify(repositoryAffiliation).save(any(Affiliation.class));
+    }
+
+    @Test
+    @DisplayName("createAffiliationStep2 should update affiliation successfully")
+    void createAffiliationStep2_success() {
+        DomesticServiceAffiliationStep2DTO dto = new DomesticServiceAffiliationStep2DTO();
+        dto.setIdAffiliation(1L);
+        dto.setIdentificationDocumentType("CC");
+        dto.setIdentificationDocumentNumber("12345");
+        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification("CC", "12345")).thenReturn(Optional.of(new UserMain()));
+        when(repositoryAffiliation.findById(1L)).thenReturn(Optional.of(new Affiliation()));
+        when(repositoryAffiliation.save(any(Affiliation.class))).thenAnswer(i -> i.getArgument(0));
+
+        Affiliation result = service.createAffiliationStep2(dto);
+
+        assertNotNull(result);
+        verify(repositoryAffiliation).save(any(Affiliation.class));
+    }
+
+    @Test
+    @DisplayName("managementAffiliation should return filtered data")
+    void managementAffiliation_withFilter() {
+        AffiliationsFilterDTO filter = new AffiliationsFilterDTO("field", "value", null, "id", "asc");
+        Page<com.gal.afiliaciones.infrastructure.dao.repository.affiliationsview.AffiliationsView> page = Page.empty();
+        when(affiliationsViewRepository.findAll(any(Specification.class), any(PageRequest.class)))
+                .thenReturn(page);
+
+        ResponseManagementDTO result = service.managementAffiliation(0, 10, filter);
+
+        assertNotNull(result);
+        assertEquals(0, result.data().getTotalElements());
+
+    }
 }

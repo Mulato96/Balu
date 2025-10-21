@@ -47,6 +47,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.ICardRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IQrRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.RequestCollectionRequestRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.CertificateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
@@ -54,6 +55,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.A
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dto.certificate.QrDTO;
+import org.junit.jupiter.api.DisplayName;
 
 @ExtendWith(MockitoExtension.class)
 public class CertificateServiceImplTest {
@@ -415,5 +417,113 @@ public class CertificateServiceImplTest {
         verify(affiliateMercantileRepository).findOne(any(Specification.class));
         verify(affiliationDependentRepository).findOne(any(Specification.class));
         verify(certificateRepository, never()).save(any(Certificate.class));
+    }
+
+    @Test
+    @DisplayName("createCertificate should save independent and domestic certificate")
+    void createCertificate_saveIndependentAndDomestic() {
+        Affiliation aff = new Affiliation();
+        aff.setFirstName("Test");
+        aff.setSurname("User");
+        aff.setRisk("I");
+        aff.setEconomicActivity(List.of(new AffiliateActivityEconomic() {{
+            setIsPrimary(true);
+            setActivityEconomic(new EconomicActivity() {{
+                setId(1L);
+            }});
+        }}));
+        when(affiliationRepository.findOne(any(Specification.class))).thenReturn(Optional.of(aff));
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new ArlInformation()));
+        when(economicActivityRepository.findById(1L)).thenReturn(Optional.of(new EconomicActivity()));
+        when(certificateRepository.save(any(Certificate.class))).thenAnswer(i -> i.getArgument(0));
+
+        Certificate result = certificateService.createCertificate(affiliate, "Test");
+
+        assertNotNull(result);
+        verify(certificateRepository).save(any(Certificate.class));
+    }
+
+    @Test
+    @DisplayName("createCertificate should save mercantile certificate")
+    void createCertificate_saveMercantile() {
+        AffiliateMercantile am = new AffiliateMercantile();
+        am.setEconomicActivity(List.of(new AffiliateActivityEconomic() {{
+            setIsPrimary(true);
+            setActivityEconomic(new EconomicActivity() {{
+                setId(1L);
+            }});
+        }}));
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(am));
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new ArlInformation()));
+        when(economicActivityRepository.findById(1L)).thenReturn(Optional.of(new EconomicActivity()));
+        when(iUserPreRegisterRepository.findById(any())).thenReturn(Optional.of(new UserMain()));
+        when(certificateRepository.save(any(Certificate.class))).thenAnswer(i -> i.getArgument(0));
+
+        Certificate result = certificateService.createCertificate(affiliate, "Test");
+
+        assertNotNull(result);
+        verify(certificateRepository).save(any(Certificate.class));
+    }
+
+    @Test
+    @DisplayName("getValidateCodeQR should handle formulario devolucion")
+    void getValidateCodeQR_formularioDevolucion() {
+        UUID qrId = UUID.randomUUID();
+        QrDocument qrDocument = new QrDocument();
+        qrDocument.setName("formulario devolucion");
+        qrDocument.setIdentificationNumber("F123");
+        qrDocument.setIssueDate(LocalDateTime.now());
+        when(iQrRepository.findById(qrId)).thenReturn(Optional.of(qrDocument));
+
+        com.gal.afiliaciones.domain.model.RequestCollectionReturn rcr = new com.gal.afiliaciones.domain.model.RequestCollectionReturn();
+        com.gal.afiliaciones.domain.model.Collection collection = new com.gal.afiliaciones.domain.model.Collection();
+        collection.setCollectionType("INDIVIDUAL");
+        UserMain user = new UserMain();
+        user.setCompanyName("Test Company");
+        collection.setUserId(user);
+        rcr.setCollection(collection);
+
+        RequestCollectionRequestRepository requestCollectionRequestRepository = mock(RequestCollectionRequestRepository.class);
+        when(requestCollectionRequestRepository.findByFiledNumber("F123")).thenReturn(Optional.of(rcr));
+
+        assertThrows(Exception.class, () -> certificateService.getValidateCodeQR(qrId.toString()));
+    }
+
+    @Test
+    @DisplayName("getValidateCodeQR should handle autorizaciones")
+    void getValidateCodeQR_autorizaciones() {
+        UUID qrId = UUID.randomUUID();
+        QrDocument qrDocument = new QrDocument();
+        qrDocument.setName("autorizaciones");
+        qrDocument.setIdentificationType("CC");
+        qrDocument.setIdentificationNumber("12345");
+        qrDocument.setIssueDate(LocalDateTime.now());
+        when(iQrRepository.findById(qrId)).thenReturn(Optional.of(qrDocument));
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new ArlInformation()));
+        UserMain user = new UserMain();
+        user.setFirstName("Test");
+        user.setSurname("User");
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(user));
+
+        QrDTO result = certificateService.getValidateCodeQR(qrId.toString());
+
+        assertNotNull(result);
+        assertEquals("autorizacion recibir notificaciones electronicas", result.getName());
+    }
+
+    @Test
+    @DisplayName("createAndGenerateCertificate should handle single membership certificate")
+    void createAndGenerateCertificate_singleMembership() {
+        findAffiliateReqDTO.setCertificateType("Certificado de afiliación individual");
+        when(affiliateRepository.findById(1L)).thenReturn(Optional.of(affiliate));
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new ArlInformation()));
+        when(affiliateRepository.findSingleMembershipCertificateEmployer(anyString())).thenReturn(mock(com.gal.afiliaciones.infrastructure.dto.affiliate.SingleMembershipCertificateEmployerView.class));
+        when(affiliateRepository.findSingleMembershipCertificateEmployees(anyString())).thenReturn(new java.util.ArrayList<>());
+        when(certificateRepository.save(any(Certificate.class))).thenAnswer(i -> i.getArgument(0));
+        when(genericWebClient.generateReportCertificate(any())).thenReturn("report");
+
+        String result = certificateService.createAndGenerateCertificate(findAffiliateReqDTO);
+
+        assertEquals("report", result);
     }
 }
