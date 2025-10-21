@@ -13,7 +13,11 @@ import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
+import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.stagescollection.StagesCollectionRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -21,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -42,8 +47,35 @@ public class RmrpRuafFileServiceImplTest {
     @Mock private DepartmentRepository departmentRepository;
     @Mock private MunicipalityRepository municipalityRepository;
     @Mock private AffiliationDetailRepository affiliationDetailRepository;
+    @Mock private AffiliateRepository affiliateRepository;
+    @Mock private AffiliationDependentRepository affiliationDependentRepository;
+    @Mock private CollectProperties properties;
 
     @InjectMocks private RmrpRuafFileServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(properties.getFolderIdRuafRmrp()).thenReturn("some-folder-id");
+        lenient().when(ruafFilesHelper.buildFileName(anyString())).thenReturn("test-file-name");
+        lenient().when(ruafFilesHelper.findArlInformation()).thenReturn(ArlInformation.builder().code("14-23").build());
+    }
+
+    @Test
+    void testGenerateRmrpFile_HappyPath() throws IOException {
+        Affiliate affiliate = Affiliate.builder()
+            .filedNumber("123")
+            .affiliationDate(LocalDateTime.now())
+            .build();
+        when(affiliateRepository.findAllByAffiliationDateBetweenAndAffiliationTypeNotIn(any(), any(), anyList()))
+            .thenReturn(List.of(affiliate));
+        when(affiliationDependentRepository.findByFiledNumber(anyString()))
+            .thenReturn(Optional.of(new AffiliationDependent()));
+
+        service.generateRmrpFile();
+
+        verify(ruafFilesHelper).uploadAlfrescoFile(anyString(), any(), anyString());
+        verify(ruafFilesHelper).saveRuafFile(anyString(), any(), eq(true), any());
+    }
 
     @Test
     void testBuildRegistersTypeOne() {
@@ -337,4 +369,55 @@ public class RmrpRuafFileServiceImplTest {
         assertEquals("2", fields[21]);
     }
 
+    @Test
+    void testValidateContributantCodes() {
+        AffiliationDependent dependentValid = new AffiliationDependent();
+        dependentValid.setCodeContributantType(1L);
+        boolean resultValid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateContributantCodes", dependentValid);
+        assertTrue(resultValid);
+
+        AffiliationDependent dependentInvalid = new AffiliationDependent();
+        dependentInvalid.setCodeContributantType(99L);
+        boolean resultInvalid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateContributantCodes", dependentInvalid);
+        assertEquals(false, resultInvalid);
+    }
+
+    @Test
+    void testValidateGenres() {
+        Affiliation affiliationValid = new Affiliation();
+        affiliationValid.setGender("F");
+        boolean resultValid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateGenres", affiliationValid);
+        assertTrue(resultValid);
+
+        Affiliation affiliationInvalid = new Affiliation();
+        affiliationInvalid.setGender("X");
+        boolean resultInvalid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateGenres", affiliationInvalid);
+        assertEquals(false, resultInvalid);
+    }
+
+    @Test
+    void testValidateWorkModality() {
+        AffiliationDependent dependentValid = new AffiliationDependent();
+        dependentValid.setIdWorkModality(1L);
+        boolean resultValid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateWorkModality", dependentValid);
+        assertTrue(resultValid);
+
+        AffiliationDependent dependentInvalid = new AffiliationDependent();
+        dependentInvalid.setIdWorkModality(3L);
+        boolean resultInvalid = (boolean) ReflectionTestUtils.invokeMethod(service, "validateWorkModality", dependentInvalid);
+        assertEquals(false, resultInvalid);
+    }
+
+    @Test
+    void testGenerateSubTypeContributant() {
+        Affiliation affiliationValid = new Affiliation();
+        affiliationValid.setCodeContributantSubtype("9");
+        String resultValid = (String) ReflectionTestUtils.invokeMethod(service, "generateSubTypeContributant", affiliationValid);
+        assertEquals("9", resultValid);
+
+        Affiliation affiliationInvalid = new Affiliation();
+        affiliationInvalid.setCodeContributantSubtype("99");
+        String resultInvalid = (String) ReflectionTestUtils.invokeMethod(service, "generateSubTypeContributant", affiliationInvalid);
+        assertEquals(null, resultInvalid);
+    }
 }

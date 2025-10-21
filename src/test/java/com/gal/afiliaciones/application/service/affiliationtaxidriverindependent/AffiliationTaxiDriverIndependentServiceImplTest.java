@@ -21,7 +21,10 @@ import java.util.Optional;
 import com.gal.afiliaciones.application.service.GenerateCardAffiliatedService;
 import com.gal.afiliaciones.application.service.affiliate.affiliationemployeractivitiesmercantile.AffiliationEmployerActivitiesMercantileService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
+import com.gal.afiliaciones.infrastructure.dto.affiliationtaxidriverindependent.AffiliationIndependentTaxiDriverStep3DTO;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -137,6 +140,81 @@ class AffiliationTaxiDriverIndependentServiceImplTest {
 
     @Autowired
     private AffiliationTaxiDriverIndependentServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        // Shared setup for tests can go here
+    }
+
+    @Test
+    void testCreateAffiliationStep3FromPila_Success() {
+        AffiliationIndependentTaxiDriverStep3DTO dto = new AffiliationIndependentTaxiDriverStep3DTO();
+        dto.setIdAffiliation(1L);
+        dto.setRisk("I");
+        dto.setPrice(BigDecimal.valueOf(100));
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setFiledNumber("FN123");
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        affiliate.setFiledNumber("FN123");
+
+
+        when(repositoryAffiliation.findById(1L)).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByFiledNumber("FN123")).thenReturn(Optional.of(affiliate));
+        when(repositoryAffiliation.save(any(Affiliation.class))).thenReturn(affiliation);
+        when(affiliateRepository.save(any(Affiliate.class))).thenReturn(affiliate);
+
+        Affiliation result = service.createAffiliationStep3FromPila(dto);
+
+        assertNotNull(result);
+        assertEquals("I", result.getRisk());
+        verify(cardAffiliatedService).createCardWithoutOtp("FN123");
+        verify(sendEmails).welcome(any(), any(), any(), any());
+    }
+
+    @Test
+    void testCreateAffiliationStep3FromPila_AffiliateNotFound() {
+        AffiliationIndependentTaxiDriverStep3DTO dto = new AffiliationIndependentTaxiDriverStep3DTO();
+        dto.setIdAffiliation(1L);
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setFiledNumber("FN123");
+
+        when(repositoryAffiliation.findById(1L)).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByFiledNumber("FN123")).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () -> service.createAffiliationStep3FromPila(dto));
+    }
+
+    @Test
+    void testPreloadMercantileNotExists_WithDecreeError() {
+        String identificationType = "NIT";
+        String identification = "900123456";
+        String error = "Some error containing Decreto 1072 de 2015";
+
+        AffiliationTaxiDriverIndependentPreLoadDTO result = service.preloadMercantileNotExists(identificationType, identification, error);
+
+        assertNotNull(result);
+        assertEquals(identificationType, result.getContractorIdentificationType());
+        assertEquals(identification, result.getContractorIdentificationNumber());
+        assertEquals(true, result.getIs723());
+    }
+
+    @Test
+    void testPreloadMercantileNotExists_WithoutDecreeError() {
+        String identificationType = "NIT";
+        String identification = "900123456";
+        String error = "Some other error";
+
+        AffiliationTaxiDriverIndependentPreLoadDTO result = service.preloadMercantileNotExists(identificationType, identification, error);
+
+        assertNotNull(result);
+        assertEquals(identificationType, result.getContractorIdentificationType());
+        assertEquals(identification, result.getContractorIdentificationNumber());
+        assertEquals(false, result.getIs723());
+    }
 
 
     @Test
