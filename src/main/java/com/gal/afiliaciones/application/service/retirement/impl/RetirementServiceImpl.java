@@ -1,8 +1,30 @@
 package com.gal.afiliaciones.application.service.retirement.impl;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Objects;
+import java.util.Collections;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.filed.FiledService;
+import com.gal.afiliaciones.application.service.generalnovelty.impl.GeneralNoveltyServiceImpl;
 import com.gal.afiliaciones.application.service.novelty.NoveltyRuafService;
 import com.gal.afiliaciones.application.service.retirement.RetirementService;
 import com.gal.afiliaciones.config.BodyResponseConfig;
@@ -15,20 +37,20 @@ import com.gal.afiliaciones.config.ex.retirement.WorkerNotFoundException;
 import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException;
 import com.gal.afiliaciones.domain.model.ArlInformation;
+import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReasonWorker;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.domain.model.retirement.ContractListResponseDTO;
 import com.gal.afiliaciones.domain.model.retirement.RetirementRequestDTO;
 import com.gal.afiliaciones.domain.model.retirement.RetirementResponseDTO;
 import com.gal.afiliaciones.domain.model.retirement.WorkerSearchRequestDTO;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
@@ -42,29 +64,13 @@ import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.DataContributorDTO;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.NoveltyRuafDTO;
 import com.gal.afiliaciones.infrastructure.dto.workerretirement.DataWorkerRetirementDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import com.gal.afiliaciones.application.service.generalnovelty.impl.GeneralNoveltyServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import jakarta.persistence.criteria.Predicate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import org.springframework.security.oauth2.jwt.Jwt;
+import java.util.function.Function;
+
 
 @Service
 @RequiredArgsConstructor
@@ -84,6 +90,7 @@ public class RetirementServiceImpl implements RetirementService {
     private final NoveltyRuafService noveltyRuafService;
     private final GeneralNoveltyServiceImpl generalNoveltyServiceImpl;
     private final RetirementReasonWorkerRepository retirementReasonWorkerRepository;
+    private final AffiliationDetailRepository affiliationDetailRepository;
 
     // Optional external integration dependencies (not required for core flow)
     @Autowired(required = false)
@@ -144,54 +151,6 @@ public class RetirementServiceImpl implements RetirementService {
         return response;
     }
 
-    /**
-     * Resolve and log the employer company document type using the worker affiliate's nitCompany.
-     * Mirrors logging style of the current-user resolver, but without security context.
-     */
-    private CurrentUserEmployerAffiliationData resolveEmployerAffiliationDataByNit(String nitCompany) {
-        try {
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification.findByNitEmployer(nitCompany);
-            Affiliate employerAffiliate = affiliateRepository.findOne(spcAffiliate)
-                    .orElseThrow(() -> new WorkerRetirementException("Employer affiliate not found for nit: " + nitCompany));
-
-            String filed = employerAffiliate.getFiledNumber();
-
-            Optional<AffiliateMercantile> mercantileOpt = mercantileRepository.findByFiledNumber(filed);
-            if (mercantileOpt.isPresent()) {
-                String docTypeCompany = mercantileOpt.get().getTypeDocumentIdentification();
-                log.info("[WorkerRetirementIntegration][ProbeByNit] nit={} employerSubtype={} companyDocType(Mercantile)={} filedNumber={}",
-                        nitCompany, employerAffiliate.getAffiliationSubType(), docTypeCompany, filed);
-                return CurrentUserEmployerAffiliationData.builder()
-                        .usernameOrEmail(null)
-                        .employerFiledNumber(filed)
-                        .employerSubtype(employerAffiliate.getAffiliationSubType())
-                        .companyDocumentType(docTypeCompany)
-                        .companyDocumentNumber(mercantileOpt.get().getNumberIdentification())
-                        .employerAffiliateId(employerAffiliate.getIdAffiliate())
-                        .build();
-            }
-
-            Optional<Affiliation> domOpt = affiliationRepository.findByFiledNumber(filed);
-            if (domOpt.isPresent()) {
-                String docTypeCompany = domOpt.get().getIdentificationDocumentType();
-                log.info("[WorkerRetirementIntegration][ProbeByNit] nit={} employerSubtype={} companyDocType(Domestic)={} filedNumber={}",
-                        nitCompany, employerAffiliate.getAffiliationSubType(), docTypeCompany, filed);
-                return CurrentUserEmployerAffiliationData.builder()
-                        .usernameOrEmail(null)
-                        .employerFiledNumber(filed)
-                        .employerSubtype(employerAffiliate.getAffiliationSubType())
-                        .companyDocumentType(docTypeCompany)
-                        .companyDocumentNumber(domOpt.get().getIdentificationDocumentNumber())
-                        .employerAffiliateId(employerAffiliate.getIdAffiliate())
-                        .build();
-            }
-
-            throw new WorkerRetirementException("Employer affiliation details not found for nit: " + nitCompany);
-        } catch (Exception e) {
-            log.warn("[WorkerRetirementIntegration][ProbeByNit] Failed to resolve company affiliation by nit {}: {}", nitCompany, e.getMessage());
-            throw e;
-        }
-    }
 
     private Affiliate validWorkedCompany(Long idAffiliateEmployer, String documentType, String documentNumber) {
 
@@ -278,8 +237,6 @@ public class RetirementServiceImpl implements RetirementService {
             updateRealNumberWorkers(dto.getIdAffiliateEmployer());
         }
 
-        // Try-caught integration call (feature-flagged) - does not affect main flow
-        // trySendWorkerRetirementNovelty(affiliate, dto);
 
         return newRetirement.getFiledNumber();
     }
@@ -345,34 +302,6 @@ public class RetirementServiceImpl implements RetirementService {
         };
     }
 
-    private void trySendWorkerRetirementNovelty(Affiliate affiliate, DataWorkerRetirementDTO dto) {
-        boolean integrationEnabled = affiliationProperties.isWorkerRetirementNoveltyEnabled();
-        String integrationUrl = affiliationProperties.getWorkerRetirementNoveltyUrl();
-        log.info("[WorkerRetirementIntegration] enabled={} endpoint={}", integrationEnabled, integrationUrl);
-        if (integrationEnabled) {
-            try {
-                // Resolve employer company document type by nitCompany (no user context; logs inside)
-                CurrentUserEmployerAffiliationData currentAffiliation = resolveEmployerAffiliationDataByNit(affiliate.getNitCompany());
-
-                com.gal.afiliaciones.infrastructure.dto.novelty.WorkerRetirementNoveltyRequest request = new com.gal.afiliaciones.infrastructure.dto.novelty.WorkerRetirementNoveltyRequest();
-                request.setIdTipoDocEmp(currentAffiliation.getCompanyDocumentType());
-                request.setIdEmpresa(affiliate.getNitCompany());
-                request.setSubempresa(0);
-                request.setIdTipoDocPers(affiliate.getDocumentType());
-                request.setIdPersona(affiliate.getDocumentNumber());
-                request.setFechaRetiro(dto.getRetirementDate() != null ? dto.getRetirementDate().toString() : java.time.LocalDate.now().toString());
-                int tipoVinculacion = com.gal.afiliaciones.infrastructure.utils.Constant.TYPE_AFFILLATE_DEPENDENT.equals(affiliate.getAffiliationType()) ? 1 : 2;
-                request.setTipoVinculacion(tipoVinculacion);
-                request.setFechaRetiro(dto.getRetirementDate() != null ? dto.getRetirementDate().toString() : java.time.LocalDate.now().toString());
-
-                workerRetirementNoveltyClient.send(request);
-            } catch (Exception ex) {
-                log.warn("Worker retirement novelty integration failed (creation path): {}", ex.getMessage());
-            }
-        } else {
-            log.info("[WorkerRetirementIntegration] Disabled - skipping external call");
-        }
-    }
 
     /**
      * Employer affiliation data used for integration payload composition.
@@ -609,8 +538,37 @@ public class RetirementServiceImpl implements RetirementService {
             throw new WorkerNotFoundException("El trabajador no fue encontrado, valida la información e intenta nuevamente");
         }
 
+        List<Long> userIds = affiliates.stream()
+                .map(Affiliate::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<Long> affiliateIds = affiliates.stream()
+                .map(Affiliate::getIdAffiliate)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Consulta los usuarios
+        Map<Long, UserMain> usersById = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userMainRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(UserMain::getId, Function.identity()));
+
+
+        //Consulta los detalles de afiliado
+        Map<Long, Affiliation> detailsByAffiliateId = affiliateIds.isEmpty()
+                ? Collections.emptyMap()
+                : affiliationDetailRepository.findByIdAffiliateIn(affiliateIds).stream()
+                .collect(Collectors.toMap(Affiliation::getIdAffiliate, Function.identity()));
+
         return affiliates.stream()
-                .map(this::convertToDto)
+                .map(affiliate -> {
+                    UserMain user = usersById.get(affiliate.getUserId());
+                    Affiliation detail = detailsByAffiliateId.get(affiliate.getIdAffiliate());
+                    return convertToDto(affiliate, user, detail);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -623,8 +581,7 @@ public class RetirementServiceImpl implements RetirementService {
             throw new InvalidRetirementRequestException("No se puede programar el retiro para un contrato que no está activo.");
         }
 
-        boolean retirementExists = retirementRepository.findAll().stream()
-                .anyMatch(r -> r.getIdAffiliate().equals(request.getContractId()));
+        boolean retirementExists = retirementRepository.existsByIdAffiliate(request.getContractId());
 
         if (retirementExists) {
             throw new InvalidRetirementRequestException("Ya existe un retiro programado o procesado para este contrato.");
@@ -632,7 +589,7 @@ public class RetirementServiceImpl implements RetirementService {
 
         validateRetirementDate(request.getRetirementDate(), contractToRetire);
 
-        if ("Independiente".equals(contractToRetire.getAffiliationType())) {
+        if ("Trabajador Independiente".equals(contractToRetire.getAffiliationType())) {
             validateIndependentWorker(contractToRetire);
         } else {
             validateDependentWorker(contractToRetire);
@@ -649,9 +606,6 @@ public class RetirementServiceImpl implements RetirementService {
     }
 
     private void logRetirement(RetirementRequestDTO request, Affiliate contract) {
-        Jwt jwt = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        String username = jwt.getClaimAsString("preferred_username");
-
         Retirement retirement = new Retirement();
         retirement.setIdentificationDocumentType(contract.getDocumentType());
         retirement.setIdentificationDocumentNumber(contract.getDocumentNumber());
@@ -661,10 +615,7 @@ public class RetirementServiceImpl implements RetirementService {
         retirement.setRetirementDate(request.getRetirementDate());
         retirement.setFiledNumber(contract.getFiledNumber());
         retirement.setIdAffiliate(contract.getIdAffiliate());
-        retirement.setUserWhoManagedRetirement(username);
-        retirement.setManagementDateTime(LocalDateTime.now());
-        retirement.setReason("Finalización de contrato o labor");
-        retirement.setModifiedContract(String.valueOf(contract.getIdAffiliate()));
+
 
         retirementRepository.save(retirement);
     }
@@ -707,17 +658,33 @@ public class RetirementServiceImpl implements RetirementService {
         }
     }
 
-    private ContractListResponseDTO convertToDto(Affiliate affiliate) {
+    private ContractListResponseDTO convertToDto(Affiliate affiliate,UserMain usuario,Affiliation affiliationDetail) {
         ContractListResponseDTO dto = new ContractListResponseDTO();
-        dto.setTipoVinculacion(affiliate.getAffiliationType());
-        dto.setCargo(affiliate.getPosition());
+        dto.setIdAffiliate(affiliate.getIdAffiliate());
+        dto.setTypeLink(affiliate.getAffiliationType());
+        dto.setPost(affiliate.getPosition());
+
         if (affiliate.getAffiliationDate() != null) {
-            dto.setFechaVinculacionArl(affiliate.getAffiliationDate().toLocalDate());
+            dto.setDateAffiliation(affiliate.getAffiliationDate().toLocalDate());
         }
-        dto.setFechaInicioContrato(affiliate.getCoverageStartDate());
-        dto.setFechaFinContrato(affiliate.getRetirementDate());
-        dto.setEstado(affiliate.getAffiliationStatus());
-        dto.setAcciones("Retirar");
+
+        if (affiliationDetail != null) {
+            dto.setContractStartDate(affiliationDetail.getContractStartDate());
+            dto.setContractEndDate(affiliationDetail.getContractEndDate());
+        }
+
+        dto.setLastDateCoverage(affiliate.getCoverageStartDate());
+        dto.setStatusAffiliation(affiliate.getAffiliationStatus());
+
+        if (usuario != null) {
+            dto.setFirstName(usuario.getFirstName());
+            dto.setSecondName(usuario.getSecondName());
+            dto.setSurname(usuario.getSurname());
+            dto.setSecondSurname(usuario.getSecondSurname());
+            dto.setStatus(usuario.getStatus());
+        }
+        dto.setDocumentType(affiliate.getDocumentType());
+        dto.setDocumentNumber(affiliate.getDocumentNumber());
         return dto;
     }
 

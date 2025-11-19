@@ -6,17 +6,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -76,6 +83,10 @@ class GenerateCardAffiliatedServiceImplTest {
     private AffiliateMercantileRepository affiliateMercantileRepository;
     @Mock
     private ConsultCertificateByUserService consultCertificateByUserService;
+    @Mock
+    ObjectMapper objectMapper;
+    @Mock
+    AffiliationDetailRepository affiliationDetailRepository;
 
     @InjectMocks
     private GenerateCardAffiliatedServiceImpl service;
@@ -351,8 +362,6 @@ class GenerateCardAffiliatedServiceImplTest {
         assertEquals(1, result.size());
     }
 
-
-
     @Test
     void getUserCardDTO_shouldReturnCorrectDTO_whenRetirementDateIsProvided() throws Exception {
         // Prepare an affiliate with necessary fields and a retirement date
@@ -595,4 +604,405 @@ class GenerateCardAffiliatedServiceImplTest {
         assertNull(result);
     }
 
+    @Test
+    void consultCard_exception_affiliation_not_found() throws JsonProcessingException {
+
+        Card card =  new Card();
+
+        when(iCardRepository.findOne((Specification<Card>) any())).thenReturn(Optional.of(card));
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception_affiliation_not_found2() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.empty());
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception_affiliation_not_found3() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setTypeAffiliation(Constant.BONDING_TYPE_DEPENDENT);
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.empty());
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception_affiliation_not_found4() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setTypeAffiliation(Constant.BONDING_TYPE_DEPENDENT);
+        AffiliationDependent affiliationDependent = new AffiliationDependent();
+
+        when(dependentRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliationDependent));
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.empty());
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception_affiliation_not_found5() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setTypeAffiliation(Constant.BONDING_TYPE_DEPENDENT);
+        AffiliationDependent affiliationDependent = new AffiliationDependent();
+        affiliationDependent.setIdAffiliateEmployer(1L);
+
+        when(dependentRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliationDependent));
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.empty());
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+        when(affiliateRepository.findByIdAffiliate(1L))
+                .thenReturn(Optional.empty());
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception_affiliation_not_found6() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setTypeAffiliation(Constant.BONDING_TYPE_DEPENDENT);
+        AffiliationDependent affiliationDependent = new AffiliationDependent();
+        affiliationDependent.setIdAffiliateEmployer(1L);
+        Affiliate affiliate1 = new Affiliate();
+
+        when(dependentRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliationDependent));
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.empty());
+
+        String fakeResponse = "{\"pdf\":\"fake-pdf-content\"}";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+        when(affiliateRepository.findByIdAffiliate(1L))
+                .thenReturn(Optional.of(affiliate1));
+
+        AffiliationNotFoundError ex = assertThrows(
+                AffiliationNotFoundError.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard_exception() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIsVip(true);
+
+        List<ArlInformation> list =  listArl();
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliation));
+        when(genericWebClient.generateAffiliateCard(any()))
+                .thenReturn("");
+        when(arlInformationDao.findAllArlInformation())
+                .thenReturn(list);
+
+        String fakeResponse = "";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenThrow(new JsonProcessingException("Invalid JSON") {});
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+        RuntimeException ex =  assertThrows(
+                RuntimeException.class,
+                () -> service.consultCard("123")
+        );
+
+        assertNotNull(ex);
+
+    }
+
+    @Test
+    void consultCard() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIsVip(true);
+
+        List<ArlInformation> list =  listArl();
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliation));
+        when(genericWebClient.generateAffiliateCard(any()))
+                .thenReturn("");
+        when(arlInformationDao.findAllArlInformation())
+                .thenReturn(list);
+
+        String fakeResponse = "";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        Map<String, String> response =  service.consultCard("123");
+
+        assertNotNull(response);
+
+    }
+
+    @Test
+    void consultCard_2() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setNitCompany("123");
+        card.setDocumentTypeEmployer("CC");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIsVip(true);
+
+
+        List<ArlInformation> list =  listArl();
+        List<AffiliateMercantile> listMercantile = new ArrayList<>();
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliation));
+        when(genericWebClient.generateAffiliateCard(any()))
+                .thenReturn("");
+        when(arlInformationDao.findAllArlInformation())
+                .thenReturn(list);
+        when(affiliateMercantileRepository.findAll((Specification<AffiliateMercantile>) any()))
+                .thenReturn(listMercantile);
+
+        String fakeResponse = "";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        Map<String, String> response =  service.consultCard("123");
+
+        assertNotNull(response);
+
+    }
+
+    @Test
+    void consultCard_3() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setFiledNumber("123");
+        card.setNitCompany("123");
+        card.setDocumentTypeEmployer("CC");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIsVip(true);
+
+
+        List<ArlInformation> list =  listArl();
+        List<AffiliateMercantile> listMercantile = listMercantile();
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliation));
+        when(genericWebClient.generateAffiliateCard(any()))
+                .thenReturn("");
+        when(arlInformationDao.findAllArlInformation())
+                .thenReturn(list);
+        when(affiliateMercantileRepository.findAll((Specification<AffiliateMercantile>) any()))
+                .thenReturn(listMercantile);
+
+        String fakeResponse = "";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        Map<String, String> response =  service.consultCard("123");
+
+        assertNotNull(response);
+
+    }
+
+    @Test
+    void consultCard_4() throws JsonProcessingException {
+
+        Card card =  new Card();
+        card.setNitCompany("123");
+        card.setDocumentTypeEmployer("CC");
+        card.setTypeAffiliation(Constant.BONDING_TYPE_DEPENDENT);
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIsVip(true);
+        AffiliationDependent affiliationDependent = new AffiliationDependent();
+        affiliationDependent.setIdAffiliateEmployer(1L);
+        Affiliate affiliate1 = new Affiliate();
+        affiliate1.setNitCompany("123");
+        affiliate1.setDocumenTypeCompany("CC");
+
+        List<ArlInformation> list =  listArl();
+        List<AffiliateMercantile> listMercantile = listMercantile();
+
+        when(iCardRepository.findOne((Specification<Card>) any()))
+                .thenReturn(Optional.of(card));
+        when(affiliationDetailRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliation));
+        when(genericWebClient.generateAffiliateCard(any()))
+                .thenReturn("");
+        when(arlInformationDao.findAllArlInformation())
+                .thenReturn(list);
+        when(affiliateMercantileRepository.findAll((Specification<AffiliateMercantile>) any()))
+                .thenReturn(listMercantile);
+        when(dependentRepository.findByFiledNumber("123"))
+                .thenReturn(Optional.of(affiliationDependent));
+        when(affiliateRepository.findByIdAffiliate(1L))
+                .thenReturn(Optional.of(affiliate1));
+
+        String fakeResponse = "";
+
+        ObjectNode jsonNode = mock(ObjectNode.class);
+
+        when(objectMapper.readTree(fakeResponse)).thenReturn(jsonNode);
+        when(jsonNode.path("pdf")).thenReturn(new ObjectMapper().readTree("\"fake-pdf-content\""));
+
+
+        Map<String, String> response =  service.consultCard("123");
+
+        assertNotNull(response);
+
+    }
+
+
+    List<ArlInformation> listArl(){
+
+        ArlInformation arlInformation =  new ArlInformation();
+        arlInformation.setOtherPhoneNumbers("123456789");
+        List<ArlInformation> list =  new ArrayList<>();
+        list.add(arlInformation);
+        return list;
+    }
+
+    List<AffiliateMercantile> listMercantile(){
+
+        AffiliateMercantile affiliateMercantile = new AffiliateMercantile();
+        affiliateMercantile.setIsVip(true);
+        List<AffiliateMercantile> list = new ArrayList<>();
+        list.add(affiliateMercantile);
+        return list;
+    }
 }

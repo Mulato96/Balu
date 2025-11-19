@@ -25,5 +25,6 @@ public class DataStatusAffiliationDTO {
     private DataDailyDTO dataDailyDTO;
     private String nameOfficial;
     private LocalDateTime dateRegularization;
+    private Long idAffiliate;
 
 }

@@ -21,7 +21,6 @@ import com.gal.afiliaciones.config.BodyResponseConfig;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.Occupation;
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
-import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.RequestServiceDTO;
 import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ConsultIndependentWorkerDTO;
@@ -62,6 +61,7 @@ public class GenericWebClient {
     private static final String ERROR_TEXT = "Error: ";
     private static final String URL_CHILDREN = "%s/nodes/%s/children?skipCount=0&maxItems=2000";
     private static final String TELEMETRY_REQUEST_BODY = "telemetryRequestBody";
+    private static final String REPORT_GENERATION_FAILED = "Report generation failed";
 
     public Optional<UserDtoApiRegistry> getByIdentification(String identification) {
         return webClientBuilder.get()
@@ -88,7 +88,27 @@ public class GenericWebClient {
                     }
                 })
                 .blockOptional()
-                .orElse(ERROR_TEXT + "Report generation failed");
+                .orElse(ERROR_TEXT + REPORT_GENERATION_FAILED);
+    }
+
+    public String getTransversalCertificateWorkerArlIntegration(CertificateReportRequestDTO reportRequestDto) {
+        return webClientBuilder
+                .post()
+                .uri(properties.getTransversalUrlRenderCertificateWorkerArlIntegration())
+                .header(CONTENT_TYPE_LABEL, CONTENT_TYPE_JSON)
+                .attribute(TELEMETRY_REQUEST_BODY, reportRequestDto)
+                .body(Mono.just(reportRequestDto), CertificateReportRequestDTO.class)
+                .retrieve()
+                .bodyToMono(String.class)
+                .onErrorResume(Throwable.class, throwable -> {
+                    if (throwable instanceof WebClientResponseException ex) {
+                        return Mono.just(ERROR_TEXT + " " + ex.getStatusCode() + " - " + ex.getResponseBodyAsString());
+                    } else {
+                        return Mono.just(ERROR_TEXT + " " + throwable.getMessage());
+                    }
+                })
+                .blockOptional()
+                .orElse(ERROR_TEXT + REPORT_GENERATION_FAILED);
     }
 
     public BodyResponseConfig<List<MunicipalityDTO>> getMunicipalities() {
@@ -384,7 +404,7 @@ public class GenericWebClient {
                     }
                 })
                 .blockOptional()
-                .orElse(ERROR_TEXT + "Report generation failed");
+                .orElse(ERROR_TEXT + REPORT_GENERATION_FAILED);
     }
 
     public void updateUser(RequestUserUpdateDTO request) {

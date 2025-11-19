@@ -1,18 +1,15 @@
 package com.gal.afiliaciones.infrastructure.client.generic.affiliatecompany;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.gal.afiliaciones.infrastructure.client.generic.BaseResponseDTO;
+
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class AffiliateCompanyResponse {
-    @JsonProperty("tipoDoc")
-    private String tipoDoc;
+public class AffiliateCompanyResponse extends BaseResponseDTO  {
 
-    @JsonProperty("idPersona")
-    private String idPersona;
-
-    @JsonProperty("fechaNacimiento")
-    private String fechaNacimiento;
 
     @JsonProperty("departamento")
     private String departamento;
@@ -20,38 +17,8 @@ public class AffiliateCompanyResponse {
     @JsonProperty("municipio")
     private String municipio;
 
-    @JsonProperty("idDepartamento")
-    private Integer idDepartamento;
-
-    @JsonProperty("idMunicipio")
-    private Integer idMunicipio;
-
-    @JsonProperty("nombre1")
-    private String nombre1;
-
-    @JsonProperty("nombre2")
-    private String nombre2;
-
-    @JsonProperty("apellido1")
-    private String apellido1;
-
-    @JsonProperty("apellido2")
-    private String apellido2;
-
-    @JsonProperty("emailPersona")
-    private String emailPersona;
-
-    @JsonProperty("idOcupacion")
-    private Integer idOcupacion;
-
     @JsonProperty("ocupacion")
     private String ocupacion;
-
-    @JsonProperty("telefonoPersona")
-    private String telefonoPersona;
-
-    @JsonProperty("sexo")
-    private String sexo;
 
     @JsonProperty("estado")
     private String estadoRl;
@@ -65,17 +32,18 @@ public class AffiliateCompanyResponse {
     @JsonProperty("fechaFinVinculacion")
     private String fechaFinVinculacion;
 
+    @JsonProperty("fechaInicioContrato")
+    private String fechaInicioContrato;
+
+    @JsonProperty("fechaFinContrato")
+    private String fechaFinContrato;
+
     @JsonProperty("afp")
     private Integer afp;
 
     @JsonProperty("nombreAfp")
     private String nombreAfp;
 
-    @JsonProperty("eps")
-    private String eps;
-
-    @JsonProperty("nombreEps")
-    private String nombreEps;
 
     @JsonProperty("idArl")
     private String idArl;
@@ -86,20 +54,9 @@ public class AffiliateCompanyResponse {
     @JsonProperty("salario")
     private Double salario;
 
-    @JsonProperty("direccion")
-    private String direccion;
 
     @JsonProperty("tpDocEmpresa")
     private String tpDocEmpresa;
-
-    @JsonProperty("idEmpresa")
-    private String idEmpresa;
-
-    @JsonProperty("razonSocial")
-    private String razonSocial;
-
-    @JsonProperty("direccionEmpresa")
-    private String direccionEmpresa;
 
     @JsonProperty("idDepartamentoEmp")
     private Integer idDepartamentoEmp;
@@ -113,37 +70,44 @@ public class AffiliateCompanyResponse {
     @JsonProperty("municipioEmp")
     private String municipioEmp;
 
-    @JsonProperty("telefonoEmpresa")
-    private String telefonoEmpresa;
-
-    @JsonProperty("emailEmpresa")
-    private String emailEmpresa;
-
-    @JsonProperty("indZona")
-    private String indZona;
-
-    @JsonProperty("idActEconomica")
-    private Long idActEconomica;
-
     @JsonProperty("nomActEco")
     private String nomActEco;
-
-    @JsonProperty("fechaAfiliacionEfectiva")
-    private String fechaAfiliacionEfectiva;
-
-    @JsonProperty("estadoEmpresa")
-    private String estadoEmpresa;
 
     @JsonProperty("idCentroTrabajo")
     private Integer idCentroTrabajo;
 
-    @JsonProperty("idSucursal")
-    private Integer idSucursal;
 
     @JsonProperty("idSectorEconomico")
     private Integer idSectorEconomico;
 
+    @JsonProperty("estadoContrato")
+    private String estadoContrato;
+
+    @JsonProperty("codigoSubempresa")
+    private String codigoSubempresa;
+
+    @JsonProperty("idCargo")
+    private Integer idCargo;
+
+    @JsonProperty("cargo")
+    private String cargo;
+
+    @JsonProperty("idSede")
+    private Integer idSede;
+
+    @JsonProperty("idTipoDocEmp")
+    private String idTipoDocEmp;
+
+    @JsonProperty("ocupacionVoluntario")
+    private String ocupacionVoluntario;
+
+    @JsonProperty("codigoOcupacion")
+    private String codigoOcupacion;
+
     @JsonProperty("idTipoVinculado")
     private Integer idTipoVinculado;
+
+    @JsonProperty("tipoVinculado")
+    private String tipoVinculado;
 
 }

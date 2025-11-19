@@ -1,6 +1,7 @@
 package com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent;
 
 import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,8 +21,8 @@ public class AffiliationAssignmentHistory {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "affiliation_id", nullable = false)
-    private Affiliation affiliation;
+    @JoinColumn(name = "affiliate_id", nullable = false)
+    private Affiliate affiliate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)

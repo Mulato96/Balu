@@ -1,5 +1,6 @@
 package com.gal.afiliaciones.domain.model.affiliate;
 
+import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -103,6 +104,10 @@ public class Affiliate {
     @OneToMany(fetch = FetchType.LAZY)
     @JoinColumn(name = "filed_number", referencedColumnName = "filed_number", insertable = false, updatable = false)
     private List<AffiliationDependent> dependents;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assign_to")
+    private UserMain assignTo;
 
 
 }

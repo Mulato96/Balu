@@ -13,6 +13,9 @@ public class CollectProperties {
     @Value("${report.service.url}")
     private String reportServiceUrl;
 
+    @Value("${transversal.url.render.certificate.worker.arl.integration}")
+    private String transversalUrlRenderCertificateWorkerArlIntegration;
+
     @Value("${report.save.service.url}")
     private String reportSaveServiceUrl;
 
@@ -241,5 +244,11 @@ public class CollectProperties {
 
     @Value("${recaudos.bank.log.url}")
     private String bankLogConsultUrl;
+
+    @Value("${folderId.documents.plantillas.retiro.masivo}")
+    private String idTemplateRetirementMasivo;
+
+    @Value("${daily.api.domain}")
+    private String domainDailyInterview;
 
 }

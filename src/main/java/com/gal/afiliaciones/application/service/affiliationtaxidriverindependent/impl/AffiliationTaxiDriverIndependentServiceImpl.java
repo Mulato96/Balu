@@ -245,6 +245,7 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
 
                 // Consultar automáticamente la dirección con getWorkCenterAddress usando el ID capturado
                 getWorkCenterAddress(idAffiliateMercantile);
+                preLoadDTO.setIdAffiliateEmployer(affiliate.getIdAffiliate());
                 preLoadDTO.setIs723(false);
             }
 
@@ -393,7 +394,7 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
             String idFolderByEmployer = saveDocuments(filedNumber, documents, affiliate.getIdAffiliate());
 
             affiliation.setFiledNumber(filedNumber);
-            affiliation.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+            affiliation.setStageManagement(Constant.SING); // Skip documental review for independents - go directly to signature
             affiliation.setIdFolderAlfresco(idFolderByEmployer);
             affiliation.setDateRequest(LocalDateTime.now().toString());
 
@@ -636,6 +637,7 @@ public class AffiliationTaxiDriverIndependentServiceImpl implements AffiliationT
         newAffiliate.setDocumentNumber(newAffiliation.getIdentificationDocumentNumber());
         newAffiliate.setCompany(newAffiliation.getCompanyName());
         newAffiliate.setNitCompany(newAffiliation.getIdentificationDocumentNumberContractor());
+        newAffiliate.setDocumenTypeCompany(newAffiliation.getIdentificationDocumentTypeContractor());
         newAffiliate.setAffiliationDate(LocalDateTime.now());
         newAffiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
         newAffiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER);

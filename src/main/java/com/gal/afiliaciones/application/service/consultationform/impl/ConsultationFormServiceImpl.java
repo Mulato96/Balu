@@ -222,11 +222,11 @@ public class ConsultationFormServiceImpl implements ConsultationFormService {
                                                 affiliate.getCoverageStartDate() != null
                                                                 ? affiliate.getCoverageStartDate().toString()
                                                                 : null)
-                                .department(affiliateMercantile.getDepartment())
-                                .city(affiliateMercantile.getCityMunicipality())
+                                .department(affiliateMercantile.getIdDepartment())
+                                .city(affiliateMercantile.getIdCity())
                                 .fullAddress(affiliateMercantile.getAddress())
-                                .phoneNumber1(affiliateMercantile.getPhoneOneContactCompany())
-                                .phoneNumber2(affiliateMercantile.getPhoneTwoContactCompany())
+                                .phoneNumber1(affiliateMercantile.getPhoneOne())
+                                .phoneNumber2(affiliateMercantile.getPhoneTwo())
                                 .email(affiliateMercantile.getEmail())
                                 .economicActivity(economicActivity)
                                 .legalRepresentativeDocumentType(

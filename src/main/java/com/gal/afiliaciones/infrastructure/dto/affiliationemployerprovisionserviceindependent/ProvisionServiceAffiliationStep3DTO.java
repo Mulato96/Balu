@@ -22,6 +22,5 @@ public class ProvisionServiceAffiliationStep3DTO {
     private String risk;
     private BigDecimal price;
     private BigDecimal contractIbcValue;
-    private String filedNumber;
 
 }

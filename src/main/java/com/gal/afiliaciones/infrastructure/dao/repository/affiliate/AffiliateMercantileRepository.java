@@ -44,4 +44,14 @@ public interface AffiliateMercantileRepository extends JpaRepository<AffiliateMe
     Optional<AffiliateMercantile> findFirstByNumberIdentification(String numberIdentification);
     List<AffiliateMercantile> findAllByTypeDocumentPersonResponsibleAndNumberDocumentPersonResponsible(String typeDocumentIdentification, String numberIdentification);
 
+    @Query("""
+        SELECT am.decentralizedConsecutive
+        FROM AffiliateMercantile am
+        WHERE am.typeDocumentIdentification = :typeDocumentIdentification
+        AND am.numberIdentification = :numberIdentification
+        ORDER BY am.id DESC LIMIT 1
+        """)
+    Long findFirstDecentralizedConsecutiveByTypeDocumentIdentificationAndNumberIdentificationOrderByIdDesc(
+             String typeDocumentIdentification,
+             String numberIdentification);
 }

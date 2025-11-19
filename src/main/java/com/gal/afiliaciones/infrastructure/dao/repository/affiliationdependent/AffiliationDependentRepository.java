@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.infrastructure.dto.certificate.AffiliationCertificate;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO;
 
 public interface AffiliationDependentRepository extends JpaRepository<AffiliationDependent, Long>,
         JpaSpecificationExecutor<AffiliationDependent> {
@@ -50,6 +51,9 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
 
     @Query("SELECT a.identificationDocumentNumber FROM AffiliationDependent a WHERE a.identificationDocumentNumber IN :ids")
     List<String> findByIdentificationDocumentNumberIn(@Param("ids") List<String> ids);
+
+    @Query("SELECT a.identificationDocumentNumber FROM AffiliationDependent a WHERE a.identificationDocumentNumber IN :ids AND a.idAffiliateEmployer = :idAffiliateEmployer")
+    List<String> findByIdentificationDocumentNumberInAndIdAffiliateEmployer(@Param("ids") List<String> ids, @Param("idAffiliateEmployer") Long idAffiliateEmployer);
 
     @Query("SELECT a.email FROM AffiliationDependent a WHERE a.email IN :email")
     List<String> findByEmailIn(@Param("email") List<String> ids);
@@ -287,4 +291,35 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
             "WHERE a.documentType = :docType AND a.documentNumber = :docNumber")
     List<AffiliationDependent> findByMainAffiliateIdentification(@Param("docType") String docType, @Param("docNumber") String docNumber);
     
+    
+    @Query("SELECT ad FROM AffiliationDependent ad WHERE ad.idAffiliate = :idAffiliate")
+    Optional<AffiliationDependent> findByIdAffiliate(@Param("idAffiliate") Long idAffiliate);
+
+    @Query("""
+        SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO(
+            a.idAffiliate,
+            a.filedNumber,
+            ad.identificationDocumentType,
+            ad.identificationDocumentNumber,
+            CONCAT(ad.firstName, ' ', 
+                   COALESCE(ad.secondName, ''), ' ', 
+                   ad.surname, ' ', 
+                   COALESCE(ad.secondSurname, '')),
+            ad.contractType,
+            ad.contractQuality,
+            ad.transportSupply,
+            ad.journeyEstablished,
+            ad.startDate,
+            ad.endDate,
+            ad.duration,
+            ad.coverageDate,
+            ad.contractTotalValue,
+            CAST(NULL AS java.math.BigDecimal),
+            ad.contractIbcValue
+        )
+        FROM AffiliationDependent ad
+        JOIN Affiliate a ON ad.filedNumber = a.filedNumber
+        WHERE a.idAffiliate = :idAffiliate
+        """)
+    Optional<WorkerDetailDTO> findWorkerDetailByAffiliateId(@Param("idAffiliate") Long idAffiliate);
 }

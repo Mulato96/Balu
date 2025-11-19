@@ -1,0 +1,12 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <changeSet id="2025-11-06_hu_303890-HU_50_Gal_Ajuste_Certificado_Afiliacion" author="emmanuel.camacho">
+    <sql><![CDATA[
+	ALTER TABLE certificate ADD COLUMN occupation_code VARCHAR(20);
+  ALTER TABLE certificate ADD COLUMN decentralized_consecutive INTEGER;
+  ALTER TABLE certificate ADD COLUMN contract_status VARCHAR(20);
+	]]></sql>
+  </changeSet>
+</databaseChangeLog>

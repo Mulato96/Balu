@@ -1,6 +1,8 @@
 package com.gal.afiliaciones.application.service.impl;
 
 import com.gal.afiliaciones.application.service.IValidationService;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.springframework.stereotype.Service;
 
@@ -15,42 +17,89 @@ public class ValidationServiceImpl implements IValidationService {
     public List<String> validateRow(Row row) {
         List<String> errors = new ArrayList<>();
 
-        // Validate Tipo documento trabajador (column 0)
-        if (row.getCell(0) == null || row.getCell(0).getStringCellValue().isEmpty()) {
+        // Helper para obtener valores seguros
+        String tipoDocumentoEmpleador = getCellValue(row.getCell(0));
+        String numeroDocumentoEmpleador = getCellValue(row.getCell(1));
+        String tipoDocumentoTrabajador = getCellValue(row.getCell(3));
+        String numeroDocumentoTrabajador = getCellValue(row.getCell(4));
+        String tipoVinculacion = getCellValue(row.getCell(5));
+        String fechaRetiro = getCellValue(row.getCell(6));
+
+        // Validate Tipo documento empleador (column 0)
+        if (tipoDocumentoEmpleador.isEmpty()) {
+            errors.add("El tipo de documento del empleador es obligatorio.");
+        }
+
+        // Validate Número documento empleador (column 1)
+        if (numeroDocumentoEmpleador.isEmpty()) {
+            errors.add("El número de documento del empleador es obligatorio.");
+        }
+
+        // Validate Tipo documento trabajador (column 3)
+        if (tipoDocumentoTrabajador.isEmpty()) {
             errors.add("El tipo de documento del trabajador es obligatorio.");
         }
 
-        // Validate Número documento (column 1)
-        if (row.getCell(1) == null || row.getCell(1).getStringCellValue().isEmpty()) {
+        // Validate Número documento trabajador (column 4)
+        if (numeroDocumentoTrabajador.isEmpty()) {
             errors.add("El número de documento del trabajador es obligatorio.");
         }
 
-        // Validate Nombre completo (column 2)
-        if (row.getCell(2) == null || row.getCell(2).getStringCellValue().isEmpty()) {
-            errors.add("El nombre completo del trabajador es obligatorio.");
-        }
-
-        // Validate Tipo de vinculación (column 3)
-        if (row.getCell(3) == null || row.getCell(3).getStringCellValue().isEmpty()) {
+        // Validate Tipo de vinculación (column 5)
+        if (tipoVinculacion.isEmpty()) {
             errors.add("El tipo de vinculación es obligatorio.");
+        } else if (!"1".equals(tipoVinculacion) && !"2".equals(tipoVinculacion)) {
+            errors.add("El tipo de vinculación debe ser '1' (Dependiente) o '2' (Independiente).");
         }
 
-        // Validate Subtipo de vinculación (column 4)
-        if (row.getCell(4) == null || row.getCell(4).getStringCellValue().isEmpty()) {
-            errors.add("El subtipo de vinculación es obligatorio.");
-        }
-
-        // Validate Fecha de retiro (column 5)
-        if (row.getCell(5) == null || row.getCell(5).getStringCellValue().isEmpty()) {
+        // Validate Fecha de retiro (column 6)
+        if (fechaRetiro.isEmpty()) {
             errors.add("La fecha de retiro es obligatoria.");
         } else {
             try {
-                LocalDate.parse(row.getCell(5).getStringCellValue());
+                LocalDate.parse(fechaRetiro);
             } catch (Exception e) {
                 errors.add("El formato de la fecha de retiro es inválido.");
             }
         }
-        // TODO: Add more specific validations based on business rules (HU #83868, etc.)
+
         return errors;
+    }
+
+    /**
+     * Método auxiliar seguro para obtener el valor textual de cualquier celda.
+     */
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
+
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue().trim();
+
+            case NUMERIC:
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+                }
+
+                double numericValue = cell.getNumericCellValue();
+                if (numericValue == Math.floor(numericValue)) {
+                    return String.valueOf((long) numericValue);
+                }
+                return String.valueOf(numericValue);
+
+            case FORMULA:
+                try {
+                    return cell.getStringCellValue().trim();
+                } catch (IllegalStateException e) {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+
+            case BLANK:
+            default:
+                return "";
+        }
     }
 }

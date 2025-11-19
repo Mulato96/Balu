@@ -1,40 +1,54 @@
 package com.gal.afiliaciones.application.service.employeeupdateinfo.impl;
 
+import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.employeeupdateinfo.InfoBasicaService;
 import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.InfoBasicaRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.audit.PersonaUpdateTraceRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.projection.InfoBasicaProjection;
 import com.gal.afiliaciones.infrastructure.dto.InfoBasicaDTO;
 import com.gal.afiliaciones.infrastructure.dto.UpdateInfoBasicaRequest;
 import com.gal.afiliaciones.domain.model.audit.PersonaUpdateTrace;
+import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
+import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
+import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import com.gal.afiliaciones.application.service.audit.PersonaUpdateTraceService;
+import org.springframework.beans.BeanUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.HashMap;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class InfoBasicaServiceImpl implements InfoBasicaService {
 
     private final InfoBasicaRepository infoRepo;
     private final IUserPreRegisterRepository userRepo;
-    private final PersonaUpdateTraceService traceService;
     private final PersonaUpdateTraceRepository traceRepo;
+    private final IUserRegisterService userRegisterService;
+    private final AffiliationDetailRepository affiliationDetailRepository;
+    private final AffiliationDependentRepository affiliationDependentRepository;
+    private final AffiliateRepository affiliateRepository;
 
-    public InfoBasicaServiceImpl(InfoBasicaRepository infoRepo,
-                                 IUserPreRegisterRepository userRepo,
-                                 PersonaUpdateTraceService traceService,
-                                 PersonaUpdateTraceRepository traceRepo) {
-        this.infoRepo = infoRepo;
-        this.userRepo = userRepo;
-        this.traceService = traceService;
-        this.traceRepo = traceRepo;
-    }
 
     @Override
     public InfoBasicaDTO consultarInfoBasica(String documento) {
@@ -51,8 +65,84 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
             );
         }
 
-        return mapToDTO(v);
+        InfoBasicaDTO dto = mapToDTO(v);
+        boolean isRegistry = false;
+        int codeWarning = 0;
+
+        if (Constant.CC.equalsIgnoreCase(v.getTipoDocumento())) {
+            try {
+                UserDtoApiRegistry apiRegistry = userRegisterService.searchUserInNationalRegistry(v.getNumeroIdentificacion());
+
+                if(apiRegistry.getIdStatus().equals("21")){
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Solo se permite actualizacion para persona con idStatus diferente a 21 (Fallecido)"
+                    );
+                }
+
+                if (apiRegistry != null && apiRegistry.getFirstName() != null) {
+
+
+                    UserPreRegisterDto userRegistryData = UserPreRegisterDto.builder()
+                            .identificationType(v.getTipoDocumento())
+                            .identification(v.getNumeroIdentificacion())
+                            .firstName(apiRegistry.getFirstName())
+                            .secondName(apiRegistry.getSecondName())
+                            .surname(apiRegistry.getSurname())
+                            .secondSurname(apiRegistry.getSecondSurname())
+                            .dateBirth(apiRegistry.getDateBirth())
+                            .phoneNumber("")
+                            .build();
+
+                    BeanUtils.copyProperties(apiRegistry, userRegistryData);
+                    userRegistryData.setSex(RegistraduriaUnifiedService.mapGender(apiRegistry.getGender()));
+                    userRegistryData.setUserFromRegistry(true);
+                    userRegistryData.setStatusPreRegister(false);
+
+                    isRegistry = true;
+
+                    Map<String, Object> diffs = comparatorsLimited(v, userRegistryData);
+                    dto = applyRegistryDifferences(dto, diffs);
+
+                    if (!diffs.isEmpty()) {
+                        codeWarning = 1;
+                    }
+
+                }else {
+                    isRegistry = false;
+                }
+            } catch (Exception e) {
+                isRegistry = false;
+            }
+        }
+
+        return new InfoBasicaDTO(
+                dto.tipoDocumento(),
+                dto.numeroIdentificacion(),
+                dto.primerNombre(),
+                dto.segundoNombre(),
+                dto.primerApellido(),
+                dto.segundoApellido(),
+                dto.fechaNacimiento(),
+                dto.edad(),
+                dto.nacionalidad(),
+                dto.sexo(),
+                dto.afp(),
+                dto.eps(),
+                dto.email(),
+                dto.telefono1(),
+                dto.telefono2(),
+                dto.idDepartamento(),
+                dto.idCiudad(),
+                dto.direccionTexto(),
+                dto.fechaNovedad(),
+                dto.observaciones(),
+                codeWarning,
+                isRegistry
+        );
+
     }
+
 
     @Override
     @Transactional
@@ -62,19 +152,76 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
 
         validarRequestBasico(documentoObjetivo, r, documentoUsuarioLogueado);
 
-        UserMain u = obtenerUsuario(documentoObjetivo);
-        validarUsuarioParaActualizacion(u);
+        List<Affiliate> affiliates = affiliateRepository
+                .findAllByDocumentTypeAndDocumentNumber(r.tipoDocumento(), documentoObjetivo);
 
-        final boolean esCC = "CC".equalsIgnoreCase(n(u.getIdentificationType()));
+        if (!affiliates.isEmpty()) {
+            for (Affiliate aff : affiliates) {
+                procesarAfiliado(aff, r, documentoObjetivo);
+            }
+        }
 
-        actualizarCamposPersonales(u, r, esCC, documentoObjetivo);
-        actualizarCamposGenerales(u, r);
-        actualizarObservaciones(documentoObjetivo, r);
-
-        u.setLastUpdate(java.time.LocalDateTime.now());
-        userRepo.saveAndFlush(u);
         registrarTraza(documentoObjetivo, documentoUsuarioLogueado, null);
     }
+
+
+    private void procesarAfiliado(Affiliate aff,
+                                  UpdateInfoBasicaRequest r,
+                                  String documentoObjetivo) {
+
+        if (Constant.TYPE_AFFILLATE_DEPENDENT.equals(aff.getAffiliationType())) {
+            procesarDependiente(r, documentoObjetivo);
+            return;
+        }
+
+        if (Constant.TYPE_AFFILLATE_INDEPENDENT.equals(aff.getAffiliationType())) {
+            procesarIndependiente(r, documentoObjetivo);
+        }
+    }
+
+    private void procesarDependiente(UpdateInfoBasicaRequest r, String documentoObjetivo) {
+        List<AffiliationDependent> dependents =
+                obtenerAffiliationsDepent(r.tipoDocumento(), documentoObjetivo);
+
+        for (AffiliationDependent dep : dependents) {
+            actualizarCamposPersonalesAffiliationsDepent(dep, r, documentoObjetivo);
+            actualizarCamposGeneralesAffiliationsDependt(dep, r);
+            affiliationDependentRepository.save(dep);
+        }
+    }
+
+
+    private void procesarIndependiente(UpdateInfoBasicaRequest r, String documentoObjetivo) {
+
+        UserMain usuario = obtenerUsuario(documentoObjetivo);
+        validarUsuarioParaActualizacion(usuario);
+
+        boolean esCC = "CC".equalsIgnoreCase(n(usuario.getIdentificationType()));
+
+        actualizarCamposPersonales(usuario, r, esCC, documentoObjetivo);
+        actualizarCamposGenerales(usuario, r);
+        actualizarObservaciones(documentoObjetivo, r);
+
+        usuario.setLastUpdate(LocalDateTime.now());
+        userRepo.save(usuario);
+
+        procesarAfiliacionesIndependiente(r, documentoObjetivo);
+    }
+
+    private void procesarAfiliacionesIndependiente(UpdateInfoBasicaRequest r,
+                                                   String documentoObjetivo) {
+
+        List<Affiliation> affiliations =
+                obtenerAffiliations(r.tipoDocumento(), documentoObjetivo);
+
+        for (Affiliation a : affiliations) {
+            actualizarCamposPersonalesAffiliations(a, r, documentoObjetivo);
+            actualizarCamposGeneralesAffiliations(a, r);
+            affiliationDetailRepository.save(a);
+        }
+    }
+
+
 
     private void registrarTraza(String targetDoc, String actorDoc, String actorRoleHint) {
         TrazaInfo trazaInfo = obtenerInformacionTraza(actorDoc, actorRoleHint);
@@ -143,6 +290,16 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
                         HttpStatus.NOT_FOUND, "Usuario no encontrado"));
     }
 
+
+    private List<Affiliation> obtenerAffiliations(String tipoDocumento,String documentoObjetivo) {
+        return affiliationDetailRepository.findByDocumentTypeAndNumber(tipoDocumento,documentoObjetivo);
+    }
+
+    private List<AffiliationDependent> obtenerAffiliationsDepent(String tipoDocumento,String documentoObjetivo) {
+        return affiliationDependentRepository.findByDocumentTypeAndNumber(tipoDocumento,documentoObjetivo);
+    }
+
+
     private void validarUsuarioParaActualizacion(UserMain u) {
         final String tipoDoc = n(u.getIdentificationType());
 
@@ -162,10 +319,6 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
     }
 
     private void actualizarCamposPersonales(UserMain u, UpdateInfoBasicaRequest r, boolean esCC, String documentoObjetivo) {
-        if (esCC) {
-            return; // No se actualizan campos personales para CC
-        }
-
         if (r.primerNombre() != null)    u.setFirstName(n(r.primerNombre()));
         if (r.segundoNombre() != null)   u.setSecondName(n(r.segundoNombre()));
         if (r.primerApellido() != null)  u.setSurname(n(r.primerApellido()));
@@ -180,13 +333,41 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         }
     }
 
+    private void actualizarCamposPersonalesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r, String documentoObjetivo) {
+        if (r.primerNombre() != null)    ad.setFirstName(n(r.primerNombre()));
+        if (r.segundoNombre() != null)   ad.setSecondName(n(r.segundoNombre()));
+        if (r.primerApellido() != null)  ad.setSurname(n(r.primerApellido()));
+        if (r.segundoApellido() != null) ad.setSecondSurname(n(r.segundoApellido()));
+        if (r.sexo() != null)            ad.setGender(r.sexo());
+
+        if (r.fechaNacimiento() != null) {
+            LocalDate nueva = r.fechaNacimiento();
+            Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
+            validarFechaNacimiento(nueva, ingresoOpt.orElse(null));
+            ad.setDateOfBirth(nueva);
+        }
+    }
+
+    private void actualizarCamposPersonalesAffiliationsDepent(AffiliationDependent ad, UpdateInfoBasicaRequest r, String documentoObjetivo) {
+        if (r.primerNombre() != null)    ad.setFirstName(n(r.primerNombre()));
+        if (r.segundoNombre() != null)   ad.setSecondName(n(r.segundoNombre()));
+        if (r.primerApellido() != null)  ad.setSurname(n(r.primerApellido()));
+        if (r.segundoApellido() != null) ad.setSecondSurname(n(r.segundoApellido()));
+        if (r.sexo() != null)            ad.setGender(r.sexo());
+
+        if (r.fechaNacimiento() != null) {
+            LocalDate nueva = r.fechaNacimiento();
+            Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
+            validarFechaNacimiento(nueva, ingresoOpt.orElse(null));
+            ad.setDateOfBirth(nueva);
+        }
+    }
+
+
     private void actualizarCamposGenerales(UserMain u, UpdateInfoBasicaRequest r) {
         actualizarCamposContacto(u, r);
         actualizarCamposEntidades(u, r);
         actualizarCamposDireccion(u, r);
-        actualizarCamposPropiedadesHorizontales(u, r);
-
-        if (r.idCargo() != null) u.setPosition(r.idCargo());
     }
 
     private void actualizarCamposContacto(UserMain u, UpdateInfoBasicaRequest r) {
@@ -194,7 +375,6 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         if (r.telefono1() != null)      u.setPhoneNumber(nullSafeTrim(r.telefono1()));
         if (r.telefono2() != null)      u.setPhoneNumber2(nullSafeTrim(r.telefono2()));
         if (r.direccionTexto() != null) u.setAddress(nullSafeTrim(r.direccionTexto()));
-        if (r.bis() != null)            u.setIsBis(Boolean.TRUE.equals(r.bis()));
     }
 
     private void actualizarCamposEntidades(UserMain u, UpdateInfoBasicaRequest r) {
@@ -203,32 +383,62 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         if (r.eps() != null)          u.setHealthPromotingEntity(parseLongSafe(r.eps()));
     }
 
+    private void actualizarCamposDireccionAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
+        if (r.idDepartamento() != null)     ad.setDepartment(asLong(r.idDepartamento()));
+        if (r.idCiudad() != null)           ad.setCityMunicipality(asLong(r.idCiudad()));
+    }
+
+
+
+    private void actualizarCamposGeneralesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
+        actualizarCamposContactoAffiliations(ad, r);
+        actualizarCamposEntidadesAffiliations(ad, r);
+        actualizarCamposDireccionAffiliations(ad, r);
+    }
+
+    private void actualizarCamposContactoAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
+        if (r.email() != null)          ad.setEmail(nullSafeTrim(r.email()));
+        if (r.telefono1() != null)      ad.setPhone1(nullSafeTrim(r.telefono1()));
+        if (r.telefono2() != null)      ad.setPhone2(nullSafeTrim(r.telefono2()));
+        if (r.direccionTexto() != null) ad.setAddress(nullSafeTrim(r.direccionTexto()));
+    }
+
+    private void actualizarCamposEntidadesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
+        if (r.nacionalidad() != null) ad.setNationality(parseLongSafe(r.nacionalidad()));
+        if (r.afp() != null)          ad.setPensionFundAdministrator(parseLongSafe(r.afp()));
+        if (r.eps() != null)          ad.setHealthPromotingEntity(parseLongSafe(r.eps()));
+    }
+
     private void actualizarCamposDireccion(UserMain u, UpdateInfoBasicaRequest r) {
         if (r.idDepartamento() != null)     u.setIdDepartment(asLong(r.idDepartamento()));
         if (r.idCiudad() != null)           u.setIdCity(asLong(r.idCiudad()));
-
-        if (r.idCallePrincipal() != null)         u.setIdMainStreet(parseLongSafe(r.idCallePrincipal()));
-        if (r.numeroCallePrincipal() != null)     u.setIdNumberMainStreet(parseLongSafe(r.numeroCallePrincipal()));
-        if (r.letra1CallePrincipal() != null)     u.setIdLetter1MainStreet(parseLongSafe(r.letra1CallePrincipal()));
-        if (r.letra2CallePrincipal() != null)     u.setIdLetter2MainStreet(parseLongSafe(r.letra2CallePrincipal()));
-        if (r.puntoCardinalCallePrincipal() != null) u.setIdCardinalPointMainStreet(parseLongSafe(r.puntoCardinalCallePrincipal()));
-
-        if (r.numero1Secundaria() != null)  u.setIdNum1SecondStreet(parseLongSafe(r.numero1Secundaria()));
-        if (r.numero2Secundaria() != null)  u.setIdNum2SecondStreet(parseLongSafe(r.numero2Secundaria()));
-        if (r.letraSecundaria() != null)    u.setIdLetterSecondStreet(parseLongSafe(r.letraSecundaria()));
-        if (r.puntoCardinal2() != null)     u.setIdCardinalPoint2(parseLongSafe(r.puntoCardinal2()));
     }
 
-    private void actualizarCamposPropiedadesHorizontales(UserMain u, UpdateInfoBasicaRequest r) {
-        if (r.ph1() != null)    u.setIdHorizontalProperty1(parseLongSafe(r.ph1()));
-        if (r.numPh1() != null) u.setIdNumHorizontalProperty1(parseLongSafe(r.numPh1()));
-        if (r.ph2() != null)    u.setIdHorizontalProperty2(parseLongSafe(r.ph2()));
-        if (r.numPh2() != null) u.setIdNumHorizontalProperty2(parseLongSafe(r.numPh2()));
-        if (r.ph3() != null)    u.setIdHorizontalProperty3(parseLongSafe(r.ph3()));
-        if (r.numPh3() != null) u.setIdNumHorizontalProperty3(parseLongSafe(r.numPh3()));
-        if (r.ph4() != null)    u.setIdHorizontalProperty4(parseLongSafe(r.ph4()));
-        if (r.numPh4() != null) u.setIdNumHorizontalProperty4(parseLongSafe(r.numPh4()));
+
+    private void actualizarCamposGeneralesAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
+        actualizarCamposContactoAffiliationsDependt(ad, r);
+        actualizarCamposEntidadesAffiliationsDependt(ad, r);
+        actualizarCamposDireccionAffiliationsDepent(ad, r);
     }
+
+    private void actualizarCamposContactoAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
+        if (r.email() != null)          ad.setEmail(nullSafeTrim(r.email()));
+        if (r.telefono1() != null)      ad.setPhone1(nullSafeTrim(r.telefono1()));
+        if (r.telefono2() != null)      ad.setPhone2(nullSafeTrim(r.telefono2()));
+        if (r.direccionTexto() != null) ad.setAddress(nullSafeTrim(r.direccionTexto()));
+    }
+
+    private void actualizarCamposEntidadesAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
+        if (r.nacionalidad() != null) ad.setNationality(parseLongSafe(r.nacionalidad()));
+        if (r.afp() != null)          ad.setPensionFundAdministrator(parseLongSafe(r.afp()));
+        if (r.eps() != null)          ad.setHealthPromotingEntity(parseLongSafe(r.eps()));
+    }
+
+    private void actualizarCamposDireccionAffiliationsDepent(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
+        if (r.idDepartamento() != null)     ad.setIdDepartment(asLong(r.idDepartamento()));
+        if (r.idCiudad() != null)           ad.setIdCity(asLong(r.idCiudad()));
+    }
+
 
     private void actualizarObservaciones(String documentoObjetivo, UpdateInfoBasicaRequest r) {
         String obs = n(r.observaciones());
@@ -264,9 +474,16 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         return act == null || Boolean.TRUE.equals(act);
     }
 
-    private String normalizar(String s) {
-        return s == null ? "" : s.replaceAll("\\D", "");
+
+    private String normalizar(String value) {
+        if (value == null) return null;
+        return value
+                .trim()
+                .replaceAll("\\s+", " ")
+                .toLowerCase();
     }
+
+
     private String nullSafeTrim(String s) {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
@@ -288,17 +505,62 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
                 v.getPrimerNombre(), v.getSegundoNombre(), v.getPrimerApellido(), v.getSegundoApellido(),
                 v.getFechaNacimiento(), v.getEdad(), v.getNacionalidad(), v.getSexo(),
                 v.getAfp(), v.getEps(), v.getEmail(), v.getTelefono1(), v.getTelefono2(),
-                v.getIdDepartamento(), v.getIdCiudad(),
-                v.getIdCallePrincipal(), v.getNumeroCallePrincipal(),
-                v.getLetra1CallePrincipal(), v.getLetra2CallePrincipal(), v.getPuntoCardinalCallePrincipal(), v.getBis(),
-                v.getNumero1Secundaria(), v.getNumero2Secundaria(), v.getLetraSecundaria(), v.getPuntoCardinal2(),
-                v.getPh1(), v.getNumPh1(), v.getPh2(), v.getNumPh2(), v.getPh3(), v.getNumPh3(), v.getPh4(), v.getNumPh4(),
-                v.getDireccionTexto(), v.getIdCargo(), v.getFechaNovedad(), v.getObservaciones(),
-                v.getNacionalidadNombre(),
-                v.getAfpNombre(),
-                v.getEpsNombre(),
-                v.getCiudadNombre(),
-                v.getDepartamentoNombre()
+                v.getIdDepartamento(), v.getIdCiudad(),v.getDireccionTexto(),v.getFechaNovedad(),v.getObservaciones(),
+                0,
+                false
         );
     }
+
+
+    private Map<String, Object> comparatorsLimited(InfoBasicaProjection bd, UserPreRegisterDto reg) {
+        Map<String, Object> diffs = new HashMap<>();
+
+        addIfDifferent("primerNombre", normalizar(bd.getPrimerNombre()), normalizar(reg.getFirstName()), diffs);
+        addIfDifferent("segundoNombre", normalizar(bd.getSegundoNombre()), normalizar(reg.getSecondName()), diffs);
+        addIfDifferent("primerApellido", normalizar(bd.getPrimerApellido()), normalizar(reg.getSurname()), diffs);
+        addIfDifferent("segundoApellido", normalizar(bd.getSegundoApellido()), normalizar(reg.getSecondSurname()), diffs);
+        addIfDifferent("sexo", bd.getSexo(), reg.getSex(), diffs);
+        addIfDifferent("fechaNacimiento", bd.getFechaNacimiento(), reg.getDateBirth(), diffs);
+
+        return diffs;
+    }
+
+    private void addIfDifferent(String field, Object bdValue, Object regValue, Map<String, Object> map) {
+
+        if (regValue == null) return;
+
+        if (regValue instanceof String && ((String) regValue).trim().isEmpty()) return;
+
+        if (!Objects.equals(bdValue, regValue)) {
+            map.put(field, regValue);
+        }
+    }
+
+    private InfoBasicaDTO applyRegistryDifferences(InfoBasicaDTO dto, Map<String, Object> diffs) {
+        return new InfoBasicaDTO(
+                dto.tipoDocumento(),
+                dto.numeroIdentificacion(),
+                (String) diffs.getOrDefault("primerNombre", dto.primerNombre()),
+                (String) diffs.getOrDefault("segundoNombre", dto.segundoNombre()),
+                (String) diffs.getOrDefault("primerApellido", dto.primerApellido()),
+                (String) diffs.getOrDefault("segundoApellido", dto.segundoApellido()),
+                (LocalDate) diffs.getOrDefault("fechaNacimiento", dto.fechaNacimiento()),
+                dto.edad(),
+                dto.nacionalidad(),
+                (String) diffs.getOrDefault("sexo", dto.sexo()),
+                dto.afp(),
+                dto.eps(),
+                dto.email(),
+                dto.telefono1(),
+                dto.telefono2(),
+                dto.idDepartamento(),
+                dto.idCiudad(),
+                dto.direccionTexto(),
+                dto.fechaNovedad(),
+                dto.observaciones(),
+                !diffs.isEmpty() ? 1 : dto.codeWarning(), // codeWarning
+                dto.isRegistry()
+        );
+    }
+
 }

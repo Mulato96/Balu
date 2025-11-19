@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface EmployerLookupService {
 
-    Optional<EmployerBasicProjection> findBasic(String docType, String docNumber);
+    Optional<EmployerBasicDTO> findBasic(String docType, String docNumber);
     int updateBasic(EmployerUpdateDTO dto);
     Optional<LegalRepViewDTO> findLegalRep(String docType, String docNumber);
     int updateLegalRep(LegalRepUpdateRequestDTO dto);

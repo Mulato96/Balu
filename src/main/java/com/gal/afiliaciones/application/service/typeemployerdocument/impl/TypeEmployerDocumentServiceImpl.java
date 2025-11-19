@@ -1,5 +1,11 @@
 package com.gal.afiliaciones.application.service.typeemployerdocument.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.typeemployerdocument.TypeEmployerDocumentService;
 import com.gal.afiliaciones.config.ex.typeemployerdocumentrequested.TypeEmployerDocumentRequested;
 import com.gal.afiliaciones.domain.model.affiliate.typeemployerdocument.DocumentRequested;
@@ -11,13 +17,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.typeemployerdocument.S
 import com.gal.afiliaciones.infrastructure.dao.repository.typeemployerdocument.TypeEmployerRepository;
 import com.gal.afiliaciones.infrastructure.dto.LegalStatusDTO;
 import com.gal.afiliaciones.infrastructure.dto.typeemployerdocument.TypeEmployerDocumentDTO;
-import lombok.AllArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import lombok.AllArgsConstructor;
 
 @Service
 @AllArgsConstructor
@@ -65,11 +66,7 @@ public class TypeEmployerDocumentServiceImpl implements TypeEmployerDocumentServ
 
     @Override
     public List<LegalStatusDTO> listLegalStatus() {
-        return legalStatusRepository.findAll().stream().map(ls -> {
-            LegalStatusDTO legalStatusDTO = new LegalStatusDTO();
-            BeanUtils.copyProperties(ls, legalStatusDTO);
-            return legalStatusDTO;
-        }).toList();
+        return legalStatusRepository.findAllAsDTO();
     }
 
     @Override

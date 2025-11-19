@@ -1,17 +1,10 @@
 package com.gal.afiliaciones.infrastructure.controller.affiliationemployerprovisionserviceindependent;
 
-import com.gal.afiliaciones.application.service.affiliationemployerprovisionserviceindependent.AffiliationEmployerProvisionServiceIndependentService;
-import com.gal.afiliaciones.config.ex.Error.Type;
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep1DTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep2DTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep3DTO;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.AllArgsConstructor;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +12,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import com.gal.afiliaciones.application.service.affiliationemployerprovisionserviceindependent.AffiliationEmployerProvisionServiceIndependentService;
+import com.gal.afiliaciones.config.ex.Error.Type;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep1DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep2DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep3DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceStep3Response;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.AllArgsConstructor;
 
 @RestController
 @RequestMapping("/AffiliationEmployerProvisionServiceIndependentController")
@@ -50,10 +52,10 @@ public class AffiliationEmployerProvisionServiceIndependentController {
     }
 
     @PostMapping(value = "/affiliation-provision-service/step3", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ProvisionServiceAffiliationStep3DTO> createAffiliationStep3(ProvisionServiceAffiliationStep3DTO dto,
-                                                              @RequestParam(name = "files") List<MultipartFile> files) {
+    public ResponseEntity<ProvisionServiceStep3Response> createAffiliationStep3(ProvisionServiceAffiliationStep3DTO dto,
+                                                                                @RequestParam(name = "files") List<MultipartFile> files) {
         try{
-            ProvisionServiceAffiliationStep3DTO response = affiliationEmployerProvisionServiceIndependentService
+            ProvisionServiceStep3Response response = affiliationEmployerProvisionServiceIndependentService
                     .createAffiliationProvisionServiceStep3(dto, files);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }catch (AffiliationAlreadyExistsError ex){

@@ -30,4 +30,23 @@ public class EmployerBasicDTO {
     private String rlNationality;
     private String epsId;
     private String afpId;
+    private String departmentName;
+    private String cityName;
+
+    public EmployerBasicDTO(EmployerBasicProjection projection) {
+        this.employerId = projection.getEmployerId();
+        this.docType = projection.getDocType();
+        this.docNumber = projection.getDocNumber();
+        this.dv = projection.getDv();
+        this.businessName = projection.getBusinessName();
+        this.departmentId = projection.getDepartmentId();
+        this.cityId = projection.getCityId();
+        this.addressFull = projection.getAddressFull();
+        this.phone1 = projection.getPhone1();
+        this.phone2 = projection.getPhone2();
+        this.email = projection.getEmail();
+        this.employerType = projection.getEmployerType();
+        this.departmentName = projection.getDepartmentName();
+        this.cityName = projection.getCityName();
+    }
 }

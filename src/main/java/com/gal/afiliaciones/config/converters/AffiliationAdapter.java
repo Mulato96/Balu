@@ -25,6 +25,7 @@ public class AffiliationAdapter {
                 .dateInterview(entity.getDateInterview() != null ? entity.getDateInterview().toString() : "")
                 .dateRegularization(entity.getDateRegularization() != null ? entity.getDateRegularization().toString() : "sin informacion")
                 .asignadoA(entity.getAsignadoA() != null ? entity.getAsignadoA() : "sin informacion")
+                .idAffiliate(entity.getIdAffiliate())
                 .build();
     };
 

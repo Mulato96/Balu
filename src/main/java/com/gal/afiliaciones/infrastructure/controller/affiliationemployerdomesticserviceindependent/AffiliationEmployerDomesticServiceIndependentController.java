@@ -48,9 +48,9 @@ public class AffiliationEmployerDomesticServiceIndependentController {
         return ResponseEntity.ok(affiliationEmployerDomesticServiceIndependentService.managementAffiliation(page, size, filter));
     }
 
-    @GetMapping("/requestdocuments/{field}")
-    public ResponseEntity<ManagementDTO> management(@Valid @PathVariable String field){
-        return ResponseEntity.status(HttpStatus.OK).body(affiliationEmployerDomesticServiceIndependentService.management(field));
+    @GetMapping("/requestdocuments/{idAffiliate}/{idUser}")
+    public ResponseEntity<ManagementDTO> management(@PathVariable Long idAffiliate, @PathVariable Long idUser){
+        return ResponseEntity.status(HttpStatus.OK).body(affiliationEmployerDomesticServiceIndependentService.management(idAffiliate, idUser));
     }
 
     @GetMapping("/consultdocument/{id}")
@@ -121,12 +121,12 @@ public class AffiliationEmployerDomesticServiceIndependentController {
                 .body(excel);
     }
 
-    @PostMapping("managementaffiliation/{filedNumber}/asignar/{usuarioId}")
+    @PostMapping("managementaffiliation/{idAffiliate}/asignar/{usuarioId}")
     public ResponseEntity<String> assignTo(
-            @PathVariable String filedNumber,
+            @PathVariable Long idAffiliate,
             @PathVariable Long usuarioId
     ) {
-        affiliationEmployerDomesticServiceIndependentService.assignTo(filedNumber, usuarioId);
+        affiliationEmployerDomesticServiceIndependentService.assignTo(idAffiliate, usuarioId);
         return ResponseEntity.ok("Afiliacion asignada correctamente");
     }
 }

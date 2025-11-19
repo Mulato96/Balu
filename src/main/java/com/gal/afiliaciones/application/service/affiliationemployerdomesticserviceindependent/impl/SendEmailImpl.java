@@ -76,6 +76,7 @@ import org.apache.velocity.exception.ResourceNotFoundException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -165,6 +166,7 @@ public class SendEmailImpl implements SendEmails {
     }
 
     @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void welcome(Affiliation affiliation, Long idAffiliate, String affiliationType, String affiliationSubtype){
 
         Map<String, Object> data = dataAffiliated(affiliation);

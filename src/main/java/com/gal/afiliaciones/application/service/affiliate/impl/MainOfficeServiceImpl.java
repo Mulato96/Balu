@@ -23,6 +23,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.client.generic.headquarters.InsertHeadquartersClient;
@@ -40,13 +41,15 @@ import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeGrillaDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeOfficialDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdetail.AffiliateBasicInfoDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -58,6 +61,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.web.server.ResponseStatusException;
+
 
 @Slf4j
 @Service
@@ -78,6 +86,7 @@ public class MainOfficeServiceImpl implements MainOfficeService {
     private final UpdateHeadquartersClient updateHeadquartersClient;
     private final InsertWorkCenterClient insertWorkCenterClient;
     private final MunicipalityRepository municipalityRepository;
+    private final AffiliationDetailRepository affiliationDetailRepository;
 
     private static final String ERROR_DELETE = "No puede eliminar este centro de trabajo ya que tienes trabajadores asociados";
 
@@ -116,6 +125,9 @@ public class MainOfficeServiceImpl implements MainOfficeService {
         if (!repository.findAll(MainOfficeSpecification.findByIdUserAndName(mainOfficeDTO.getIdAffiliateEmployer(),
                 mainOfficeDTO.getMainOfficeName())).isEmpty())
             throw new AffiliationError("La sede ya se encuentra creada, Valida la información y vuelve a intentar");
+
+        if(!mainOfficeDTO.getEconomicActivity().isEmpty() && mainOfficeDTO.getEconomicActivity().size()>1)
+            throw new AffiliationError("Numero de actividades economicas incorrecto");
 
         mainOfficeDTO
                 .setEconomicActivity(mainOfficeDTO.getEconomicActivity().stream().filter(Objects::nonNull).toList());
@@ -1224,6 +1236,198 @@ public class MainOfficeServiceImpl implements MainOfficeService {
                     ex.getMessage());
             // Don't throw - local transaction should succeed even if external sync fails
         }
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MainOfficeGrillaDTO> getAllMainOfficesOptimized(Long idAffiliate, String companyName, Pageable pageable) {
+        Page<MainOfficeRepository.NamesView> page = repository.findAllWithNamesByAffiliate(idAffiliate, pageable);
+
+        return page.map(v -> {
+            MainOfficeGrillaDTO dto = new MainOfficeGrillaDTO();
+            dto.setId(v.getId());
+            dto.setCode(v.getCode());
+            dto.setMain(v.getMain());
+            dto.setMainOfficeName(v.getMainOfficeName());
+            dto.setAddress(v.getAddress());
+            dto.setMainOfficePhoneNumber(v.getMainOfficePhoneNumber());
+            dto.setIdDepartment(v.getIdDepartment());
+            dto.setIdCity(v.getIdCity());
+            dto.setMainOfficeDepartment(v.getMainOfficeDepartment());
+            dto.setMainOfficeCity(v.getMainOfficeCity());
+            dto.setIdAffiliate(idAffiliate);
+            dto.setCompany(companyName);
+            dto.setTypeAffiliation(v.getTypeAffiliation());
+            dto.setPhoneOneLegalRepresentative(v.getPhoneOneLegalRepresentative());
+            dto.setPhoneTwoLegalRepresentative(v.getPhoneTwoLegalRepresentative());
+            dto.setTypeDocumentPersonResponsible(v.getTypeDocumentPersonResponsible());
+            dto.setNumberDocumentPersonResponsible(v.getNumberDocumentPersonResponsible());
+            dto.setLegalRepresentativeFullName(v.getLegalRepresentativeFullName());
+            dto.setBusinessName(v.getBusinessName());
+            dto.setIdMainStreet(null);
+            dto.setIdNumberMainStreet(null);
+            dto.setIdLetter1MainStreet(null);
+            dto.setIsBis(null);
+            dto.setIdLetter2MainStreet(null);
+            dto.setIdCardinalPointMainStreet(null);
+            dto.setIdNum1SecondStreet(null);
+            dto.setIdLetterSecondStreet(null);
+            dto.setIdNum2SecondStreet(null);
+            dto.setIdCardinalPoint2(null);
+            dto.setIdHorizontalProperty1(null);
+            dto.setIdNumHorizontalProperty1(null);
+            dto.setIdHorizontalProperty2(null);
+            dto.setIdNumHorizontalProperty2(null);
+            dto.setIdHorizontalProperty3(null);
+            dto.setIdNumHorizontalProperty3(null);
+            dto.setIdHorizontalProperty4(null);
+            dto.setIdNumHorizontalProperty4(null);
+            dto.setOfficeManager(null);
+            return dto;
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<MainOfficeGrillaDTO> getAllMainOfficesByAffiliateAndFilters(
+            Long idAffiliate, Long department, Long city, String companyName, Pageable pageable) {
+
+        Page<MainOfficeRepository.NamesView> page =
+                repository.findAllWithNamesByAffiliateAndFilters(idAffiliate, department, city, pageable);
+
+        return page.map(v -> {
+            MainOfficeGrillaDTO dto = new MainOfficeGrillaDTO();
+            dto.setId(v.getId());
+            dto.setCode(v.getCode());
+            dto.setMain(v.getMain());
+            dto.setMainOfficeName(v.getMainOfficeName());
+            dto.setAddress(v.getAddress());
+            dto.setMainOfficePhoneNumber(v.getMainOfficePhoneNumber());
+            dto.setIdDepartment(v.getIdDepartment());
+            dto.setIdCity(v.getIdCity());
+            dto.setMainOfficeDepartment(v.getMainOfficeDepartment());
+            dto.setMainOfficeCity(v.getMainOfficeCity());
+            dto.setIdAffiliate(idAffiliate);
+            dto.setCompany(companyName);
+            dto.setTypeAffiliation(v.getTypeAffiliation());
+            dto.setPhoneOneLegalRepresentative(v.getPhoneOneLegalRepresentative());
+            dto.setPhoneTwoLegalRepresentative(v.getPhoneTwoLegalRepresentative());
+            dto.setTypeDocumentPersonResponsible(v.getTypeDocumentPersonResponsible());
+            dto.setNumberDocumentPersonResponsible(v.getNumberDocumentPersonResponsible());
+            dto.setLegalRepresentativeFullName(v.getLegalRepresentativeFullName());
+            dto.setBusinessName(v.getBusinessName());
+            dto.setIdMainStreet(null);
+            dto.setIdNumberMainStreet(null);
+            dto.setIdLetter1MainStreet(null);
+            dto.setIsBis(null);
+            dto.setIdLetter2MainStreet(null);
+            dto.setIdCardinalPointMainStreet(null);
+            dto.setIdNum1SecondStreet(null);
+            dto.setIdLetterSecondStreet(null);
+            dto.setIdNum2SecondStreet(null);
+            dto.setIdCardinalPoint2(null);
+            dto.setIdHorizontalProperty1(null);
+            dto.setIdNumHorizontalProperty1(null);
+            dto.setIdHorizontalProperty2(null);
+            dto.setIdNumHorizontalProperty2(null);
+            dto.setIdHorizontalProperty3(null);
+            dto.setIdNumHorizontalProperty3(null);
+            dto.setIdHorizontalProperty4(null);
+            dto.setIdNumHorizontalProperty4(null);
+            dto.setOfficeManager(null);
+            return dto;
+        });
+    }
+    @Override
+    public Page<MainOfficeGrillaDTO> findByDocumentWithFilters(
+            String type,
+            String number,
+            Long department,
+            Long city,
+            Pageable pageable) {
+
+        String cleanNumber = number.replaceAll("\\D", "");
+        Affiliate affiliate;
+        if ("NI".equalsIgnoreCase(type)) {
+            affiliate = affiliateRepository
+                    .findByNitCompanyAndDocumentType(type.toUpperCase(), cleanNumber)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "La afiliación no se encuentra"));
+        } else {
+            List<Affiliate> affiliates = affiliateRepository
+                    .findAllByDocumentTypeAndDocumentNumber(type.toUpperCase(), cleanNumber);
+
+            if (affiliates.isEmpty()) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "La afiliación no se encuentra");
+            }
+            affiliate = affiliates.get(0);
+        }
+        Long idAffiliate = affiliate.getIdAffiliate();
+        String companyName = affiliate.getCompany();
+
+        if (department != null || city != null) {
+            return getAllMainOfficesByAffiliateAndFilters(
+                    idAffiliate, department, city, companyName, pageable);
+        } else {
+            return getAllMainOfficesOptimized(idAffiliate, companyName, pageable);
+        }
+    }
+
+    @Override
+    public AffiliateBasicInfoDTO getAffiliateBasicInfo(String documentType, String documentNumber) {
+        log.info("Obteniendo información básica del afiliado (MERCANTIL): {} - {}", documentType, documentNumber);
+
+        String cleanNumber = documentNumber.replaceAll("\\D", "");
+
+        Affiliate affiliate;
+        if ("NI".equalsIgnoreCase(documentType)) {
+            affiliate = affiliateRepository
+                    .findByNitCompanyAndDocumentType(documentType.toUpperCase(), cleanNumber)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe afiliado con ese documento"));
+        } else {
+            List<Affiliate> affiliates = affiliateRepository
+                    .findAllByDocumentTypeAndDocumentNumber(documentType.toUpperCase(), cleanNumber);
+            if (affiliates.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No existe afiliado con ese documento");
+            }
+            affiliate = affiliates.get(0);
+        }
+
+        Long idAffiliate = affiliate.getIdAffiliate();
+
+        var full = affiliationDetailRepository.findFullEmployerInfo(documentType, cleanNumber)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No existe información mercantil para este documento"));
+
+        AffiliateBasicInfoDTO.CompanyInfo companyInfo =
+                AffiliateBasicInfoDTO.CompanyInfo.builder()
+                        .businessName(full.getEmployerName())
+                        .documentType(documentType)
+                        .documentNumber(cleanNumber)
+                        .realNumberWorkers(full.getRealNumberWorkers())
+                        .mainEconomicActivity(null)
+                        .numberOfWorkers(null)
+                        .phoneNumber(full.getEmployerPhone())
+                        .email(full.getEmployerEmail())
+                        .build();
+
+        AffiliateBasicInfoDTO.LegalRepresentativeInfo legalRepInfo =
+                AffiliateBasicInfoDTO.LegalRepresentativeInfo.builder()
+                        .fullName(full.getRepName())
+                        .documentType(full.getRepDocumentType())
+                        .legalRepresentativeNumber(full.getRepDocumentNumber())
+                        .phoneNumber(full.getRepPhone())
+                        .email(full.getRepEmail())
+                        .build();
+
+        return AffiliateBasicInfoDTO.builder()
+                .idAffiliate(idAffiliate)
+                .affiliationType("Empleador")
+                .company(companyInfo)
+                .legalRepresentative(legalRepInfo)
+                .build();
     }
 
 }

@@ -70,6 +70,9 @@ public class Certificate {
     @Column(name = "position")
     private String position;
 
+    @Column(name = "occupation_code")
+    private String occupationCode;
+
     @Column(name = "risk")
     private String risk;
 
@@ -126,5 +129,11 @@ public class Certificate {
 
     @Column(name = "independent_workers_number")
     private Integer independentWorkersNumber;
+
+    @Column(name = "decentralized_consecutive")
+    private Integer decentralizedConsecutive;
+
+    @Column(name = "contract_status")
+    private String contractStatus;
 
 }

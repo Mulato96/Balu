@@ -17,5 +17,6 @@ public class AffiliationCouncillorStep1DTO {
     private ContractorDataStep1DTO contractorDataDTO;
     private InformationIndependentWorkerDTO informationIndependentWorkerDTO;
     private Boolean is723;
+    private Long idAffiliateEmployer;
 
 }

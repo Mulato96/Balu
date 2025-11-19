@@ -180,4 +180,12 @@ public class UserSpecifications {
         return (root, query, cb) -> cb.equal(root.get("userName"), userName);
     }
 
+    public static Specification<UserMain> findOfficierById(Long idUser){
+        return (root, query, criteriaBuilder) -> {
+            Predicate idUserPredicate = criteriaBuilder.equal(root.get("id"), idUser);
+            Predicate typeUserPredicate = criteriaBuilder.equal(root.get(USER_TYPE_LABEL), Constant.INTERNAL_USER_TYPE);
+            return criteriaBuilder.and(idUserPredicate, typeUserPredicate);
+        };
+    }
+
 }

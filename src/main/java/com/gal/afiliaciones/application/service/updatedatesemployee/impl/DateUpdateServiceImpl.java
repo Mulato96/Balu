@@ -10,9 +10,11 @@ import com.gal.afiliaciones.infrastructure.client.generic.employer.EmployerRespo
 import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.ConsultLegalRepresentativeClient;
 import com.gal.afiliaciones.infrastructure.client.generic.legalrepresentative.LegalRepresentativeResponse;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.observationsaffiliation.ObservationsAffiliationRepository;
 import com.gal.afiliaciones.infrastructure.dto.updatedatesemployee.*;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -46,6 +48,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
     private final ObservationsAffiliationRepository observationsRepository;
     private final ConsultEmployerClient consultEmployerClient;
     private final ConsultLegalRepresentativeClient consultLegalRepresentativeClient;
+    private final IUserPreRegisterRepository userMainRepository;
 
     @Override
     public List<VinculacionDTO> consultLinks(VinculacionQueryDTO query) {
@@ -183,7 +186,7 @@ public class DateUpdateServiceImpl implements DateUpdateService {
 
         // Lógica de validación para independientes:
         // 1. Contrato activo (chequeo de estado)
-        if (!ACTIVO.equalsIgnoreCase(independent.getAffiliationStatus())) {
+        if (!Constant.AFFILIATION_STATUS_ACTIVE.equalsIgnoreCase(independent.getAffiliationStatus())) {
             throw new DateUpdateException(Error.Type.VINCULACION_NO_ACTIVA, "La vinculación del independiente no está activa.");
         }
         // 2. Fecha >= inicio contrato (affiliationDate)
@@ -305,27 +308,27 @@ public class DateUpdateServiceImpl implements DateUpdateService {
         VinculacionDetalleDTO dto = new VinculacionDetalleDTO();
         dto.setTipoDocumentoIdentificacion(affiliate.getDocumentType());
         dto.setNumeroIdentificacion(affiliate.getDocumentNumber());
-        dto.setNombreCompletoORazonSocial(affiliate.getCompany()); // Para empleador e independiente, el nombre está en 'company'
-        dto.setCorreoElectronico(null); // Campo no disponible directamente en Affiliate
+        dto.setNombreCompletoORazonSocial(affiliate.getCompany());
         dto.setFechaAfiliacion(affiliate.getAffiliationDate() != null ? affiliate.getAffiliationDate().toLocalDate() : null);
         dto.setFechaInicioCobertura(affiliate.getCoverageStartDate());
 
-        // El teléfono y la dirección no están en la entidad Affiliate, se requeriría otra fuente de datos.
-        // Se dejan en null por ahora.
-        dto.setDireccionCompleta(null);
-        dto.setTelefono1(null);
-        dto.setTelefono2(null);
+
+        if (affiliate.getUserId() != null) {
+            userMainRepository.findById(affiliate.getUserId()).ifPresent(usuario -> {
+                dto.setCorreoElectronico(usuario.getEmail());
+                dto.setDigitoVerificacion(usuario.getVerificationDigit());
+                dto.setDireccionCompleta(usuario.getAddress());
+                dto.setTelefono1(usuario.getPhoneNumber());
+                dto.setTelefono2(usuario.getPhoneNumber2());
+            });
+        }
 
         if (EMPLOYEE.equalsIgnoreCase(tipo)) {
-            // Suponiendo que el DV no está en la tabla, se deja null.
-            dto.setDigitoVerificacion(null);
-
-            // Llamada al servicio del representante legal
             List<LegalRepresentativeResponse> repResponses = consultLegalRepresentativeClient.consult(
                     affiliate.getDocumenTypeCompany(), affiliate.getNitCompany(), null).block();
 
             if (repResponses != null && !repResponses.isEmpty()) {
-                LegalRepresentativeResponse rep = repResponses.get(0); // Tomar el primero
+                LegalRepresentativeResponse rep = repResponses.get(0);
                 dto.setTipoDocumentoRepLegal(rep.getIdTipoDoc());
                 dto.setNumeroIdentificacionRepLegal(rep.getIdPersona());
                 dto.setNombreCompletoRepLegal(String.join(" ", rep.getNombre1(), rep.getNombre2(), rep.getApellido1(), rep.getApellido2()).replaceAll("\\s+", " ").trim());

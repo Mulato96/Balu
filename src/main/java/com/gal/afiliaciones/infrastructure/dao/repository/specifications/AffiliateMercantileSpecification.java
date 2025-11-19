@@ -12,6 +12,7 @@ public class AffiliateMercantileSpecification {
     private static final String STAGE_MANAGEMENT = "stageManagement";
     private static final String IDENTIFICATION_TYPE = "typeDocumentIdentification";
     private static final String IDENTIFICATION_NUMBER = "numberIdentification";
+    private static final String FILED_NUMBER = "filedNumber";
 
     private AffiliateMercantileSpecification() {
         throw new IllegalStateException("Utility class");
@@ -30,7 +31,7 @@ public class AffiliateMercantileSpecification {
     public static Specification<AffiliateMercantile> findByFieldNumber(String fieldNumber){
         return (root, query, criteriaBuilder) ->{
 
-            Predicate numberDocumentPredicate = criteriaBuilder.equal(root.get("filedNumber"), fieldNumber);
+            Predicate numberDocumentPredicate = criteriaBuilder.equal(root.get(FILED_NUMBER), fieldNumber);
             return criteriaBuilder.and(numberDocumentPredicate);
         };
     }
@@ -45,7 +46,7 @@ public class AffiliateMercantileSpecification {
     }
 
     public static Specification<AffiliateMercantile> findByFiledNumberNull(){
-        return((root, query, criteriaBuilder) ->  criteriaBuilder.isNull(root.get("filedNumber")));
+        return((root, query, criteriaBuilder) ->  criteriaBuilder.isNull(root.get(FILED_NUMBER)));
     }
 
     public static Specification<AffiliateMercantile> findByPersonResponsible(String numberDocument, String typeDocument){
@@ -90,8 +91,9 @@ public class AffiliateMercantileSpecification {
             Predicate numberDocumentPredicate = criteriaBuilder.equal(root.get(IDENTIFICATION_TYPE), typeDocument);
             Predicate typeDocumentPredicate = criteriaBuilder.equal(root.get(IDENTIFICATION_NUMBER), numberDocument);
             Predicate consecutivePredicate = criteriaBuilder.equal(root.get("decentralizedConsecutive"), descentralizedConsecutive);
+            Predicate filedNumberPredicate = criteriaBuilder.isNotNull(root.get(FILED_NUMBER));
 
-            return criteriaBuilder.and(numberDocumentPredicate, typeDocumentPredicate, consecutivePredicate);
+            return criteriaBuilder.and(numberDocumentPredicate, typeDocumentPredicate, consecutivePredicate, filedNumberPredicate);
         };
     }
 

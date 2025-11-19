@@ -1,0 +1,12 @@
+<?xml version="1.0"?> 
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<module name="Checker">
+	<module name="TreeWalker">
+        <module name="Regexp">
+            <property name="format" value="\w+Repository\s*\.\s*findAll\s*\(\s*\)[^\;]*\.\s*(filter|sorted|limit|skip|distinct|findFirst|anyMatch)\s*\("/>
+            <property name="message" value="Avoid Repository.findAll() with stream operations - use custom query method"/>
+            <property name="illegalPattern" value="true"/>
+        </module>
+	</module>
+</module>

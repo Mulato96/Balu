@@ -18,8 +18,10 @@ public interface AffiliationEmployerActivitiesMercantileService {
 
     DataBasicCompanyDTO validationsStepOne(String numberDocument, String typeDocument, String cv);
     AffiliateMercantile stepOne(DataBasicCompanyDTO dataBasicCompanyDTO);
+    AffiliateMercantile updateDataRegularizationStepOne(DataBasicCompanyDTO dataBasicCompanyDTO);
     DataLegalRepresentativeDTO findUser(AffiliateMercantile affiliateMercantile);
     AffiliateMercantile stepTwo(DataLegalRepresentativeDTO dataLegalRepresentativeDTO, boolean isInterviewWeb);
+    AffiliateMercantile updateDataRegularizationStepTwo(DataLegalRepresentativeDTO dataLegalRepresentativeDTO);
     AffiliateMercantileDTO stepThree(Long idAffiliate,Long idTypeEmployer, Long idSubTypeEmployer, List<DocumentRequestDTO> files);
     void stateDocuments(List<DocumentsDTO> listDocumentsDTOS, Long idAffiliate);
     void stateAffiliation(AffiliateMercantile affiliateMercantile, StateAffiliation stateAffiliation);

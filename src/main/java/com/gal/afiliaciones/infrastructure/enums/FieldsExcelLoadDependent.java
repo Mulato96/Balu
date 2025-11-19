@@ -83,7 +83,7 @@ public enum FieldsExcelLoadDependent{
 
         Map<String, Integer> map = new HashMap<>();
 
-        for(FieldsExcelLoadIndependent field : FieldsExcelLoadIndependent.values()){
+        for(FieldsExcelLoadDependent field : FieldsExcelLoadDependent.values()){
 
             map.put(field.getDescription(), converterLetterInNumber(field.getLetter()));
         }

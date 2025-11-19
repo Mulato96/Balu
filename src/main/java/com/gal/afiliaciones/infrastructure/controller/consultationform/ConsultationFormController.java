@@ -110,9 +110,9 @@ public class ConsultationFormController {
     }
 
     @GetMapping("getDocumentsAffiliationEmployer")
-    public ResponseEntity<BodyResponseConfig<DocumentsOfAffiliationDTO>> getDocumentAffiliation(@Param("filedNumber") String filedNumber) {
+    public ResponseEntity<BodyResponseConfig<DocumentsOfAffiliationDTO>> getDocumentAffiliation(@Param("idAffiliate") Long idAffiliate) {
         return new ResponseEntity<>(
-                new BodyResponseConfig<>(consultEmployerInfo.getDocumentsAffiliation(filedNumber), "info docuemntos asociados a afiliacion"), HttpStatus.OK);
+                new BodyResponseConfig<>(consultEmployerInfo.getDocumentsAffiliation(idAffiliate), "info docuemntos asociados a afiliacion"), HttpStatus.OK);
     }
 
     @GetMapping("getDocumentsCollection")

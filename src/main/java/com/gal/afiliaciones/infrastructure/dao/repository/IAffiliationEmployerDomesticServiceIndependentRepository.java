@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO;
 
 public interface IAffiliationEmployerDomesticServiceIndependentRepository extends JpaRepository<Affiliation,Long>, JpaSpecificationExecutor<Affiliation> {
 
@@ -42,4 +43,32 @@ public interface IAffiliationEmployerDomesticServiceIndependentRepository extend
     List<Object[]> findDetailByFiledNumber(@Param("filedNumber") String filedNumber);
 
     Optional<Affiliation> findByIdAffiliate(Long idAffiliate);
+
+    @Query("""
+        SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO(
+            a.idAffiliate,
+            a.filedNumber,
+            a.documentType,
+            a.documentNumber,
+            CONCAT(ad.firstNameIndependentWorker, ' ', 
+                   COALESCE(ad.secondNameIndependentWorker, ''), ' ', 
+                   ad.surnameIndependentWorker, ' ', 
+                   COALESCE(ad.secondSurnameIndependentWorker, '')),
+            ad.contractType,
+            ad.contractQuality,
+            ad.transportSupply,
+            ad.journeyEstablished,
+            ad.contractStartDate,
+            ad.contractEndDate,
+            ad.contractDuration,
+            a.coverageStartDate,
+            ad.contractTotalValue,
+            ad.contractMonthlyValue,
+            ad.contractIbcValue
+        )
+        FROM Affiliation ad
+        JOIN Affiliate a ON ad.filedNumber = a.filedNumber
+        WHERE a.idAffiliate = :idAffiliate
+        """)
+    Optional<WorkerDetailDTO> findWorkerDetailByAffiliateId(@Param("idAffiliate") Long idAffiliate);
 }

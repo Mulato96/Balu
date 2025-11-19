@@ -15,5 +15,6 @@ public interface WorkCenterService {
     Long getNumberCode(UserMain userMain);
     List<WorkCenter> getWorkCenterByMainOffice(MainOffice idMainOffice);
     WorkCenter getWorkCenterByEconomicActivityAndMainOffice(String economicActivity, Long idMainOffice);
+    List<WorkCenter> getWorkCenterActiveByMainOffice(Long idMainOffice);
 
 }

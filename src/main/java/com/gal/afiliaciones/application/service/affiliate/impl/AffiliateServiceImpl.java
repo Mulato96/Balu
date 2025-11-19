@@ -19,6 +19,12 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.InfoAffiliateDTO;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.jetbrains.annotations.NotNull;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.resource.UserResource;
@@ -71,7 +77,6 @@ import com.gal.afiliaciones.domain.model.Policy;
 import com.gal.afiliaciones.domain.model.Role;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
-import com.gal.afiliaciones.domain.model.affiliate.EmployerSize;
 import com.gal.afiliaciones.domain.model.affiliate.RequestChannel;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
@@ -125,7 +130,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerProvisionServiceIndependentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DateInterviewWebSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
@@ -208,6 +212,7 @@ public class AffiliateServiceImpl implements AffiliateService {
     private final OccupationDecree1563Repository occupationVolunteerRepository;
     private final RegistraduriaUnifiedService registraduriaUnifiedService;
     private final KeyCloakProvider keyCloakProvider;
+    private final EntityManager entityManager;
 
     private static final List<Long> arrayCausal = new ArrayList<>(Arrays.asList(0L, 1L, 2L));
     private static final String NOT_FOUND_AFFILIATION = "Not found affiliation";
@@ -394,8 +399,9 @@ public class AffiliateServiceImpl implements AffiliateService {
                         affiliate.getIdAffiliate(), 0L, affiliate.getCompany());
 
                 //Enviar registro de la poliza a Positiva
-                insertPolicyToClient(policy, affiliation.getIdentificationDocumentType(),
-                        affiliation.getIdentificationDocumentNumber());
+                // COMMENTED OUT: Integration with Positiva disabled
+                // insertPolicyToClient(policy, affiliation.getIdentificationDocumentType(),
+                //         affiliation.getIdentificationDocumentNumber());
             } else {
                 generateEmployerPolicy(affiliation.getIdentificationDocumentType(),
                         affiliation.getIdentificationDocumentNumber(), affiliate.getIdAffiliate(), 0L,
@@ -812,13 +818,15 @@ public class AffiliateServiceImpl implements AffiliateService {
                 Constant.ID_EMPLOYER_POLICY, idAffiiliate, decentralizedConsecutive, nameCompany);
 
         //Enviar registro de la poliza de empleador a Positiva
-        insertPolicyToClient(policyEmployer, identificationType, identificationNumber);
+        // COMMENTED OUT: Integration with Positiva disabled
+        // insertPolicyToClient(policyEmployer, identificationType, identificationNumber);
 
         Policy policyContractor = policyService.createPolicy(identificationType, identificationNumber, LocalDate.now(),
                 Constant.ID_CONTRACTOR_POLICY, idAffiiliate, decentralizedConsecutive, nameCompany);
 
         //Enviar registro de la poliza de contratante a Positiva
-        insertPolicyToClient(policyContractor, identificationType, identificationNumber);
+        // COMMENTED OUT: Integration with Positiva disabled
+        // insertPolicyToClient(policyContractor, identificationType, identificationNumber);
     }
 
     private String findNameOfficial(Long id) {
@@ -885,7 +893,7 @@ public class AffiliateServiceImpl implements AffiliateService {
 
     @Override
     public List<RequestChannel> findAllRequestChannel() {
-        return requestChannelRepository.findAll().stream().sorted(Comparator.comparing(RequestChannel::getId)).toList();
+        return requestChannelRepository.findByOrderByIdAsc();
     }
 
     @Override
@@ -952,17 +960,8 @@ public class AffiliateServiceImpl implements AffiliateService {
 
     @Override
     public Long getEmployerSize(int numberWorkers) {
-        List<EmployerSize> allEmployerSize = employerSizeRepository.findAll();
-        List<EmployerSize> employerSizeList = new ArrayList<>();
-
-        if (!allEmployerSize.isEmpty()) {
-            employerSizeList = allEmployerSize.stream()
-                    .filter(employerSize -> numberWorkers >= employerSize.getMinNumberWorker() &&
-                            numberWorkers <= employerSize.getMaxNumberWorker())
-                    .toList();
-        }
-
-        return employerSizeList.get(0).getId();
+        return employerSizeRepository.findIdByNumberOfWorkers(numberWorkers)
+                .orElseThrow(() -> new RuntimeException("No se encontró tamaño de empleador para " + numberWorkers + " trabajadores"));
     }
 
     @Override
@@ -1962,5 +1961,130 @@ public class AffiliateServiceImpl implements AffiliateService {
         return occupationCode;
     }
 
+    @Override
+    public AffiliationInProcessResponseDTO findAllAffiliationInProcess(AffiliationInProcessRequestDTO request){
+        // 1️⃣ Determinar el campo de orden
+        String orderBy = request.getSortBy()==null ? "a.idAffiliate" :
+                switch (request.getSortBy()) {
+                    case "stageManagement" -> "COALESCE(am.stageManagement, ad.stageManagement)";
+                    case "interviewDate" -> "am.dateInterview";
+                    case "requestDate" -> "a.affiliationDate";
+                    default -> "a."+request.getSortBy();
+                };
+
+        // 2️⃣ Dirección ASC/DESC
+        String direction = request.isDescending() ? "DESC" : "ASC";
+
+        // 3️⃣ Construir el JPQL dinámico
+        String jpql = """
+                    SELECT new com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessDTO(
+                        a.idAffiliate, 
+                        a.filedNumber, 
+                        to_char(a.affiliationDate, 'DD/MM/YYYY'),
+                        CASE 
+                            WHEN a.affiliationSubType = 'Actividades mercantiles' THEN am.businessName 
+                            ELSE ad.firstName || ' ' || ad.secondName || ' ' || ad.surname || ' ' || ad.secondSurname 
+                        END,
+                        a.affiliationType,
+                        a.affiliationSubType, 
+                        COALESCE(am.stageManagement, ad.stageManagement),
+                        CASE 
+                            WHEN a.affiliationSubType = 'Actividades mercantiles' THEN to_char(am.dateInterview, 'DD/MM/YYYY HH24:MI:SS')
+                            ELSE 'No aplica'
+                        END,
+                        a.affiliationStatus,
+                        new com.gal.afiliaciones.infrastructure.dto.daily.DataDailyDTO(
+                            :dailyUrl,
+                            dr.nameRoom,
+                            diw.tokenInterview
+                        ) as dataDailyDTO, 
+                        CASE 
+                            WHEN a.affiliationType LIKE 'Empleador%%' THEN a.documenTypeCompany 
+                            ELSE null 
+                        END AS documentTypeEmployer, 
+                        CASE 
+                            WHEN a.affiliationType LIKE 'Empleador%%' THEN a.nitCompany 
+                            ELSE null 
+                        END AS documentNumberEmployer 
+                    )
+                    FROM Affiliate a
+                    LEFT JOIN AffiliateMercantile am 
+                        ON am.filedNumber = a.filedNumber 
+                        AND a.affiliationSubType = 'Actividades mercantiles'
+                    LEFT JOIN Affiliation ad 
+                        ON ad.filedNumber = a.filedNumber 
+                        AND a.affiliationSubType <> 'Actividades mercantiles'
+                    LEFT JOIN DateInterviewWeb diw 
+                        ON 
+                        diw.idAffiliate = a.filedNumber 
+                    LEFT JOIN DailyRooms dr 
+                        ON 
+                        dr.id = diw.idRoom 
+                    WHERE a.userId = :idUser
+                      AND COALESCE(am.stageManagement, ad.stageManagement) NOT IN ('Afiliación completa', 'Suspendida')
+                    ORDER BY %s %s
+                """.formatted(orderBy, direction);
+
+        // 4️⃣ Crear y ejecutar la query
+        TypedQuery<AffiliationInProcessDTO> query = entityManager.createQuery(jpql, AffiliationInProcessDTO.class);
+        query.setParameter("idUser", request.getIdUser());
+        query.setParameter("dailyUrl", properties.getDomainDailyInterview());
+
+        // 5️⃣ Aplicar paginación
+        int page = request.getPage();
+        int size = request.getSize();
+
+        query.setFirstResult(page * size);
+        query.setMaxResults(size);
+
+        List<AffiliationInProcessDTO> results = query.getResultList();
+
+        int totalPages = (int) Math.ceil((double) results.size() / request.getSize());
+        int currentPage = request.getPage();
+
+        // Validar página solicitada
+        if (currentPage >= totalPages && totalPages > 0) {
+            currentPage = totalPages - 1;
+        }
+
+        // Construir respuesta paginada optimizada
+        return new AffiliationInProcessResponseDTO(
+                results,                        // Contenido de la página actual
+                currentPage,                    // Página actual
+                request.getSize(),              // Tamaño de página
+                results.size(),                 // Total de afiliaciones
+                totalPages,                     // Total de páginas
+                currentPage < totalPages - 1,   // ¿Hay siguiente página?
+                currentPage > 0,                // ¿Hay página anterior?
+                currentPage == 0,               // ¿Es la primera página?
+                currentPage == totalPages - 1 || totalPages == 0  // ¿Es la última página?
+        );
+    }
+
+    @Override
+    public InfoAffiliateDTO getInfoAffiliate(Long idAffiliate){
+        InfoAffiliateDTO response = new InfoAffiliateDTO();
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
+
+        BeanUtils.copyProperties(affiliate, response);
+
+        switch (affiliate.getAffiliationType()) {
+            case Constant.TYPE_AFFILLATE_EMPLOYER:
+                AffiliateMercantile mercantile = mercantileRepository.findByFiledNumber(affiliate.getFiledNumber())
+                        .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
+                response.setStageManagement(mercantile.getStageManagement());
+                break;
+            case Constant.TYPE_AFFILLATE_EMPLOYER_DOMESTIC, Constant.TYPE_AFFILLATE_INDEPENDENT:
+                Affiliation affiliation = repositoryAffiliation.findByFiledNumber(affiliate.getFiledNumber())
+                        .orElseThrow(() -> new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND));
+                response.setStageManagement(affiliation.getStageManagement());
+                break;
+            default:
+                response.setStageManagement(Constant.ACCEPT_AFFILIATION);
+        };
+
+        return response;
+    }
 
 }

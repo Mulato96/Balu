@@ -1,19 +1,15 @@
 package com.gal.afiliaciones.infrastructure.dto.novelty;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.gal.afiliaciones.infrastructure.client.generic.BaseResponseDTO;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class WorkerDisplacementNotificationRequest {
-    private String idTipoDoc;
-    private String idPersona;
-    private String idTipoDocEmp;
-    private String idEmpresa;
+public class WorkerDisplacementNotificationRequest extends BaseResponseDTO {
     private Integer idTipoVinculacion;
     private String fechaInicioDesp; // yyyy-MM-dd
     private String fechaFinDesp;    // yyyy-MM-dd

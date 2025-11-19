@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3Response;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpe
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep1DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep2DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3Response;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ReplacedDocumentDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
@@ -210,9 +212,9 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
         // Calcular el valor máximo permitido (25 veces el salario mínimo)
         BigDecimal maxValue = smlmv.multiply(BigDecimal.valueOf(25));
 
-        // Validar que el valor mensual del contrato (monthlyContractValue) esté dentro del rango permitido
-        if (dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(smlmv) < 0 ||
-            dto.getContractorDataStep2DTO().getContractMonthlyValue().compareTo(maxValue) > 0) {
+        // Validar que el valor del ibc este entre 1 salario minimo y 25
+        BigDecimal ibcValue = dto.getContractorDataStep2DTO().getContractIbcValue();
+        if (ibcValue.compareTo(smlmv) < 0 || ibcValue.compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
 
@@ -220,8 +222,10 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
 
     @Override
     @Transactional
-    public AffiliationCouncillorStep3DTO createAffiliationStep3(AffiliationCouncillorStep3DTO dto, List<MultipartFile>
+    public AffiliationCouncillorStep3Response createAffiliationStep3(AffiliationCouncillorStep3DTO dto, List<MultipartFile>
             documents){
+        AffiliationCouncillorStep3Response response = new AffiliationCouncillorStep3Response();
+
         // Busca la afiliación actual
         Affiliation affiliation = repositoryAffiliation.findById(dto.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, AFFILIATION_NOT_FOUND));
@@ -249,6 +253,7 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
             affiliate.setDocumentNumber(affiliation.getIdentificationDocumentNumber());
             affiliate.setCompany(affiliation.getCompanyName());
             affiliate.setNitCompany(affiliation.getIdentificationDocumentNumberContractor());
+            affiliate.setDocumenTypeCompany(affiliation.getIdentificationDocumentTypeContractor());
             affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
             affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_COUNCILLOR);
             affiliate.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
@@ -268,14 +273,17 @@ public class AffiliationIndependentCouncillorServiceImpl implements AffiliationI
 
         affiliation.setFiledNumber(filedNumber);
         affiliation.setIdFolderAlfresco(idFolderByEmployer);
-        affiliation.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+        affiliation.setStageManagement(Constant.SING); // Skip documental review for independents - go directly to signature
         affiliation.setTypeAffiliation(Constant.TYPE_AFFILLATE_INDEPENDENT);
         affiliation.setDateRequest(LocalDateTime.now().toString());
 
         Affiliation newAffiliation = repositoryAffiliation.save(affiliation);
-        dto.setId(newAffiliation.getId());
-        dto.setFiledNumber(newAffiliation.getFiledNumber());
-        return dto;
+
+        BeanUtils.copyProperties(dto, response);
+        response.setId(newAffiliation.getId());
+        response.setFiledNumber(newAffiliation.getFiledNumber());
+
+        return response;
     }
 
     private Long findUser(Affiliation dto){

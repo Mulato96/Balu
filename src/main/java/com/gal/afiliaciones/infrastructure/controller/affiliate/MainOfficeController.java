@@ -3,21 +3,19 @@ package com.gal.afiliaciones.infrastructure.controller.affiliate;
 
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
 import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.utils.CustomPageable;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeGrillaDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.MainOfficeOfficialDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdetail.AffiliateBasicInfoDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,6 +26,7 @@ import java.util.List;
 public class MainOfficeController {
 
     private final MainOfficeService mainOfficeService;
+    private final AffiliateRepository affiliateRepository;
 
     @GetMapping("/findAllMainOffice/{idAffiliateEmployer}")
     public ResponseEntity<List<MainOfficeGrillaDTO>> findAllMainOffice(@PathVariable Long idAffiliateEmployer){
@@ -79,6 +78,34 @@ public class MainOfficeController {
     public ResponseEntity<String> deleteMainOfficeOfficial(@PathVariable Long id, @PathVariable String number){
         return ResponseEntity.ok().body(mainOfficeService.deleteOfficial(id, number));
 
+    }
+    @GetMapping("/by-document/{type}/{number}")
+    @PreAuthorize("hasAuthority('SCOPE_email') and authentication.tokenAttributes['groups'].contains('/Funcionario')")
+    public ResponseEntity<Page<MainOfficeGrillaDTO>> findAllByDocument(
+            @PathVariable String type,
+            @PathVariable String number,
+            @RequestParam(required = false) Long department,
+            @RequestParam(required = false) Long city,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false, defaultValue = "asc") String desc) {
+
+        Pageable pageable = CustomPageable.of(page, size, sort, desc, "id");
+
+        Page<MainOfficeGrillaDTO> result = mainOfficeService.findByDocumentWithFilters(
+                type, number, department, city, pageable);
+
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/affiliate-basic-info/{type}/{number}")
+    public ResponseEntity<AffiliateBasicInfoDTO> getAffiliateBasicInfo(
+            @PathVariable String type,
+            @PathVariable String number) {
+
+        AffiliateBasicInfoDTO basicInfo = mainOfficeService.getAffiliateBasicInfo(type, number);
+        return ResponseEntity.ok(basicInfo);
     }
 
 }

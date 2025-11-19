@@ -18,5 +18,7 @@ public class DataBasicEmployerMigratedDTO {
     private String filedNumber;
     private Long idAffiliate;
     private Boolean isBusinessGroup;
+    private String businessGroupName;
+    private Integer legalStatus;
 
 }

@@ -1,5 +1,7 @@
 package com.gal.afiliaciones.domain.model.affiliate;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,8 +12,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -45,5 +45,8 @@ public class RecordLoadBulk {
 
     @Column(name = "id_affiliate_employer")
     private Long idAffiliateEmployer;
+
+    @Column(name = "status")
+    private String status;
 
 }

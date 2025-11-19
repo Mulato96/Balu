@@ -107,10 +107,6 @@ public class AuthServiceImpl implements AuthService {
                 throw new LoginAttemptsError(Duration.between(LocalDateTime.now(), user.getLockoutTime()).toHours()+" horas y "+Duration.between(LocalDateTime.now(), user.getLockoutTime()).toMinutesPart()+" minutos");
             }
 
-            if (user.getIsTemporalPassword() != null && user.getIsTemporalPassword() && ChronoUnit.DAYS.between(user.getCreatedAtTemporalPassword(), LocalDateTime.now()) > 10) {
-                throw new ErrorExpirationTemporalPass(Constant.TEMPORAL_PASSWORD_EXPIRED);
-            }
-
             if(Boolean.TRUE.equals(user.getInactiveByPendingAffiliation())) {
                 OTPRequestDTO otpRequestDTO = OTPRequestDTO.builder()
                         .cedula(user.getIdentification())
@@ -164,11 +160,9 @@ public class AuthServiceImpl implements AuthService {
                     responseUserDTO.setUserName(userConsult.get().getUserName());
                     tokenInfo.put(Constant.USER_INFO, responseUserDTO);
                     if(rolesUserService.getRolesByUser(user.getId()).isEmpty()){
-                        tokenInfo.put(ROLES, getTokenRoles(rolesUserService.getRolesByRoleName("Pre registrado")));
-
+                        tokenInfo.put(ROLES, getTokenRoles(rolesUserService.getRolesByRoleName("Registrado")));
                     }else{
                         tokenInfo.put(ROLES, getTokenRoles(rolesUserService.getRolesByUser(user.getId())));
-
                     }
                 }
             }

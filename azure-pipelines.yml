@@ -1,9 +1,16 @@
 trigger:
-- dev-k8s
+  branches:
+    include:
+      - '*'
 
 # Enable PR triggers
 pr:
-- dev-k8s
+  branches:
+    include:
+      - dev-k8s
+      - qa-k8s
+      - uat-k8s
+      - prod-k8s
 
 pool:
   vmImage: ubuntu-latest

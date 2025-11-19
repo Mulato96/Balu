@@ -5,6 +5,11 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.gal.afiliaciones.application.service.RolesUserService;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.InfoAffiliateDTO;
+import com.gal.afiliaciones.infrastructure.dto.login.RoleResponseLoginDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -55,6 +60,7 @@ public class AffiliateController {
     private String environment;
     private final AffiliateService affiliateService;
     private final AffiliationEmployerActivitiesMercantileService affiliationEmployerActivitiesMercantileService;
+    private final RolesUserService rolesUserService;
 
     @GetMapping("/by-type-and-number")
     @Operation(summary = "Obtener afiliaciones por tipo y número de documento")
@@ -201,6 +207,21 @@ public class AffiliateController {
     public Affiliate affiliateCompany(@PathVariable String documentType, 
                                                     @PathVariable String documentNumber) {
         return affiliateService.getAffiliateCompany(documentType, documentNumber);
+    }
+
+    @PostMapping("/affiliationInProcess")
+    public ResponseEntity<AffiliationInProcessResponseDTO> findAllAffiliationInProcess(@RequestBody AffiliationInProcessRequestDTO request) {
+        return ResponseEntity.ok().body(affiliateService.findAllAffiliationInProcess(request));
+    }
+
+    @GetMapping("/getRolesByUser/{idUser}")
+    public ResponseEntity<List<RoleResponseLoginDTO>> getRolesByUser(@PathVariable Long idUser) {
+        return ResponseEntity.ok().body(rolesUserService.getRolesByUser(idUser));
+    }
+
+    @GetMapping("/getInfoAffiliate/{idAffiliate}")
+    public ResponseEntity<InfoAffiliateDTO> getInfoAffiliate(@PathVariable Long idAffiliate) {
+        return ResponseEntity.ok().body(affiliateService.getInfoAffiliate(idAffiliate));
     }
     
 }

@@ -11,6 +11,20 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.aot.DisabledInAotMode;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
 import com.gal.afiliaciones.config.ex.Error;
 import com.gal.afiliaciones.config.ex.addoption.ActivityMaxSizeException;
 import com.gal.afiliaciones.domain.model.AddOption;
@@ -25,21 +39,7 @@ import com.gal.afiliaciones.infrastructure.dto.addoption.AddOptionDTO;
 import com.gal.afiliaciones.infrastructure.dto.addoption.IconListDTO;
 import com.gal.afiliaciones.infrastructure.dto.addoption.ModuleDTO;
 import com.gal.afiliaciones.infrastructure.dto.addoption.OptionsDTO;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.aot.DisabledInAotMode;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 @ContextConfiguration(classes = {AddOptionServiceImpl.class})
 @ExtendWith(SpringExtension.class)
@@ -66,15 +66,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllModules() {
         // Arrange
-        when(moduleRepository.findAll()).thenReturn(new ArrayList<>());
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenReturn(new ArrayList<>());
 
         // Act
         List<ModuleDTO> actualAllModules = addOptionServiceImpl.getAllModules();
 
         // Assert
-        verify(moduleRepository).findAll();
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
         assertTrue(actualAllModules.isEmpty());
-        assertSame(actualAllModules, addOptionServiceImpl.getAllOptionReports());
     }
 
     /**
@@ -89,16 +88,15 @@ class AddOptionServiceImplTest {
 
         ArrayList<Module> resultModuleList = new ArrayList<>();
         resultModuleList.add(resultModule);
-        when(moduleRepository.findAll()).thenReturn(resultModuleList);
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenReturn(resultModuleList);
 
         // Act
         List<ModuleDTO> actualAllModules = addOptionServiceImpl.getAllModules();
 
         // Assert
-        verify(moduleRepository).findAll();
-        assertTrue(actualAllModules.isEmpty());
-        assertEquals(actualAllModules, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllModules, addOptionServiceImpl.getAllOptionReports());
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
+        assertEquals(1, actualAllModules.size());
+        assertEquals("Type Module", actualAllModules.get(0).getTypeModule());
     }
 
     /**
@@ -118,16 +116,14 @@ class AddOptionServiceImplTest {
         ArrayList<Module> resultModuleList = new ArrayList<>();
         resultModuleList.add(resultModule2);
         resultModuleList.add(resultModule);
-        when(moduleRepository.findAll()).thenReturn(resultModuleList);
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenReturn(resultModuleList);
 
         // Act
         List<ModuleDTO> actualAllModules = addOptionServiceImpl.getAllModules();
 
         // Assert
-        verify(moduleRepository).findAll();
-        assertTrue(actualAllModules.isEmpty());
-        assertEquals(actualAllModules, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllModules, addOptionServiceImpl.getAllOptionReports());
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
+        assertEquals(2, actualAllModules.size());
     }
 
     /**
@@ -136,11 +132,11 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllModules4() {
         // Arrange
-        when(moduleRepository.findAll()).thenThrow(new ActivityMaxSizeException("An error occurred"));
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenThrow(new ActivityMaxSizeException("An error occurred"));
 
         // Act and Assert
         assertThrows(ActivityMaxSizeException.class, () -> addOptionServiceImpl.getAllModules());
-        verify(moduleRepository).findAll();
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
     }
 
     /**
@@ -165,14 +161,14 @@ class AddOptionServiceImplTest {
         resultModuleList.add(resultModule3);
         resultModuleList.add(resultModule2);
         resultModuleList.add(resultModule);
-        when(moduleRepository.findAll()).thenReturn(resultModuleList);
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenReturn(resultModuleList);
 
         // Act
         List<ModuleDTO> actualAllModules = addOptionServiceImpl.getAllModules();
 
         // Assert
-        verify(moduleRepository).findAll();
-        assertEquals(1, actualAllModules.size());
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
+        assertEquals(3, actualAllModules.size());
         assertEquals("Novedades", actualAllModules.get(0).getTypeModule());
     }
 
@@ -203,16 +199,16 @@ class AddOptionServiceImplTest {
         resultModuleList.add(resultModule3);
         resultModuleList.add(resultModule2);
         resultModuleList.add(resultModule);
-        when(moduleRepository.findAll()).thenReturn(resultModuleList);
+        when(moduleRepository.findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)))).thenReturn(resultModuleList);
 
         // Act
         List<ModuleDTO> actualAllModules = addOptionServiceImpl.getAllModules();
 
         // Assert
-        verify(moduleRepository).findAll();
-        assertEquals(2, actualAllModules.size());
-        assertEquals("Novedades", actualAllModules.get(1).getTypeModule());
+        verify(moduleRepository).findByTypeModuleIn(eq(List.of(Constant.REPORTS, Constant.NEWS)));
+        assertEquals(4, actualAllModules.size());
         assertEquals("Reportes", actualAllModules.get(0).getTypeModule());
+        assertEquals("Novedades", actualAllModules.get(1).getTypeModule());
     }
 
     /**
@@ -221,15 +217,21 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews() {
         // Arrange
-        when(optionsRepository.findAll()).thenReturn(new ArrayList<>());
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(new ArrayList<>());
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
         assertTrue(actualAllOptionNews.isEmpty());
-        assertSame(actualAllOptionNews, addOptionServiceImpl.getAllOptionReports());
     }
 
     /**
@@ -238,22 +240,28 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews2() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
 
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertTrue(actualAllOptionNews.isEmpty());
-        assertEquals(actualAllOptionNews, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllOptionNews, addOptionServiceImpl.getAllOptionReports());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(1, actualAllOptionNews.size());
+        assertEquals("Type Option", actualAllOptionNews.get(0).getTypeOption());
     }
 
     /**
@@ -262,6 +270,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews3() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -273,16 +288,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertTrue(actualAllOptionNews.isEmpty());
-        assertEquals(actualAllOptionNews, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllOptionNews, addOptionServiceImpl.getAllOptionReports());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(2, actualAllOptionNews.size());
     }
 
     /**
@@ -291,11 +304,18 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews4() {
         // Arrange
-        when(optionsRepository.findAll()).thenThrow(new ActivityMaxSizeException("An error occurred"));
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenThrow(new ActivityMaxSizeException("An error occurred"));
 
         // Act and Assert
         assertThrows(ActivityMaxSizeException.class, () -> addOptionServiceImpl.getAllOptionNews());
-        verify(optionsRepository).findAll();
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
     }
 
     /**
@@ -304,6 +324,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews5() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -320,14 +347,14 @@ class AddOptionServiceImplTest {
         optionsList.add(options3);
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionNews.size());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(3, actualAllOptionNews.size());
         assertEquals("Actualizar Datos", actualAllOptionNews.get(0).getTypeOption());
     }
 
@@ -337,6 +364,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews6() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -358,16 +392,16 @@ class AddOptionServiceImplTest {
         optionsList.add(options3);
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(2, actualAllOptionNews.size());
-        assertEquals("Actualizar Datos", actualAllOptionNews.get(1).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(4, actualAllOptionNews.size());
         assertEquals("Ingresar trabajador", actualAllOptionNews.get(0).getTypeOption());
+        assertEquals("Actualizar Datos", actualAllOptionNews.get(1).getTypeOption());
     }
 
     /**
@@ -376,6 +410,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews7() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Normalizaciones");
@@ -387,15 +428,16 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionNews.size());
-        assertEquals("Normalizaciones", actualAllOptionNews.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(2, actualAllOptionNews.size());
+        assertEquals("Type Option", actualAllOptionNews.get(0).getTypeOption());
+        assertEquals("Normalizaciones", actualAllOptionNews.get(1).getTypeOption());
     }
 
     /**
@@ -404,6 +446,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews8() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Retiros empleador / trabajador");
@@ -415,15 +464,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionNews.size());
-        assertEquals("Retiros empleador / trabajador", actualAllOptionNews.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(2, actualAllOptionNews.size());
     }
 
     /**
@@ -432,6 +480,13 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionNews9() {
         // Arrange
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Crear empresa");
@@ -443,15 +498,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(newsTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionNews = addOptionServiceImpl.getAllOptionNews();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionNews.size());
-        assertEquals("Crear empresa", actualAllOptionNews.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(newsTypes));
+        assertEquals(2, actualAllOptionNews.size());
     }
 
     /**
@@ -460,15 +514,22 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports() {
         // Arrange
-        when(optionsRepository.findAll()).thenReturn(new ArrayList<>());
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(new ArrayList<>());
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
         assertTrue(actualAllOptionReports.isEmpty());
-        assertSame(actualAllOptionReports, addOptionServiceImpl.getAllOptionNews());
     }
 
     /**
@@ -477,22 +538,28 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports2() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
 
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertTrue(actualAllOptionReports.isEmpty());
-        assertEquals(actualAllOptionReports, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllOptionReports, addOptionServiceImpl.getAllOptionNews());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(1, actualAllOptionReports.size());
     }
 
     /**
@@ -501,6 +568,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports3() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -512,16 +587,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertTrue(actualAllOptionReports.isEmpty());
-        assertEquals(actualAllOptionReports, addOptionServiceImpl.getAllAddOption());
-        assertSame(actualAllOptionReports, addOptionServiceImpl.getAllOptionNews());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(2, actualAllOptionReports.size());
     }
 
     /**
@@ -530,11 +603,19 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports4() {
         // Arrange
-        when(optionsRepository.findAll()).thenThrow(new ActivityMaxSizeException("An error occurred"));
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenThrow(new ActivityMaxSizeException("An error occurred"));
 
         // Act and Assert
         assertThrows(ActivityMaxSizeException.class, () -> addOptionServiceImpl.getAllOptionReports());
-        verify(optionsRepository).findAll();
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
     }
 
     /**
@@ -543,6 +624,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports5() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -559,15 +648,14 @@ class AddOptionServiceImplTest {
         optionsList.add(options3);
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionReports.size());
-        assertEquals("Normalizaciones realizadas", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(3, actualAllOptionReports.size());
     }
 
     /**
@@ -576,6 +664,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports6() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Type Option");
@@ -597,16 +693,14 @@ class AddOptionServiceImplTest {
         optionsList.add(options3);
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(2, actualAllOptionReports.size());
-        assertEquals("Normalizaciones realizadas", actualAllOptionReports.get(1).getTypeOption());
-        assertEquals("Reporte de trabajadores", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(4, actualAllOptionReports.size());
     }
 
     /**
@@ -615,6 +709,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports7() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Normalizaciones especiales");
@@ -626,15 +728,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionReports.size());
-        assertEquals("Normalizaciones especiales", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(2, actualAllOptionReports.size());
     }
 
     /**
@@ -643,6 +744,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports8() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Novedades");
@@ -654,15 +763,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionReports.size());
-        assertEquals("Novedades", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(2, actualAllOptionReports.size());
     }
 
     /**
@@ -671,6 +779,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports9() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("afiliaciones fallidas");
@@ -682,15 +798,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionReports.size());
-        assertEquals("afiliaciones fallidas", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(2, actualAllOptionReports.size());
     }
 
     /**
@@ -699,6 +814,14 @@ class AddOptionServiceImplTest {
     @Test
     void testGetAllOptionReports10() {
         // Arrange
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
         Options options = new Options();
         options.setId(1L);
         options.setTypeOption("Certificados generados");
@@ -710,15 +833,14 @@ class AddOptionServiceImplTest {
         ArrayList<Options> optionsList = new ArrayList<>();
         optionsList.add(options2);
         optionsList.add(options);
-        when(optionsRepository.findAll()).thenReturn(optionsList);
+        when(optionsRepository.findByTypeOptionIn(eq(reportTypes))).thenReturn(optionsList);
 
         // Act
         List<OptionsDTO> actualAllOptionReports = addOptionServiceImpl.getAllOptionReports();
 
         // Assert
-        verify(optionsRepository).findAll();
-        assertEquals(1, actualAllOptionReports.size());
-        assertEquals("Certificados generados", actualAllOptionReports.get(0).getTypeOption());
+        verify(optionsRepository).findByTypeOptionIn(eq(reportTypes));
+        assertEquals(2, actualAllOptionReports.size());
     }
 
     /**

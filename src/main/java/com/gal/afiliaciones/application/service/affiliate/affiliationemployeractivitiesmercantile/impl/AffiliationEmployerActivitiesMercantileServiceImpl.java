@@ -392,6 +392,72 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
     }
 
     @Override
+    public AffiliateMercantile updateDataRegularizationStepOne(DataBasicCompanyDTO dataBasicCompanyDTO){
+
+        AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findById(dataBasicCompanyDTO.getIdAffiliationMercantile())
+                .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
+
+        if(!affiliateMercantile.getStageManagement().equalsIgnoreCase(Constant.REGULARIZATION))
+            throw new AffiliationError(Constant.ERROR_AFFILIATION);
+
+        BeanUtils.copyProperties(dataBasicCompanyDTO, affiliateMercantile);
+
+        BeanUtils.copyProperties(dataBasicCompanyDTO.getDataContactCompanyDTO(), affiliateMercantile);
+
+        BeanUtils.copyProperties(dataBasicCompanyDTO.getAddressDTO(), affiliateMercantile);
+        affiliateMercantile.setCityMunicipality(dataBasicCompanyDTO.getAddressDTO().getIdCity());
+        affiliateMercantile.setDepartment(dataBasicCompanyDTO.getAddressDTO().getIdDepartment());
+
+        Long idDepartment = dataBasicCompanyDTO.getDepartment() != null ? dataBasicCompanyDTO.getDepartment() : dataBasicCompanyDTO.getAddressDTO().getIdDepartment();
+        Long idCityMunicipality = dataBasicCompanyDTO.getCityMunicipality() != null ? dataBasicCompanyDTO.getCityMunicipality() : dataBasicCompanyDTO.getAddressDTO().getIdCity();
+
+        int dv = dataBasicCompanyDTO.getDigitVerificationDV() != null ? Integer.parseInt(String.valueOf(dataBasicCompanyDTO.getDigitVerificationDV())) : 0;
+
+        if( dataBasicCompanyDTO.getDigitVerificationDV() != null &&
+                identificationLegalNatureService.findByNit(dataBasicCompanyDTO.getNumberIdentification().concat(":").concat(dataBasicCompanyDTO.getDigitVerificationDV().toString())))
+            affiliateMercantile.setLegalStatus("1");
+
+        affiliateMercantile.setAddressContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getAddress());
+        affiliateMercantile.setIdDepartmentContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdDepartment());
+        affiliateMercantile.setIdCityContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdCity());
+        affiliateMercantile.setIdMainStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdMainStreet());
+        affiliateMercantile.setIdNumberMainStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumberMainStreet());
+        affiliateMercantile.setIdLetter1MainStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdLetter1MainStreet());
+        affiliateMercantile.setIsBisContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIsBis());
+        affiliateMercantile.setIdLetter2MainStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdLetter2MainStreet());
+        affiliateMercantile.setIdCardinalPointMainStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdCardinalPointMainStreet());
+        affiliateMercantile.setIdNum1SecondStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNum1SecondStreet());
+        affiliateMercantile.setIdLetterSecondStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdLetterSecondStreet());
+        affiliateMercantile.setIdNum2SecondStreetContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNum2SecondStreet());
+        affiliateMercantile.setIdCardinalPoint2ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdCardinalPoint2());
+        affiliateMercantile.setIdHorizontalProperty1ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdHorizontalProperty1());
+        affiliateMercantile.setIdNumHorizontalProperty1ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty1());
+        affiliateMercantile.setIdHorizontalProperty2ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdHorizontalProperty2());
+        affiliateMercantile.setIdNumHorizontalProperty2ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty2());
+        affiliateMercantile.setIdHorizontalProperty3ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdHorizontalProperty3());
+        affiliateMercantile.setIdNumHorizontalProperty3ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty3());
+        affiliateMercantile.setIdHorizontalProperty4ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdHorizontalProperty4());
+        affiliateMercantile.setIdNumHorizontalProperty4ContactCompany(dataBasicCompanyDTO.getDataContactCompanyDTO().getAddressDTO().getIdNumHorizontalProperty4());
+        affiliateMercantile.setDigitVerificationDV(Integer.parseInt(String.valueOf(dv)));
+        affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+        affiliateMercantile.setArl(Constant.CODE_ARL);
+        affiliateMercantile.setAffiliationStatus(Constant.AFFILIATION_STATUS_INACTIVE);
+        affiliateMercantile.setTypeAffiliation(Constant.TYPE_AFFILLATE_EMPLOYER);
+        affiliateMercantile.setSubTypeAffiliation(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+        affiliateMercantile.setDepartment(idDepartment);
+        affiliateMercantile.setCityMunicipality(idCityMunicipality);
+        affiliateMercantile.setCodeContributorType(Constant.CODE_CONTRIBUTOR_TYPE_EMPLOYER);
+        affiliateMercantile.setDecentralizedConsecutive(0L);
+
+        if (dataBasicCompanyDTO.getZoneLocationEmployer().equalsIgnoreCase("RURAL"))
+            affiliateMercantile.setZoneLocationEmployer(Constant.RURAL_ZONE);
+        else if (dataBasicCompanyDTO.getZoneLocationEmployer().equalsIgnoreCase("URBANA"))
+            affiliateMercantile.setZoneLocationEmployer(Constant.URBAN_ZONE);
+
+        return affiliateMercantileRepository.save(affiliateMercantile);
+    }
+
+    @Override
     public DataLegalRepresentativeDTO findUser(AffiliateMercantile affiliateMercantile) {
 
         DataLegalRepresentativeDTO dataLegalRepresentativeDTO = new DataLegalRepresentativeDTO();
@@ -486,6 +552,53 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         } catch (Exception e) {
             throw new AffiliationError(e.getMessage());
         }
+    }
+
+    @Override
+    public AffiliateMercantile updateDataRegularizationStepTwo(@NotNull DataLegalRepresentativeDTO dataLegalRepresentativeDTO){
+
+        AffiliateMercantile affiliateMercantile = affiliateMercantileRepository.findById(dataLegalRepresentativeDTO.getIdAffiliationMercantile())
+                .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
+
+        if(!affiliateMercantile.getStageManagement().equalsIgnoreCase(Constant.REGULARIZATION))
+            throw new AffiliationError(Constant.ERROR_AFFILIATION);
+
+        affiliateMercantile.setEps(dataLegalRepresentativeDTO.getEps());
+        affiliateMercantile.setAfp(dataLegalRepresentativeDTO.getAfp());
+
+
+        //numeros de telefono del representante legal
+
+        affiliateMercantile.setPhoneOneLegalRepresentative(dataLegalRepresentativeDTO.getPhoneOne());
+        affiliateMercantile.setPhoneTwoLegalRepresentative(dataLegalRepresentativeDTO.getPhoneTwo());
+
+        //direccion del representante legal
+
+        affiliateMercantile.setAddressLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getAddress());
+        affiliateMercantile.setIdDepartmentLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdDepartment());
+        affiliateMercantile.setIdCityLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdCity());
+        affiliateMercantile.setIdMainStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdMainStreet());
+        affiliateMercantile.setIdNumberMainStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumberMainStreet());
+        affiliateMercantile.setIdLetter1MainStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdLetter1MainStreet());
+        affiliateMercantile.setIsBisLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIsBis());
+        affiliateMercantile.setIdLetter2MainStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdLetter2MainStreet());
+        affiliateMercantile.setIdCardinalPointMainStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdCardinalPointMainStreet());
+        affiliateMercantile.setIdNum1SecondStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNum1SecondStreet());
+        affiliateMercantile.setIdLetterSecondStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdLetterSecondStreet());
+        affiliateMercantile.setIdNum2SecondStreetLegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNum2SecondStreet());
+        affiliateMercantile.setIdCardinalPoint2LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdCardinalPoint2());
+        affiliateMercantile.setIdHorizontalProperty1LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdHorizontalProperty1());
+        affiliateMercantile.setIdNumHorizontalProperty1LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumHorizontalProperty1());
+        affiliateMercantile.setIdHorizontalProperty2LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdHorizontalProperty2());
+        affiliateMercantile.setIdNumHorizontalProperty2LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumHorizontalProperty2());
+        affiliateMercantile.setIdHorizontalProperty3LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdHorizontalProperty3());
+        affiliateMercantile.setIdNumHorizontalProperty3LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumHorizontalProperty3());
+        affiliateMercantile.setIdHorizontalProperty4LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdHorizontalProperty4());
+        affiliateMercantile.setIdNumHorizontalProperty4LegalRepresentative(dataLegalRepresentativeDTO.getAddressDTO().getIdNumHorizontalProperty4());
+
+        affiliateMercantile =  affiliateMercantileRepository.save(affiliateMercantile);
+
+        return affiliateMercantile;
     }
 
     @Override
@@ -741,8 +854,10 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         Affiliate affiliate = iAffiliateRepository.findByFiledNumber(affiliateMercantile.getFiledNumber())
                 .orElseThrow(() -> new AffiliationError(Constant.AFFILIATE_NOT_FOUND));
 
+        String nameMainOffice = buildNameMainOffice(affiliateMercantile);
+
         mainOffice.setCode(mainOfficeService.findCode());
-        mainOffice.setMainOfficeName("Principal");
+        mainOffice.setMainOfficeName(nameMainOffice);
         mainOffice.setMain(Boolean.TRUE);
         mainOffice.setMainOfficeZone(affiliateMercantile.getZoneLocationEmployer() != null
                 ? affiliateMercantile.getZoneLocationEmployer().substring(0, 1)
@@ -791,6 +906,22 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
         mainOfficeRepository.save(mainOffice);
     }
 
+    private String buildNameMainOffice(AffiliateMercantile affiliateMercantile){
+        AffiliateActivityEconomic primaryActivity = affiliateMercantile.getEconomicActivity().stream()
+                .filter(AffiliateActivityEconomic::getIsPrimary)
+                .findFirst()
+                .orElseThrow(() -> new AffiliationError("El empleador no tiene actividad economica principal"));
+
+        String department = findDepartmentNameById(affiliateMercantile.getIdDepartment());
+        String city = findMunicipalityNameById(affiliateMercantile.getIdCity());
+
+        return "SEDE " +
+                department + " | " +
+                city + " | " +
+                affiliateMercantile.getAddress().toUpperCase() + " | " +
+                primaryActivity.getActivityEconomic().getEconomicActivityCode();
+    }
+
     @Override
     public List<DataDocumentAffiliate> regularizationDocuments(String filedNumber, Long idTypeEmployer, Long idSubTypeEmployer, List<DocumentRequestDTO> files) {
 
@@ -835,6 +966,7 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
             });
 
             affiliateMercantile.setStatusDocument(false);
+            affiliateMercantile.setAffiliationCancelled(false);
             affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
             affiliateMercantile.setIdTypeEmployer(idTypeEmployer);
             affiliateMercantile.setIdSubTypeEmployer(idSubTypeEmployer);
@@ -1432,6 +1564,26 @@ public class AffiliationEmployerActivitiesMercantileServiceImpl implements Affil
                         .orElse(document.getName()),
                 document.getName().substring(0, document.getName().lastIndexOf('.')),
                 documentNumber);
+    }
+
+    private String findDepartmentNameById(Long departmentId) {
+        Department department = departmentRepository.findByIdDepartment(departmentId!=null ? departmentId.intValue() : 1)
+                .orElse(null);
+
+        if (department != null)
+            return department.getDepartmentName().toUpperCase();
+
+        return null;
+    }
+
+    private String findMunicipalityNameById(Long municipalityId) {
+        Municipality municipality = municipalityRepository.findById(municipalityId)
+                .orElse(null);
+
+        if (municipality != null)
+            return municipality.getMunicipalityName().toUpperCase();
+
+        return null;
     }
 
 }

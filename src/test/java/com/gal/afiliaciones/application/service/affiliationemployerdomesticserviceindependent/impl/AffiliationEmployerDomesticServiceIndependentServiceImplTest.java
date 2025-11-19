@@ -1,43 +1,21 @@
 package com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.impl;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.*;
-
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
-import com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco;
-import com.gal.afiliaciones.domain.model.DateInterviewWeb;
-import com.gal.afiliaciones.domain.model.UserMain;
-import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
-import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.FullDataMercantileDTO;
-import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.*;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
-import com.gal.afiliaciones.infrastructure.dto.daily.DataDailyDTO;
-import com.gal.afiliaciones.infrastructure.dto.alfresco.DocumentBase64;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Page;
-import java.time.LocalDate;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.FiledWebSocketService;
 import com.gal.afiliaciones.application.service.affiliate.MainOfficeService;
@@ -50,86 +28,194 @@ import com.gal.afiliaciones.application.service.daily.DailyService;
 import com.gal.afiliaciones.application.service.documentnamestandardization.DocumentNameStandardizationService;
 import com.gal.afiliaciones.application.service.economicactivity.IEconomicActivityService;
 import com.gal.afiliaciones.application.service.filed.FiledService;
+import com.gal.afiliaciones.application.service.impl.certicate.InMemoryMultipartFile;
 import com.gal.afiliaciones.application.service.observationsaffiliation.ObservationsAffiliationService;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
-import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
+import com.gal.afiliaciones.domain.model.AffiliationsView;
 import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.Operator;
+import com.gal.afiliaciones.domain.model.UserMain;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
+import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationAssignmentHistory;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.DataDocumentAffiliate;
 import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.DateInterviewWebRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationAssignRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IDataDocumentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.DangerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.FamilyMemberRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationsview.AffiliationsViewRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
+import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.*;
+import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
+import com.gal.afiliaciones.infrastructure.dto.alfresco.DocumentBase64;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
+
+import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
+import com.gal.afiliaciones.infrastructure.dto.daily.DataDailyDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
+import org.mockito.ArgumentMatchers;
+import org.mockito.MockedConstruction;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.aot.DisabledInAotMode;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
-import static org.mockito.Mockito.doNothing;
 
-
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
-
+@ContextConfiguration(classes = {AffiliationEmployerDomesticServiceIndependentServiceImpl.class})
+@DisabledInAotMode
+@ExtendWith(SpringExtension.class)
 class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
+    @MockBean
+    private AffiliateMercantileRepository affiliateMercantileRepository;
 
-    @Mock private IAffiliationEmployerDomesticServiceIndependentRepository repositoryAffiliation;
-    @Mock private AffiliateRepository iAffiliateRepository;
-    @Mock private AffiliateMercantileRepository affiliateMercantileRepository;
-    @Mock private IDataDocumentRepository dataDocumentRepository;
-    @Mock private IUserPreRegisterRepository iUserPreRegisterRepository;
-    @Mock private FamilyMemberRepository familyMemberRepository;
-    @Mock private DangerRepository dangerRepository;
-    @Mock private IEconomicActivityService economicActivityService;
-    @Mock private DateInterviewWebRepository dateInterviewWebRepository;
-    @Mock private DailyService dailyService;
-    @Mock private GenericWebClient webClient;
-    @Mock private AffiliateService affiliateService;
-    @Mock private IAffiliationCancellationTimerRepository timerRepository;
-    @Mock private AlfrescoService alfrescoService;
-    @Mock private SendEmails sendEmails;
-    @Mock private FiledService filedService;
-    @Mock private MainOfficeService mainOfficeService;
-    @Mock private WorkCenterService workCenterService;
-    @Mock private CollectProperties properties;
-    @Mock private AffiliationEmployerActivitiesMercantileService affiliationEmployerActivitiesMercantileService;
-    @Mock private ObservationsAffiliationService observationsAffiliationService;
-    @Mock private FiledWebSocketService filedWebSocketService;
-    @Mock private ScheduleInterviewWebService scheduleInterviewWebService;
-    @Mock private MessageErrorAge messageError;
-    @Mock private DocumentNameStandardizationService documentNameStandardizationService;
-    @Mock private IEconomicActivityRepository iEconomicActivityRepository;
-    @Mock private AffiliationsViewRepository affiliationsViewRepository;
-    @Mock private IUserPreRegisterRepository userPreRegisterRepository;
+    @MockBean
+    private AffiliateRepository affiliateRepository;
 
-    @InjectMocks
-    private AffiliationEmployerDomesticServiceIndependentServiceImpl service;
+    @MockBean
+    private AffiliateService affiliateService;
+
+    @MockBean
+    private AffiliationEmployerActivitiesMercantileService
+            affiliationEmployerActivitiesMercantileService;
+
+    @Autowired
+    private AffiliationEmployerDomesticServiceIndependentServiceImpl
+            affiliationEmployerDomesticServiceIndependentServiceImpl;
+
+    @MockBean
+    private AffiliationsViewRepository affiliationsViewRepository;
+
+    @MockBean
+    private AlfrescoService alfrescoService;
+
+    @MockBean
+    private CollectProperties collectProperties;
+
+    @MockBean
+    private DailyService dailyService;
+
+    @MockBean
+    private DangerRepository dangerRepository;
+
+    @MockBean
+    private DateInterviewWebRepository dateInterviewWebRepository;
+
+    @MockBean
+    private DocumentNameStandardizationService documentNameStandardizationService;
+
+    @MockBean
+    private FamilyMemberRepository familyMemberRepository;
+
+    @MockBean
+    private FiledService filedService;
+
+    @MockBean
+    private FiledWebSocketService filedWebSocketService;
+
+    @MockBean
+    private GenericWebClient genericWebClient;
+
+    @MockBean
+    private IAffiliationAssignRepository iAffiliationAssignRepository;
+
+    @MockBean
+    private DepartmentRepository departmentRepository;
+
+    @MockBean
+    private MunicipalityRepository municipalityRepository;
+
+    @MockBean
+    private IAffiliationCancellationTimerRepository iAffiliationCancellationTimerRepository;
+
+    @MockBean
+    private IAffiliationEmployerDomesticServiceIndependentRepository
+            iAffiliationEmployerDomesticServiceIndependentRepository;
+
+    @MockBean
+    private IDataDocumentRepository iDataDocumentRepository;
+
+    @MockBean
+    private IEconomicActivityRepository iEconomicActivityRepository;
+
+    @MockBean
+    private IEconomicActivityService iEconomicActivityService;
+
+    @MockBean
+    private IUserPreRegisterRepository iUserPreRegisterRepository;
+
+    @MockBean
+    private MainOfficeService mainOfficeService;
+
+    @MockBean
+    private MessageErrorAge messageErrorAge;
+
+    @MockBean
+    private ObservationsAffiliationService observationsAffiliationService;
+
+    @MockBean
+    private ScheduleInterviewWebService scheduleInterviewWebService;
+
+    @MockBean
+    private SendEmails sendEmails;
+
+    @MockBean
+    private WorkCenterService workCenterService;
+
+    private AffiliateMercantile affiliateMercantile;
+
 
     private Affiliate affiliate;
     private Affiliation affiliation;
-    private AffiliateMercantile affiliateMercantile;
+
 
     @BeforeEach
     void setUp() {
         affiliate = new Affiliate();
-        affiliate.setIdAffiliate(1L);
+        affiliate.setIdAffiliate(123L);
         affiliate.setFiledNumber("F123");
         affiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
         affiliate.setAffiliationCancelled(false);
         affiliate.setStatusDocument(false);
+        affiliate.setUserId(1L);
 
         affiliation = new Affiliation();
         affiliation.setId(1L);
@@ -150,33 +236,1711 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliateMercantile.setEconomicActivity(new ArrayList<AffiliateActivityEconomic>());
     }
 
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}
+     */
+    @Test
+    @DisplayName("Test createAffiliationStep1(DomesticServiceAffiliationStep1DTO)")
+    void testCreateAffiliationStep1() {
+        // Arrange
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        when(collectProperties.getMinimumAge())
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+        DomesticServiceAffiliationStep1DTO dto =
+                new DomesticServiceAffiliationStep1DTO(
+                        0L,
+                        "Identification Document Type",
+                        "42",
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        1L,
+                        1L,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep1(dto));
+        verify(collectProperties).getMinimumAge();
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}.
+     *
+     * <ul>
+     *   <li>Given {@link UserMain#UserMain()} DateBirth is now.
+     *   <li>Then calls {@link MessageErrorAge#messageError(String, String)}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep1(DomesticServiceAffiliationStep1DTO); given UserMain() DateBirth is now; then calls messageError(String, String)")
+    
+    void testCreateAffiliationStep1_givenUserMainDateBirthIsNow_thenCallsMessageError() {
+        // Arrange
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.now());
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        when(collectProperties.getMinimumAge()).thenReturn(1);
+        when(messageErrorAge.messageError(Mockito.<String>any(), Mockito.<String>any()))
+                .thenReturn("An error occurred");
+        DomesticServiceAffiliationStep1DTO dto =
+                new DomesticServiceAffiliationStep1DTO(
+                        0L,
+                        "Identification Document Type",
+                        "42",
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        1L,
+                        1L,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep1(dto));
+        verify(collectProperties).getMinimumAge();
+        verify(messageErrorAge).messageError("Identification Type", "Identification");
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}.
+     *
+     * <ul>
+     *   <li>Then calls {@link MessageErrorAge#messageError(String, String)}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep1(DomesticServiceAffiliationStep1DTO); then calls messageError(String, String)")
+    
+    void testCreateAffiliationStep1_thenCallsMessageError() {
+        // Arrange
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        when(collectProperties.getMaximumAge()).thenReturn(3);
+        when(collectProperties.getMinimumAge()).thenReturn(1);
+        when(messageErrorAge.messageError(Mockito.<String>any(), Mockito.<String>any()))
+                .thenReturn("An error occurred");
+        DomesticServiceAffiliationStep1DTO dto =
+                new DomesticServiceAffiliationStep1DTO(
+                        0L,
+                        "Identification Document Type",
+                        "42",
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        1L,
+                        1L,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep1(dto));
+        verify(collectProperties).getMinimumAge();
+        verify(messageErrorAge).messageError("Identification Type", "Identification");
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}.
+     *
+     * <ul>
+     *   <li>When {@link DomesticServiceAffiliationStep1DTO#DomesticServiceAffiliationStep1DTO()}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep1(DomesticServiceAffiliationStep1DTO); when DomesticServiceAffiliationStep1DTO()")
+    
+    void testCreateAffiliationStep1_whenDomesticServiceAffiliationStep1DTO() {
+        // Arrange
+        when(iUserPreRegisterRepository.findOne(any(Specification.class)))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () ->
+                        affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep1(
+                                new DomesticServiceAffiliationStep1DTO()));
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep1(DomesticServiceAffiliationStep1DTO)}
+     */
+    @Test
+    @DisplayName("Test createAffiliationStep1(DomesticServiceAffiliationStep1DTO)")
+    
+    void testCreateAffiliationStep12() {
+        // Arrange
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        when(collectProperties.getMaximumAge()).thenReturn(3);
+        when(collectProperties.getMinimumAge()).thenReturn(1);
+        when(messageErrorAge.messageError(Mockito.<String>any(), Mockito.<String>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+        DomesticServiceAffiliationStep1DTO dto =
+                new DomesticServiceAffiliationStep1DTO(
+                        0L,
+                        "Identification Document Type",
+                        "42",
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        10,
+                        true,
+                        1L,
+                        1L,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep1(dto));
+        verify(collectProperties).getMinimumAge();
+        verify(messageErrorAge).messageError("Identification Type", "Identification");
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}
+     */
+    @Test
+    @DisplayName("Test createAffiliationStep2(DomesticServiceAffiliationStep2DTO)")
+    
+    void testCreateAffiliationStep2() {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(Mockito.<Long>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        DomesticServiceAffiliationStep2DTO dto =
+                new DomesticServiceAffiliationStep2DTO(
+                        1L,
+                        "Identification Document Type",
+                        "42",
+                        "Person Type",
+                        "Jane",
+                        "Second Name",
+                        "Doe",
+                        "Doe",
+                        LocalDate.of(1970, 1, 1),
+                        "Age",
+                        "Gender",
+                        "Other Gender",
+                        " ",
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        true,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep2(dto));
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).findById(1L);
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}.
+     *
+     * <ul>
+     *   <li>Given {@link UserMain#UserMain()} PensionFundAdministrator is {@code null}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep2(DomesticServiceAffiliationStep2DTO); given UserMain() PensionFundAdministrator is 'null'")
+    
+    void testCreateAffiliationStep2_givenUserMainPensionFundAdministratorIsNull() {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(Mockito.<Long>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(null);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        DomesticServiceAffiliationStep2DTO dto =
+                new DomesticServiceAffiliationStep2DTO(
+                        1L,
+                        "Identification Document Type",
+                        "42",
+                        "Person Type",
+                        "Jane",
+                        "Second Name",
+                        "Doe",
+                        "Doe",
+                        LocalDate.of(1970, 1, 1),
+                        "Age",
+                        "Gender",
+                        "Other Gender",
+                        " ",
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        true,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep2(dto));
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).findById(1L);
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link UserNotFoundInDataBase}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep2(DomesticServiceAffiliationStep2DTO); then throw UserNotFoundInDataBase")
+    
+    void testCreateAffiliationStep2_thenThrowUserNotFoundInDataBase() {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(Mockito.<Long>any()))
+                .thenThrow(new UserNotFoundInDataBase("Not all who wander are lost"));
+
+        Operator financialOperator = new Operator();
+        financialOperator.setId(1L);
+        financialOperator.setNi("Ni");
+        financialOperator.setOperatorCode(1L);
+        financialOperator.setOperatorName("Operator Name");
+        financialOperator.setOperatorType("Operator Type");
+
+        Operator InfoOperator = new Operator();
+        InfoOperator.setId(1L);
+        InfoOperator.setNi("Ni");
+        InfoOperator.setOperatorCode(1L);
+        InfoOperator.setOperatorName("Operator Name");
+        InfoOperator.setOperatorType("Operator Type");
+
+        UserMain userMain = new UserMain();
+        userMain.setAcceptNotification(true);
+        userMain.setAddress("42 Main St");
+        userMain.setAge(1);
+        userMain.setArea(1L);
+        userMain.setAssignedPassword(true);
+        userMain.setCodeOtp("Code Otp");
+        userMain.setCompanyName("Company Name");
+        userMain.setCreateDate(null);
+        userMain.setCreatedAtTemporalPassword(LocalDate.of(1970, 1, 1));
+        userMain.setDateBirth(LocalDate.of(1970, 1, 1));
+        userMain.setEmail("jane.doe@example.org");
+        userMain.setEmployerUpdateTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setFinancialOperator(financialOperator);
+        userMain.setFirstName("Jane");
+        userMain.setGenerateAttempts(1);
+        userMain.setGenerateOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setHealthPromotingEntity(1L);
+        userMain.setId(1L);
+        userMain.setIdCardinalPoint2(1L);
+        userMain.setIdCardinalPointMainStreet(1L);
+        userMain.setIdCity(1L);
+        userMain.setIdDepartment(1L);
+        userMain.setIdHorizontalProperty1(1L);
+        userMain.setIdHorizontalProperty2(1L);
+        userMain.setIdHorizontalProperty3(1L);
+        userMain.setIdHorizontalProperty4(1L);
+        userMain.setIdLetter1MainStreet(1L);
+        userMain.setIdLetter2MainStreet(1L);
+        userMain.setIdLetterSecondStreet(1L);
+        userMain.setIdMainStreet(1L);
+        userMain.setIdNum1SecondStreet(1L);
+        userMain.setIdNum2SecondStreet(1L);
+        userMain.setIdNumHorizontalProperty1(1L);
+        userMain.setIdNumHorizontalProperty2(1L);
+        userMain.setIdNumHorizontalProperty3(1L);
+        userMain.setIdNumHorizontalProperty4(1L);
+        userMain.setIdNumberMainStreet(1L);
+        userMain.setIdentification("Identification");
+        userMain.setIdentificationType("Identification Type");
+        userMain.setInactiveByPendingAffiliation(true);
+        userMain.setInfoOperator(InfoOperator);
+        userMain.setIsBis(true);
+        userMain.setIsImport(true);
+        userMain.setIsInArrearsStatus(true);
+        userMain.setIsPasswordExpired(true);
+        userMain.setIsTemporalPassword(true);
+        userMain.setLastAffiliationAttempt(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastPasswordUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLastUpdate(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLevelAuthorization("JaneDoe");
+        userMain.setLockoutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setLoginAttempts(1);
+        userMain.setNationality(1L);
+        userMain.setOffice(1);
+        userMain.setOtherSex("Other Sex");
+        userMain.setPensionFundAdministrator(1L);
+        userMain.setPhoneNumber("6625550144");
+        userMain.setPhoneNumber2("6625550144");
+        userMain.setPin("Pin");
+        userMain.setPosition(1);
+        userMain.setProfile("Profile");
+        userMain.setRoles(new ArrayList<>());
+        userMain.setSecondName("Second Name");
+        userMain.setSecondSurname("Doe");
+        userMain.setSex("Sex");
+        userMain.setStatus(1L);
+        userMain.setStatusActive(true);
+        userMain.setStatusInactiveSince(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setStatusPreRegister(true);
+        userMain.setStatusStartAfiiliate(true);
+        userMain.setSurname("Doe");
+        userMain.setUserName("janedoe");
+        userMain.setUserType(1L);
+        userMain.setValidAttempts(1);
+        userMain.setValidOutTime(LocalDate.of(1970, 1, 1).atStartOfDay());
+        userMain.setVerificationDigit(1);
+        Optional<UserMain> ofResult = Optional.of(userMain);
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(ofResult);
+        DomesticServiceAffiliationStep2DTO dto =
+                new DomesticServiceAffiliationStep2DTO(
+                        1L,
+                        "Identification Document Type",
+                        "42",
+                        "Person Type",
+                        "Jane",
+                        "Second Name",
+                        "Doe",
+                        "Doe",
+                        LocalDate.of(1970, 1, 1),
+                        "Age",
+                        "Gender",
+                        "Other Gender",
+                        " ",
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        true,
+                        "42 Main St",
+                        1L,
+                        1L,
+                        1L,
+                        true,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        1L,
+                        "6625550144",
+                        "6625550144",
+                        "jane.doe@example.org");
+
+        // Act and Assert
+        assertThrows(
+                UserNotFoundInDataBase.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep2(dto));
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).findById(1L);
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}.
+     *
+     * <ul>
+     *   <li>When {@link DomesticServiceAffiliationStep2DTO#DomesticServiceAffiliationStep2DTO()}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep2(DomesticServiceAffiliationStep2DTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep2(DomesticServiceAffiliationStep2DTO); when DomesticServiceAffiliationStep2DTO()")
+    
+    void testCreateAffiliationStep2_whenDomesticServiceAffiliationStep2DTO() {
+        // Arrange
+        when(iUserPreRegisterRepository.findOne(any(Specification.class)))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () ->
+                        affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep2(
+                                new DomesticServiceAffiliationStep2DTO()));
+        verify(iUserPreRegisterRepository).findOne(any(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep3(Long,
+     * MultipartFile)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link AffiliationError}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep3(Long,
+     * MultipartFile)}
+     */
+    @Test
+    @DisplayName("Test createAffiliationStep3(Long, MultipartFile); then throw AffiliationError")
+    
+    void testCreateAffiliationStep3_thenThrowAffiliationError() throws UnsupportedEncodingException {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(Mockito.<Long>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+        InMemoryMultipartFile document =
+                new InMemoryMultipartFile("Name", "foo.txt", "text/plain", "AXAXAXAX".getBytes("UTF-8"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () ->
+                        affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep3(
+                                1L, document));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).findById(1L);
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep3(Long,
+     * MultipartFile)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link UserNotFoundInDataBase}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#createAffiliationStep3(Long,
+     * MultipartFile)}
+     */
+    @Test
+    @DisplayName(
+            "Test createAffiliationStep3(Long, MultipartFile); then throw UserNotFoundInDataBase")
+    
+    void testCreateAffiliationStep3_thenThrowUserNotFoundInDataBase()
+            throws UnsupportedEncodingException {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(Mockito.<Long>any()))
+                .thenThrow(new UserNotFoundInDataBase("Not all who wander are lost"));
+        InMemoryMultipartFile document =
+                new InMemoryMultipartFile("Name", "foo.txt", "text/plain", "AXAXAXAX".getBytes("UTF-8"));
+
+        // Act and Assert
+        assertThrows(
+                UserNotFoundInDataBase.class,
+                () ->
+                        affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep3(
+                                1L, document));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).findById(1L);
+    }
+
+    /**
+     * Test {@link AffiliationEmployerDomesticServiceIndependentServiceImpl#consultDocument(String)}.
+     *
+     * <ul>
+     *   <li>Then return size is one.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#consultDocument(String)}
+     */
+    @Test
+    @DisplayName("Test consultDocument(String); then return size is one")
+    
+    void testConsultDocument_thenReturnSizeIsOne() {
+        // Arrange
+        when(alfrescoService.getDocument(Mockito.<String>any())).thenReturn("Document");
+
+        // Act
+        List<DocumentBase64> actualConsultDocumentResult =
+                affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("42");
+
+        // Assert
+        verify(alfrescoService).getDocument("42");
+        assertEquals(1, actualConsultDocumentResult.size());
+        DocumentBase64 getResult = actualConsultDocumentResult.get(0);
+        assertEquals("", getResult.getFileName());
+        assertEquals("Document", getResult.getBase64Image());
+    }
+
+    /**
+     * Test {@link AffiliationEmployerDomesticServiceIndependentServiceImpl#consultDocument(String)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link AffiliationError}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#consultDocument(String)}
+     */
+    @Test
+    @DisplayName("Test consultDocument(String); then throw AffiliationError")
+    
+    void testConsultDocument_thenThrowAffiliationError() {
+        // Arrange
+        when(alfrescoService.getDocument(Mockito.<String>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("42"));
+        verify(alfrescoService).getDocument("42");
+    }
+
+    /**
+     * Test {@link AffiliationEmployerDomesticServiceIndependentServiceImpl#findById(Long)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#findById(Long)}
+     */
+    @Test
+    @DisplayName("Test findById(Long)")
+    
+    void testFindById() {
+        // Arrange
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(
+                Mockito.<Specification<Affiliation>>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.findById(1L));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository)
+                .findOne(isA(Specification.class));
+    }
+
+    /**
+     * Test {@link AffiliationEmployerDomesticServiceIndependentServiceImpl#findDocuments(Long)}.
+     *
+     * <ul>
+     *   <li>Then return Empty.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#findDocuments(Long)}
+     */
+    @Test
+    @DisplayName("Test findDocuments(Long); then return Empty")
+    
+    void testFindDocuments_thenReturnEmpty() {
+        // Arrange
+        when(iDataDocumentRepository.findAll(Mockito.<Specification<DataDocumentAffiliate>>any()))
+                .thenReturn(new ArrayList<>());
+
+        // Act
+        List<DataDocumentAffiliate> actualFindDocumentsResult =
+                affiliationEmployerDomesticServiceIndependentServiceImpl.findDocuments(1L);
+
+        // Assert
+        verify(iDataDocumentRepository).findAll(isA(Specification.class));
+        assertTrue(actualFindDocumentsResult.isEmpty());
+    }
+
+    /**
+     * Test {@link AffiliationEmployerDomesticServiceIndependentServiceImpl#findDocuments(Long)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link AffiliationError}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#findDocuments(Long)}
+     */
+    @Test
+    @DisplayName("Test findDocuments(Long); then throw AffiliationError")
+    
+    void testFindDocuments_thenThrowAffiliationError() {
+        // Arrange
+        when(iDataDocumentRepository.findAll(Mockito.<Specification<DataDocumentAffiliate>>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.findDocuments(1L));
+        verify(iDataDocumentRepository).findAll(isA(Specification.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO)")
+    
+    void testGenerateExcel() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", null, "asc", LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO)")
+    
+    void testGenerateExcel2() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "Sort By", null, LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO)")
+    
+    void testGenerateExcel3() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "Sort By", "", LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO)")
+    
+    void testGenerateExcel4() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "Sort By", "asc", LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO)")
+    
+    void testGenerateExcel5() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "", "asc", LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <ul>
+     *   <li>Given {@link AffiliationsView} (default constructor) AffiliationType is {@code U/U}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test generateExcel(AffiliationsFilterDTO); given AffiliationsView (default constructor) AffiliationType is 'U/U'")
+    
+    void testGenerateExcel_givenAffiliationsViewAffiliationTypeIsUU() {
+        // Arrange
+        AffiliationsView affiliationsView = new AffiliationsView();
+        affiliationsView.setAffiliationType("U/U");
+        affiliationsView.setAsignadoA("U/U");
+        affiliationsView.setCancelled(true);
+        affiliationsView.setDateInterview(LocalDate.of(1970, 1, 1).atStartOfDay());
+        affiliationsView.setDateRegularization(LocalDate.of(1970, 1, 1).atStartOfDay());
+        affiliationsView.setDateRequest("2020-03-01");
+        affiliationsView.setFiledNumber("42");
+        affiliationsView.setId(1L);
+        affiliationsView.setNameOrSocialReason("Just cause");
+        affiliationsView.setNumberDocument("42");
+        affiliationsView.setStageManagement("U/U");
+
+        ArrayList<AffiliationsView> affiliationsViewList = new ArrayList<>();
+        affiliationsViewList.add(affiliationsView);
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(affiliationsViewList);
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "Sort By", "asc", LocalDate.of(1970, 1, 1));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <ul>
+     *   <li>Then throw {@link AffiliationError}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName("Test generateExcel(AffiliationsFilterDTO); then throw AffiliationError")
+    
+    void testGenerateExcel_thenThrowAffiliationError() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenThrow(new AffiliationError("Not all who wander are lost"));
+        AffiliationsFilterDTO filter =
+                new AffiliationsFilterDTO(1, "42", "Sort By", "asc", LocalDate.of(1970, 1, 1));
+
+        // Act and Assert
+        assertThrows(
+                AffiliationError.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter));
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+    /**
+     * Test {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}.
+     *
+     * <ul>
+     *   <li>When {@code null}.
+     *   <li>Then calls {@link AffiliationsViewRepository#findAll(Specification, Sort)}.
+     * </ul>
+     *
+     * <p>Method under test: {@link
+     * AffiliationEmployerDomesticServiceIndependentServiceImpl#generateExcel(AffiliationsFilterDTO)}
+     */
+    @Test
+    @DisplayName(
+            "Test generateExcel(AffiliationsFilterDTO); when 'null'; then calls findAll(Specification, Sort)")
+    
+    void testGenerateExcel_whenNull_thenCallsFindAll() {
+        // Arrange
+        when(affiliationsViewRepository.findAll(
+                Mockito.<Specification<AffiliationsView>>any(), Mockito.<Sort>any()))
+                .thenReturn(new ArrayList<>());
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
+
+        // Assert
+        verify(affiliationsViewRepository).findAll(isA(Specification.class), isA(Sort.class));
+    }
+
+
+    @Test
+    @DisplayName("Debe lanzar excepción si el afiliado no existe al ejecutar assignTo")
+    void testAssignTo_AffiliateNotFound() {
+        // Arrange
+        when(iUserPreRegisterRepository.findById(1L))
+                .thenReturn(Optional.of(new UserMain()));
+
+        when(affiliateRepository.findByIdAffiliate(42L))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.assignTo(42L, 1L)
+        );
+
+        assertEquals("Afiliado no encontrado", ex.getMessage());
+        verify(affiliateRepository).findByIdAffiliate(42L);
+        verify(iUserPreRegisterRepository).findById(1L);
+    }
+
+
+    @Test
+    @DisplayName("Debe lanzar excepción si el usuario no existe al ejecutar assignTo")
+    void testAssignTo_UserNotFound() {
+        // Arrange
+        when(iUserPreRegisterRepository.findById(1L))
+                .thenReturn(Optional.empty());
+
+        // Act & Assert
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.assignTo(42L, 1L)
+        );
+
+        assertEquals("Usuario no encontrado", ex.getMessage());
+        verify(iUserPreRegisterRepository).findById(1L);
+        verifyNoInteractions(affiliateRepository);
+    }
+
+    @Test
+    @DisplayName("Debe asignar usuario y crear registro histórico exitosamente")
+    void testAssignTo_Success() {
+        // Arrange
+        UserMain user = new UserMain();
+        user.setId(1L);
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(42L);
+
+        AffiliationAssignmentHistory previousAssign = new AffiliationAssignmentHistory();
+        previousAssign.setIsCurrent(true);
+
+        when(iUserPreRegisterRepository.findById(1L))
+                .thenReturn(Optional.of(user));
+
+        when(affiliateRepository.findByIdAffiliate(42L))
+                .thenReturn(Optional.of(affiliate));
+
+        when(iAffiliationAssignRepository.findByAffiliateIdAffiliateOrderByAssignmentDateDesc(42L))
+                .thenReturn(List.of(previousAssign));
+
+        // Act
+        affiliationEmployerDomesticServiceIndependentServiceImpl.assignTo(42L, 1L);
+
+        // Assert
+        verify(affiliateRepository).save(affiliate);
+        verify(iAffiliationAssignRepository).save(previousAssign);
+        verify(iAffiliationAssignRepository, atLeast(2)).save(any(AffiliationAssignmentHistory.class));
+    }
+
     @Test
     @DisplayName("visualizationPendingPerform should return correct percentages")
     void visualizationPendingPerform_shouldReturnCorrectPercentages() {
-        when(repositoryAffiliation.count()).thenReturn(100L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(100L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation()));
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("1.0", result.getInterviewWeb());
         assertEquals("2.0", result.getReviewDocumental());
         assertEquals("3.0", result.getRegularization());
         assertEquals("4.0", result.getSing());
-        verify(repositoryAffiliation, times(1)).count();
-        verify(repositoryAffiliation, times(4)).findAll(any(Specification.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository, times(1)).count();
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository, times(4)).findAll(any(Specification.class));
     }
 
     @Test
     @DisplayName("management should return management DTO for affiliation")
     void management_shouldReturnManagementDTOForAffiliation() {
-        String field = "123456789";
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -187,9 +1951,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
 
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management(field);
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
@@ -201,44 +1965,44 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("management should throw error when affiliate not found")
     void management_shouldThrowErrorWhenAffiliateNotFound() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-        assertThrows(AffiliationError.class, () -> service.management("123"));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.empty());
+        assertThrows(AffiliateNotFound.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
     @DisplayName("management should throw error when no affiliation or mercantile found")
     void management_shouldThrowErrorWhenNoAffiliationOrMercantileFound() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-        assertThrows(AffiliationError.class, () -> service.management("123"));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
     @DisplayName("management should throw error for cancelled affiliation")
     void management_shouldThrowErrorForCancelledAffiliation() {
         affiliate.setAffiliationCancelled(true);
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-        assertThrows(AffiliationError.class, () -> service.management("123"));
+        assertThrows(UserNotFoundInDataBase.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
     @DisplayName("management should throw error when no documents found")
     void management_shouldThrowErrorWhenNoDocumentsFound() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
-        assertThrows(UserNotFoundInDataBase.class, () -> service.management("123"));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
+        assertThrows(UserNotFoundInDataBase.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
     @DisplayName("stateAffiliation: reject flow -> REGULARIZATION + emails + observations")
     void stateAffiliation_rejectFlow() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -247,11 +2011,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         in.setReasonReject("R");
         in.setComment(List.of("c1", "c2"));
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
-        verify(repositoryAffiliation).save(any(Affiliation.class));
-        verify(iAffiliateRepository).save(any(Affiliate.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).save(any(Affiliation.class));
+        verify(affiliateRepository).save(any(Affiliate.class));
         verify(observationsAffiliationService, times(2))
                 .create(anyString(), eq("F123"), eq("R"), eq(99L));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
@@ -261,20 +2025,20 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation: accept flow -> SING + email accepted")
     void stateAffiliation_acceptFlow() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
         in.setRejectAffiliation(false);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
         ArgumentCaptor<Affiliation> cap = ArgumentCaptor.forClass(Affiliation.class);
-        verify(repositoryAffiliation, atLeastOnce()).save(cap.capture());
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository, atLeastOnce()).save(cap.capture());
         assertEquals(Constant.SING, cap.getValue().getStageManagement());
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(sendEmails).requestAccepted(any(Affiliation.class));
         verify(filedWebSocketService).changeStateAffiliation("F123");
     }
@@ -282,11 +2046,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation: throws when neither affiliation nor mercantile found")
     void stateAffiliation_notFound() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F000");
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(in));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in));
     }
 
     @Test
@@ -296,24 +2060,24 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dd.setId(10L);
         dd.setRevised(Boolean.FALSE);
         dd.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findById(10L)).thenReturn(Optional.of(dd));
+        when(iDataDocumentRepository.findById(10L)).thenReturn(Optional.of(dd));
 
         DocumentsDTO dto = new DocumentsDTO();
         dto.setId(10L);
         dto.setReject(true);
 
-        service.stateDocuments(List.of(dto), 1L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto), 1L);
 
         assertTrue(dd.getRevised());
         assertTrue(dd.getState());
-        verify(dataDocumentRepository).save(dd);
+        verify(iDataDocumentRepository).save(dd);
     }
 
     @Test
     @DisplayName("consultDocument returns document with base64 content")
     void consultDocument_ok() {
         when(alfrescoService.getDocument("ID")).thenReturn("BASE64==");
-        List<DocumentBase64> out = service.consultDocument("ID");
+        List<DocumentBase64> out = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("ID");
         assertEquals(1, out.size());
         assertEquals("BASE64==", out.get(0).getBase64Image());
         assertNotNull(out.get(0).getFileName());
@@ -326,9 +2090,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         Affiliation affiliationFound = new Affiliation();
         affiliationFound.setId(id);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliationFound));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliationFound));
 
-        Affiliation result = service.findById(id);
+        Affiliation result = affiliationEmployerDomesticServiceIndependentServiceImpl.findById(id);
 
         assertNotNull(result);
         assertEquals(id, result.getId());
@@ -338,9 +2102,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @DisplayName("findById should throw error when not found")
     void findById_shouldThrowWhenNotFound() {
         Long id = 999L;
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
-        assertThrows(UserNotFoundInDataBase.class, () -> service.findById(id));
+        assertThrows(UserNotFoundInDataBase.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.findById(id));
     }
 
     @Test
@@ -352,10 +2116,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
 
         affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
-        service.stateAffiliation(stateAffiliation);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation);
 
         verify(affiliationEmployerActivitiesMercantileService).stateAffiliation(affiliateMercantile, stateAffiliation);
         verify(filedWebSocketService).changeStateAffiliation("F123M");
@@ -369,10 +2133,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
 
         affiliateMercantile.setStageManagement(Constant.INTERVIEW_WEB);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
-        service.stateAffiliation(stateAffiliation);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation);
 
         verify(affiliationEmployerActivitiesMercantileService).interviewWeb(stateAffiliation);
         verify(scheduleInterviewWebService).delete("F123M");
@@ -386,7 +2150,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
 
-        String result = service.generateExcel(null);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
         assertNotNull(result);
         assertFalse(result.isEmpty());
     }
@@ -398,7 +2162,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
                 .thenReturn(Page.empty());
         when(affiliationsViewRepository.countByStageManagement(anyString())).thenReturn(5L);
 
-        ResponseManagementDTO result = service.managementAffiliation(0, 10, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(0, 10, null);
 
         assertNotNull(result);
         assertEquals(5L, result.totalInterviewing());
@@ -413,13 +2177,13 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleInvalidStage() {
         affiliateMercantile.setStageManagement("INVALID_STAGE");
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123M");
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
 
@@ -428,8 +2192,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleDifferentSubtypes() {
         affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_VOLUNTEER);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -439,11 +2203,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
         when(dangerRepository.findByIdAffiliation(any())).thenReturn(null);
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
@@ -459,9 +2223,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setRevised(Boolean.TRUE);
         doc.setState(Boolean.FALSE);
 
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        List<DataDocumentAffiliate> result = service.findDocuments(1L);
+        List<DataDocumentAffiliate> result = affiliationEmployerDomesticServiceIndependentServiceImpl.findDocuments(1L);
 
         assertEquals(1, result.size());
         assertEquals("testDoc", result.get(0).getName());
@@ -472,14 +2236,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleRegularizationStageError() {
         affiliation.setStageManagement(Constant.REGULARIZATION);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
@@ -487,14 +2251,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleErrorWhenAffiliateCancelled() {
         affiliate.setAffiliationCancelled(true);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
@@ -503,15 +2267,15 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         var rejectedDoc = new DataDocumentAffiliate();
         rejectedDoc.setState(Boolean.TRUE);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(rejectedDoc));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(rejectedDoc));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
 
@@ -520,8 +2284,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void getAffiliationDataByType_shouldHandleDomesticServices() throws Exception {
         affiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -530,9 +2294,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result.getAffiliation());
     }
 
@@ -541,8 +2306,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void getAffiliationDataByType_shouldHandleTaxiDriver() {
         affiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -551,9 +2316,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result.getAffiliation());
     }
 
@@ -572,7 +2337,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(Page.empty());
 
-        ResponseManagementDTO result = service.managementAffiliation(0, 10, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(0, 10, null);
         assertNotNull(result);
 
         verify(affiliationsViewRepository, times(5)).countByStageManagement(anyString());
@@ -581,20 +2346,20 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateDocuments should handle ErrorFindDocumentsAlfresco")
     void stateDocuments_shouldHandleErrorWhenDocumentNotFound() {
-        when(dataDocumentRepository.findById(999L)).thenReturn(Optional.empty());
+        when(iDataDocumentRepository.findById(999L)).thenReturn(Optional.empty());
 
         DocumentsDTO dto = new DocumentsDTO();
         dto.setId(999L);
         dto.setReject(true);
 
-        assertThrows(Exception.class, () -> service.stateDocuments(List.of(dto), 1L));
+        assertThrows(Exception.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto), 1L));
     }
 
     @Test
     @DisplayName("stateAffiliation should handle comments being null")
     void stateAffiliation_shouldHandleNullComments() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -603,9 +2368,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         in.setReasonReject("R");
         in.setComment(null);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
     }
 
@@ -614,10 +2379,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleStatusDocumentTrue() {
         affiliate.setStatusDocument(true);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
 
-        assertThrows(AffiliationError.class, () -> service.management("F123"));
+        assertThrows(AffiliateNotFound.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
@@ -625,11 +2390,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleMercantileStatusDocumentTrue() {
         affiliateMercantile.setStatusDocument(true);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
-        assertThrows(AffiliationError.class, () -> service.management("F123M"));
+        assertThrows(AffiliateNotFound.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
 
@@ -640,8 +2405,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void getAffiliationDataByType_shouldHandleDefaultCase() {
         affiliate.setAffiliationSubType("UNKNOWN_SUBTYPE");
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -650,9 +2415,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result.getAffiliation());
         assertEquals(affiliation, result.getAffiliation());
     }
@@ -670,8 +2435,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dd2.setRevised(Boolean.FALSE);
         dd2.setState(Boolean.FALSE);
 
-        when(dataDocumentRepository.findById(10L)).thenReturn(Optional.of(dd1));
-        when(dataDocumentRepository.findById(11L)).thenReturn(Optional.of(dd2));
+        when(iDataDocumentRepository.findById(10L)).thenReturn(Optional.of(dd1));
+        when(iDataDocumentRepository.findById(11L)).thenReturn(Optional.of(dd2));
 
         DocumentsDTO dto1 = new DocumentsDTO();
         dto1.setId(10L);
@@ -681,28 +2446,28 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dto2.setId(11L);
         dto2.setReject(false);
 
-        service.stateDocuments(List.of(dto1, dto2), 1L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto1, dto2), 1L);
 
         assertTrue(dd1.getRevised());
         assertTrue(dd1.getState());
         assertTrue(dd2.getRevised());
         assertFalse(dd2.getState());
 
-        verify(dataDocumentRepository, times(2)).save(any(DataDocumentAffiliate.class));
+        verify(iDataDocumentRepository, times(2)).save(any(DataDocumentAffiliate.class));
     }
 
 
     @Test
     @DisplayName("visualizationPendingPerform should handle small totals correctly")
     void visualizationPendingPerform_shouldHandleSmallTotals() {
-        when(repositoryAffiliation.count()).thenReturn(1L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(1L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(new Affiliation()))
                 .thenReturn(List.of())
                 .thenReturn(List.of())
                 .thenReturn(List.of());
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("100.0", result.getInterviewWeb());
@@ -717,7 +2482,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(Page.empty());
 
-        ResponseManagementDTO result = service.managementAffiliation(0, 10, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(0, 10, null);
         assertNotNull(result);
         verify(affiliationsViewRepository).findAll(any(Specification.class), any(PageRequest.class));
 
@@ -729,14 +2494,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleSingStageError() {
         affiliation.setStageManagement("firma");
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
@@ -744,11 +2509,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleVolunteerSubtypeWithoutFamilyMember() {
         affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILIATE_INDEPENDENT_VOLUNTEER);
 
-
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
-
         when(dangerRepository.findByIdAffiliation(any())).thenReturn(null);
 
         var doc = new DataDocumentAffiliate();
@@ -757,9 +2520,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result.getAffiliation());
     }
     @Test
@@ -768,7 +2531,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
 
-        String result = service.generateExcel(null);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
         assertNotNull(result);
         assertFalse(result.isEmpty());
     }
@@ -776,8 +2539,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation should handle empty comments list")
     void stateAffiliation_shouldHandleEmptyCommentsList() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -786,17 +2549,17 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         in.setReasonReject("R");
         in.setComment(new ArrayList<>());
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
     }
 
     @Test
     @DisplayName("management should handle rural zone affiliation")
     void management_shouldHandleRuralZoneAffiliation() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -805,9 +2568,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result.getAffiliation());
     }
 
@@ -816,7 +2579,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void consultDocument_shouldHandleNullResponse() {
         when(alfrescoService.getDocument("NULL_ID")).thenReturn(null);
 
-        List<DocumentBase64> result = service.consultDocument("NULL_ID");
+        List<DocumentBase64> result = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("NULL_ID");
 
         assertEquals(1, result.size());
         assertNull(result.get(0).getBase64Image());
@@ -829,7 +2592,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void consultDocument_shouldHandleEmptyFilename() {
         when(alfrescoService.getDocument("EMPTY_ID")).thenReturn("");
 
-        List<DocumentBase64> result = service.consultDocument("EMPTY_ID");
+        List<DocumentBase64> result = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("EMPTY_ID");
 
         assertEquals(1, result.size());
         assertEquals("", result.get(0).getBase64Image());
@@ -842,7 +2605,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
 
-        String result = service.generateExcel(null);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
 
         assertNotNull(result);
         assertTrue(result.length() > 500);
@@ -854,7 +2617,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
 
-        String result = service.generateExcel(null);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
 
         assertNotNull(result);
 
@@ -866,7 +2629,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void safeValue_throughGenerateExcel() {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
-        String result = service.generateExcel(null);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
         assertNotNull(result);
     }
 
@@ -874,14 +2637,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("calculatePercentage coverage through visualizationPendingPerform")
     void calculatePercentage_coverage() {
-        when(repositoryAffiliation.count()).thenReturn(200L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(200L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation()));
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("1.5", result.getInterviewWeb());
@@ -898,7 +2661,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(Page.empty());
 
-        ResponseManagementDTO result = service.managementAffiliation(0, 10, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(0, 10, null);
         assertNotNull(result);
     }
 
@@ -907,35 +2670,35 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_errorPathsCoverage() {
         affiliate.setStatusDocument(true);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
     @DisplayName("findAffiliateActive method coverage - FINAL FIX")
     void findAffiliateActive_coverage() {
         assertDoesNotThrow(() -> {
-            assertNotNull(service);
+            assertNotNull(affiliationEmployerDomesticServiceIndependentServiceImpl);
         });
     }
 
     @Test
     @DisplayName("visualizationPendingPerform should handle zero count")
     void visualizationPendingPerform_shouldHandleZeroCount() {
-        when(repositoryAffiliation.count()).thenReturn(0L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(0L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of())
                 .thenReturn(List.of())
                 .thenReturn(List.of())
                 .thenReturn(List.of());
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("NaN", result.getInterviewWeb());
@@ -951,10 +2714,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dto.setId(999L);
         dto.setReject(false);
 
-        when(dataDocumentRepository.findById(999L)).thenReturn(Optional.empty());
+        when(iDataDocumentRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThrows(com.gal.afiliaciones.config.ex.alfresco.ErrorFindDocumentsAlfresco.class,
-                () -> service.stateDocuments(List.of(dto), 1L));
+                () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto), 1L));
     }
 
     @Test
@@ -962,7 +2725,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void consultDocument_shouldHandleDifferentDocumentIDs() {
         when(alfrescoService.getDocument("TEST123")).thenReturn("testbase64content");
 
-        List<DocumentBase64> result = service.consultDocument("TEST123");
+        List<DocumentBase64> result = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("TEST123");
 
         assertEquals(1, result.size());
         assertEquals("testbase64content", result.get(0).getBase64Image());
@@ -972,9 +2735,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("findDocuments should handle empty results")
     void findDocuments_shouldHandleEmptyResults() {
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
 
-        List<DataDocumentAffiliate> result = service.findDocuments(999L);
+        List<DataDocumentAffiliate> result = affiliationEmployerDomesticServiceIndependentServiceImpl.findDocuments(999L);
 
         assertTrue(result.isEmpty());
     }
@@ -982,8 +2745,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("management should handle different filed numbers")
     void management_shouldHandleDifferentFiledNumbers() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -992,9 +2755,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("DIFFERENT_NUMBER");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(246L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
@@ -1015,15 +2778,15 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         differentAffiliate.setAffiliationCancelled(false);
         differentAffiliate.setStatusDocument(false);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(differentAffiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(differentAffiliate));
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(differentAffiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(differentAffiliate));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("DIFFERENT_F456");
         in.setRejectAffiliation(false);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
         verify(filedWebSocketService).changeStateAffiliation("DIFFERENT_F456");
     }
@@ -1035,17 +2798,17 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dd.setId(20L);
         dd.setRevised(Boolean.FALSE);
         dd.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findById(20L)).thenReturn(Optional.of(dd));
+        when(iDataDocumentRepository.findById(20L)).thenReturn(Optional.of(dd));
 
         DocumentsDTO dto = new DocumentsDTO();
         dto.setId(20L);
         dto.setReject(false);
 
-        service.stateDocuments(List.of(dto), 2L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto), 2L);
 
         assertTrue(dd.getRevised());
         assertFalse(dd.getState());
-        verify(dataDocumentRepository).save(dd);
+        verify(iDataDocumentRepository).save(dd);
     }
 
     @Test
@@ -1053,9 +2816,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void generateExcel_shouldHandleDifferentFilterScenarios() {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenReturn(new ArrayList<>());
-        String result1 = service.generateExcel(null);
+        String result1 = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
         assertNotNull(result1);
-        String result2 = service.generateExcel(null);
+        String result2 = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null);
         assertNotNull(result2);
     }
 
@@ -1066,7 +2829,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
                 .thenReturn(Page.empty());
         when(affiliationsViewRepository.countByStageManagement(anyString())).thenReturn(3L);
 
-        ResponseManagementDTO result = service.managementAffiliation(1, 20, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(1, 20, null);
 
         assertNotNull(result);
         assertEquals(3L, result.totalInterviewing());
@@ -1077,8 +2840,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleAffiliateWithDifferentSubtype() {
         affiliate.setAffiliationSubType("SOME_OTHER_SUBTYPE");
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -1087,9 +2850,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
@@ -1097,8 +2860,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation should handle comments with single element")
     void stateAffiliation_shouldHandleCommentsWithSingleElement() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -1107,9 +2870,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         in.setReasonReject("SINGLE_REASON");
         in.setComment(List.of("single comment"));
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(observationsAffiliationService).create(anyString(), eq("F123"), eq("SINGLE_REASON"), eq(88L));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
     }
@@ -1122,9 +2885,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         testAffiliation.setId(testId);
         testAffiliation.setFiledNumber("TEST999");
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(testAffiliation));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(testAffiliation));
 
-        Affiliation result = service.findById(testId);
+        Affiliation result = affiliationEmployerDomesticServiceIndependentServiceImpl.findById(testId);
 
         assertNotNull(result);
         assertEquals(testId, result.getId());
@@ -1136,36 +2899,36 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateDocuments should handle empty documents list")
     void stateDocuments_shouldHandleEmptyDocumentsList() {
-        assertDoesNotThrow(() -> service.stateDocuments(new ArrayList<>(), 1L));
-        verify(dataDocumentRepository, never()).findById(any());
-        verify(dataDocumentRepository, never()).save(any());
+        assertDoesNotThrow(() -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(new ArrayList<>(), 1L));
+        verify(iDataDocumentRepository, never()).findById(any());
+        verify(iDataDocumentRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("consultDocument should handle various alfresco responses")
     void consultDocument_shouldHandleVariousAlfrescoResponses() {
         when(alfrescoService.getDocument("NORMAL")).thenReturn("normalcontent");
-        List<DocumentBase64> result1 = service.consultDocument("NORMAL");
+        List<DocumentBase64> result1 = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("NORMAL");
         assertEquals("normalcontent", result1.get(0).getBase64Image());
         when(alfrescoService.getDocument("EMPTY")).thenReturn("");
-        List<DocumentBase64> result2 = service.consultDocument("EMPTY");
+        List<DocumentBase64> result2 = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("EMPTY");
         assertEquals("", result2.get(0).getBase64Image());
         when(alfrescoService.getDocument("NULL")).thenReturn(null);
-        List<DocumentBase64> result3 = service.consultDocument("NULL");
+        List<DocumentBase64> result3 = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("NULL");
         assertNull(result3.get(0).getBase64Image());
     }
 
     @Test
     @DisplayName("visualizationPendingPerform should handle different count scenarios")
     void visualizationPendingPerform_shouldHandleDifferentCountScenarios() {
-        when(repositoryAffiliation.count()).thenReturn(50L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(50L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation()));
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("4.0", result.getInterviewWeb());
@@ -1177,8 +2940,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("management should handle null document upload date")
     void management_shouldHandleNullDocumentUploadDate() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -1187,9 +2950,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getDocuments());
@@ -1201,17 +2964,17 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleInterviewWebWithNoDate() {
         affiliation.setStageManagement(Constant.INTERVIEW_WEB);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of());
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
         in.setRejectAffiliation(false);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(repositoryAffiliation, atLeastOnce()).save(any(Affiliation.class));
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository, atLeastOnce()).save(any(Affiliation.class));
         verify(filedWebSocketService).changeStateAffiliation("F123");
     }
 
@@ -1220,14 +2983,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("visualizationPendingPerform should handle very large numbers")
     void visualizationPendingPerform_shouldHandleVeryLargeNumbers() {
-        when(repositoryAffiliation.count()).thenReturn(10000L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(10000L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation()))
                 .thenReturn(List.of(new Affiliation()))
                 .thenReturn(List.of(new Affiliation(), new Affiliation(), new Affiliation()));
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("0.05", result.getInterviewWeb());
@@ -1249,8 +3012,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dd2.setRevised(Boolean.FALSE);
         dd2.setState(Boolean.TRUE);
 
-        when(dataDocumentRepository.findById(30L)).thenReturn(Optional.of(dd1));
-        when(dataDocumentRepository.findById(31L)).thenReturn(Optional.of(dd2));
+        when(iDataDocumentRepository.findById(30L)).thenReturn(Optional.of(dd1));
+        when(iDataDocumentRepository.findById(31L)).thenReturn(Optional.of(dd2));
 
         DocumentsDTO dto1 = new DocumentsDTO();
         dto1.setId(30L);
@@ -1260,14 +3023,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         dto2.setId(31L);
         dto2.setReject(true);
 
-        service.stateDocuments(List.of(dto1, dto2), 3L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(List.of(dto1, dto2), 3L);
 
         assertTrue(dd1.getRevised());
         assertFalse(dd1.getState());
         assertTrue(dd2.getRevised());
         assertTrue(dd2.getState());
 
-        verify(dataDocumentRepository, times(2)).save(any(DataDocumentAffiliate.class));
+        verify(iDataDocumentRepository, times(2)).save(any(DataDocumentAffiliate.class));
     }
 
     @Test
@@ -1277,7 +3040,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
                 .thenReturn(Page.empty());
         when(affiliationsViewRepository.countByStageManagement(anyString())).thenReturn(1000L);
 
-        ResponseManagementDTO result = service.managementAffiliation(999, 100, null);
+        ResponseManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.managementAffiliation(999, 100, null);
 
         assertNotNull(result);
         assertEquals(1000L, result.totalInterviewing());
@@ -1287,8 +3050,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation should handle very long comments")
     void stateAffiliation_shouldHandleVeryLongComments() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -1302,9 +3065,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         }
         in.setComment(longComments);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(observationsAffiliationService, times(100))
                 .create(anyString(), eq("F123"), eq("LONG_REASON"), eq(77L));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
@@ -1317,13 +3080,13 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class)))
                 .thenThrow(new RuntimeException("Database connection error"));
 
-        assertThrows(RuntimeException.class, () -> service.generateExcel(null));
+        assertThrows(RuntimeException.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(null));
     }
 
     @Test
     @DisplayName("findById should handle null ID gracefully")
     void findById_shouldHandleNullId() {
-        assertThrows(Exception.class, () -> service.findById(null));
+        assertThrows(Exception.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.findById(null));
     }
 
 
@@ -1332,14 +3095,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleMercantileRegularizationStage() {
         affiliateMercantile.setStageManagement(Constant.REGULARIZATION);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123M");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
@@ -1347,14 +3110,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void stateAffiliation_shouldHandleMercantileSingStage() {
         affiliateMercantile.setStageManagement("firma");
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123M");
         stateAffiliation.setRejectAffiliation(false);
 
-        assertThrows(AffiliationError.class, () -> service.stateAffiliation(stateAffiliation));
+        assertThrows(AffiliationError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation));
     }
 
     @Test
@@ -1367,7 +3130,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
             dd.setId((long) i);
             dd.setRevised(Boolean.FALSE);
             dd.setState(Boolean.FALSE);
-            when(dataDocumentRepository.findById((long) i)).thenReturn(Optional.of(dd));
+            when(iDataDocumentRepository.findById((long) i)).thenReturn(Optional.of(dd));
 
             DocumentsDTO dto = new DocumentsDTO();
             dto.setId((long) i);
@@ -1375,9 +3138,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
             largeDtoList.add(dto);
         }
 
-        service.stateDocuments(largeDtoList, 5L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(largeDtoList, 5L);
 
-        verify(dataDocumentRepository, times(100)).save(any(DataDocumentAffiliate.class));
+        verify(iDataDocumentRepository, times(100)).save(any(DataDocumentAffiliate.class));
     }
 
 
@@ -1386,14 +3149,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("visualizationPendingPerform should handle negative percentage edge case")
     void visualizationPendingPerform_shouldHandleNegativeEdgeCase() {
-        when(repositoryAffiliation.count()).thenReturn(1L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(1L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of())
                 .thenReturn(List.of())
                 .thenReturn(List.of())
                 .thenReturn(List.of());
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("0.0", result.getInterviewWeb());
@@ -1408,7 +3171,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void consultDocument_shouldHandleNormalDocumentIds() {
         when(alfrescoService.getDocument("NORMAL_DOC_123")).thenReturn("normalContent");
 
-        List<DocumentBase64> result = service.consultDocument("NORMAL_DOC_123");
+        List<DocumentBase64> result = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("NORMAL_DOC_123");
 
         assertEquals(1, result.size());
         assertEquals("normalContent", result.get(0).getBase64Image());
@@ -1419,8 +3182,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleAffiliateWithValidSubtype() {
         affiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_TAXI_DRIVER);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var doc = new DataDocumentAffiliate();
@@ -1429,9 +3192,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
@@ -1443,13 +3206,13 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliateMercantile.setStatusDocument(true);
         affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123M");
         stateAffiliation.setRejectAffiliation(false);
-        service.stateAffiliation(stateAffiliation);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation);
 
         verify(affiliationEmployerActivitiesMercantileService).stateAffiliation(affiliateMercantile, stateAffiliation);
         verify(filedWebSocketService).changeStateAffiliation("F123M");
@@ -1458,8 +3221,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation should handle valid comment list")
     void stateAffiliation_shouldHandleValidCommentList() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -1470,9 +3233,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         List<String> validComments = Arrays.asList("comment1", "comment2", "comment3");
         in.setComment(validComments);
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(observationsAffiliationService, times(3))
                 .create(anyString(), eq("F123"), eq("VALID_COMMENTS"), eq(55L));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
@@ -1483,8 +3246,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void management_shouldHandleMercantileUserLookup() {
         affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
 
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
         when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
@@ -1494,9 +3257,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(Boolean.FALSE);
         doc.setState(Boolean.FALSE);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        assertThrows(AffiliationError.class, () -> service.management("F123M"));
+        assertThrows(AffiliateNotFound.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L));
     }
 
     @Test
@@ -1505,14 +3268,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliateMercantile.setAffiliationCancelled(true);
         affiliateMercantile.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
 
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliateMercantile));
 
         StateAffiliation stateAffiliation = new StateAffiliation();
         stateAffiliation.setFieldNumber("F123M");
         stateAffiliation.setRejectAffiliation(false);
 
-        service.stateAffiliation(stateAffiliation);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(stateAffiliation);
 
         verify(affiliationEmployerActivitiesMercantileService).stateAffiliation(affiliateMercantile, stateAffiliation);
         verify(filedWebSocketService).changeStateAffiliation("F123M");
@@ -1523,7 +3286,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void consultDocument_shouldHandleBasicFunctionality() {
         when(alfrescoService.getDocument("BASIC_DOC")).thenReturn("basicContent");
 
-        List<DocumentBase64> result = service.consultDocument("BASIC_DOC");
+        List<DocumentBase64> result = affiliationEmployerDomesticServiceIndependentServiceImpl.consultDocument("BASIC_DOC");
 
         assertEquals(1, result.size());
         assertEquals("basicContent", result.get(0).getBase64Image());
@@ -1535,8 +3298,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("stateAffiliation should handle different rejection reasons")
     void stateAffiliation_shouldHandleDifferentRejectionReasons() {
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
 
         StateAffiliation in = new StateAffiliation();
         in.setFieldNumber("F123");
@@ -1545,9 +3308,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         in.setReasonReject("DOCUMENT_INCOMPLETE");
         in.setComment(Arrays.asList("Missing signature", "Invalid ID"));
 
-        service.stateAffiliation(in);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateAffiliation(in);
 
-        verify(timerRepository).save(any(AffiliationCancellationTimer.class));
+        verify(iAffiliationCancellationTimerRepository).save(any(AffiliationCancellationTimer.class));
         verify(observationsAffiliationService, times(2))
                 .create(anyString(), eq("F123"), eq("DOCUMENT_INCOMPLETE"), eq(123L));
         verify(sendEmails).requestDenied(any(Affiliation.class), any(StringBuilder.class));
@@ -1556,8 +3319,8 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("management should handle documents with different upload dates")
     void management_shouldHandleDocumentsWithDifferentUploadDates() {
-        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliation));
         when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
         var oldDoc = new DataDocumentAffiliate();
@@ -1574,10 +3337,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         newDoc.setRevised(Boolean.FALSE);
         newDoc.setState(Boolean.FALSE);
 
-        when(dataDocumentRepository.findAll(any(Specification.class)))
+        when(iDataDocumentRepository.findAll(any(Specification.class)))
                 .thenReturn(Arrays.asList(oldDoc, newDoc));
 
-        ManagementDTO result = service.management("F123");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
 
         assertNotNull(result);
         assertEquals(2, result.getDocuments().size());
@@ -1586,14 +3349,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("visualizationPendingPerform should handle medium sized datasets")
     void visualizationPendingPerform_shouldHandleMediumDatasets() {
-        when(repositoryAffiliation.count()).thenReturn(500L);
-        when(repositoryAffiliation.findAll(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.count()).thenReturn(500L);
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findAll(any(Specification.class)))
                 .thenReturn(Arrays.asList(new Affiliation(), new Affiliation()))
                 .thenReturn(Arrays.asList(new Affiliation(), new Affiliation(), new Affiliation()))
                 .thenReturn(Arrays.asList(new Affiliation()))
                 .thenReturn(Arrays.asList(new Affiliation(), new Affiliation(), new Affiliation(), new Affiliation()));
 
-        VisualizationPendingPerformDTO result = service.visualizationPendingPerform();
+        VisualizationPendingPerformDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.visualizationPendingPerform();
 
         assertNotNull(result);
         assertEquals("0.4", result.getInterviewWeb());
@@ -1612,10 +3375,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         docWithNullName.setRevised(Boolean.FALSE);
         docWithNullName.setState(Boolean.FALSE);
 
-        when(dataDocumentRepository.findAll(any(Specification.class)))
+        when(iDataDocumentRepository.findAll(any(Specification.class)))
                 .thenReturn(Arrays.asList(docWithNullName));
 
-        List<DataDocumentAffiliate> result = service.findDocuments(1L);
+        List<DataDocumentAffiliate> result = affiliationEmployerDomesticServiceIndependentServiceImpl.findDocuments(1L);
 
         assertEquals(1, result.size());
         assertNull(result.get(0).getName());
@@ -1628,14 +3391,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         finalDoc.setId(60L);
         finalDoc.setRevised(Boolean.TRUE);
         finalDoc.setState(Boolean.TRUE);
-        when(dataDocumentRepository.findById(60L)).thenReturn(Optional.of(finalDoc));
+        when(iDataDocumentRepository.findById(60L)).thenReturn(Optional.of(finalDoc));
         DocumentsDTO dto = new DocumentsDTO();
         dto.setId(60L);
         dto.setReject(false);
-        service.stateDocuments(Arrays.asList(dto), 15L);
+        affiliationEmployerDomesticServiceIndependentServiceImpl.stateDocuments(Arrays.asList(dto), 15L);
         assertTrue(finalDoc.getRevised());
         assertFalse(finalDoc.getState());
-        verify(dataDocumentRepository).save(finalDoc);
+        verify(iDataDocumentRepository).save(finalDoc);
     }
     @Test
     @DisplayName("buildMainOffice: asigna zona URBANA por defecto y mapea todos los campos")
@@ -1653,7 +3416,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         a.setEmail("ana@test.com");
         a.setAddress("Cra 1 # 2-3");
         a.setDepartment(11L);
-        a.setCityMunicipality(101L);
+        a.setCityMunicipality(7L);
         a.setIdMainStreet(1L);
         a.setIdNumberMainStreet(10L);
         a.setIdLetter1MainStreet(5L);
@@ -1684,13 +3447,12 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
         MainOffice result = (MainOffice) ReflectionTestUtils.invokeMethod(
-                service, "buildMainOffice", a, manager, affiliateLocal);
+                affiliationEmployerDomesticServiceIndependentServiceImpl, "buildMainOffice", a, manager, affiliateLocal, "MO-001", true);
 
         ArgumentCaptor<MainOffice> cap = ArgumentCaptor.forClass(MainOffice.class);
         verify(mainOfficeService).saveMainOffice(cap.capture());
         MainOffice saved = cap.getValue();
         assertEquals("MO-001", saved.getCode());
-        assertEquals("Principal", saved.getMainOfficeName());
         assertTrue(saved.getMain());
         assertEquals(Constant.URBAN_ZONE, saved.getMainOfficeZone());
         assertEquals("Cra 1 # 2-3", saved.getAddress());
@@ -1708,7 +3470,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         assertEquals("6011234567", saved.getPhoneTwoResponsibleHeadquarters());
         assertEquals("ana@test.com", saved.getEmailResponsibleHeadquarters());
         assertEquals(11L, saved.getIdDepartment());
-        assertEquals(101L, saved.getIdCity());
+        assertEquals(7L, saved.getIdCity());
         assertEquals(1L, saved.getIdMainStreet());
         assertEquals(10L, saved.getIdNumberMainStreet());
         assertEquals(5L, saved.getIdLetter1MainStreet());
@@ -1749,7 +3511,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(mainOfficeService.saveMainOffice(any(MainOffice.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
-        ReflectionTestUtils.invokeMethod(service, "buildMainOffice", a, manager, affiliateLocal);
+        ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "buildMainOffice", a, manager, affiliateLocal, "MO-002", true);
 
         ArgumentCaptor<MainOffice> cap = ArgumentCaptor.forClass(MainOffice.class);
         verify(mainOfficeService).saveMainOffice(cap.capture());
@@ -1762,9 +3524,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliateMercantile.setStageManagement("ANY_STAGE");
         affiliateMercantile.setTypeDocumentPersonResponsible("CC");
         affiliateMercantile.setNumberDocumentPersonResponsible("9001");
-        when(iAffiliateRepository.findOne(any(Specification.class)))
+        when(affiliateRepository.findByIdAffiliate(anyLong()))
                 .thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(affiliateMercantile));
@@ -1774,11 +3536,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         pre.setNationality(57L);
         pre.setHealthPromotingEntity(1L);
         pre.setPensionFundAdministrator(2L);
-        when(userPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
+        when(iUserPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
                 .thenReturn(Optional.of(pre));
         when(iUserPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
                 .thenReturn(Optional.of(pre));
-        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
+        when(iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
                 .thenReturn(Optional.of(pre));
         when(iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
                 .thenReturn(Optional.of(pre));
@@ -1789,13 +3551,13 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(false);
         doc.setState(false);
-        when(dataDocumentRepository.findAll(any(Specification.class)))
+        when(iDataDocumentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(doc));
-        when(repositoryAffiliation.save(any(Affiliation.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.save(any(Affiliation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(affiliateService.getEmployerSize(anyInt())).thenReturn(1L);
 
-        ManagementDTO result = service.management("F-TEST-M");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
     }
@@ -1814,9 +3576,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliateMercantile.setTypeDocumentPersonResponsible("CC");
         affiliateMercantile.setNumberDocumentPersonResponsible("9001");
 
-        when(iAffiliateRepository.findOne(any(Specification.class)))
+        when(affiliateRepository.findByIdAffiliate(anyLong()))
                 .thenReturn(Optional.of(affiliate));
-        when(repositoryAffiliation.findOne(any(Specification.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.empty());
         when(affiliateMercantileRepository.findOne(any(Specification.class)))
                 .thenReturn(Optional.of(affiliateMercantile));
@@ -1824,11 +3586,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         pre.setId(2L);
         pre.setFirstName("User");
         pre.setNationality(57L);
-        when(userPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
+        when(iUserPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
                 .thenReturn(Optional.of(pre));
         when(iUserPreRegisterRepository.findOne(ArgumentMatchers.<Specification<UserMain>>any()))
                 .thenReturn(Optional.of(pre));
-        when(userPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
+        when(iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
                 .thenReturn(Optional.of(pre));
         when(iUserPreRegisterRepository.findByIdentificationTypeAndIdentification(anyString(), anyString()))
                 .thenReturn(Optional.of(pre));
@@ -1839,13 +3601,13 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         doc.setDateUpload(LocalDateTime.now());
         doc.setRevised(false);
         doc.setState(false);
-        when(dataDocumentRepository.findAll(any(Specification.class)))
+        when(iDataDocumentRepository.findAll(any(Specification.class)))
                 .thenReturn(List.of(doc));
 
-        when(repositoryAffiliation.save(any(Affiliation.class)))
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.save(any(Affiliation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(affiliateService.getEmployerSize(anyInt())).thenReturn(1L);
-        ManagementDTO result = service.management("F-ECON-M");
+        ManagementDTO result = affiliationEmployerDomesticServiceIndependentServiceImpl.management(123L, 1L);
         assertNotNull(result);
         assertNotNull(result.getAffiliation());
     }
@@ -1854,18 +3616,18 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("createAffiliationStep3 should throw error if affiliation not found")
     void createAffiliationStep3_notFound() {
-        when(repositoryAffiliation.findById(999L)).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThrows(AffiliationNotFoundError.class, () -> service.createAffiliationStep3(999L, mock(MultipartFile.class)));
+        assertThrows(AffiliationNotFoundError.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep3(999L, mock(MultipartFile.class)));
     }
 
 
     @Test
     @DisplayName("assignTo should throw if affiliation not found")
     void assignTo_affiliationNotFound() {
-        when(repositoryAffiliation.findByFiledNumber("F999")).thenReturn(Optional.empty());
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findByFiledNumber("F999")).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> service.assignTo("F999", 99L));
+        assertThrows(RuntimeException.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.assignTo(999L, 99L));
     }
 
     @Test
@@ -1874,10 +3636,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         Affiliation affiliation = new Affiliation();
         affiliation.setId(1L);
         affiliation.setIdentificationDocumentNumber("12345");
-        when(repositoryAffiliation.findById(1L)).thenReturn(Optional.of(affiliation));
-        when(webClient.getByIdentification("12345")).thenReturn(Optional.empty());
 
-        assertThrows(AffiliationError.class, () -> service.createAffiliationStep3(1L, mock(MultipartFile.class)));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(1L)).thenReturn(Optional.of(affiliation));
+        when(genericWebClient.getByIdentification("12345")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundInDataBase.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep3(1L, mock(MultipartFile.class)));
     }
 
 
@@ -1889,7 +3652,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
 
         when(affiliationsViewRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(new ArrayList<>());
 
-        String result = service.generateExcel(filter);
+        String result = affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter);
 
         assertNotNull(result);
         assertTrue(result.length() > 0);
@@ -1899,10 +3662,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @Test
     @DisplayName("convertZoneToString should handle both zones")
     void convertZoneToString_both() {
-        String urban = (String) ReflectionTestUtils.invokeMethod(service, "convertZoneToString", Constant.URBAN_ZONE);
+        String urban = (String) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "convertZoneToString", Constant.URBAN_ZONE);
         assertEquals("Urbana", urban);
 
-        String rural = (String) ReflectionTestUtils.invokeMethod(service, "convertZoneToString", Constant.RURAL_ZONE);
+        String rural = (String) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "convertZoneToString", Constant.RURAL_ZONE);
         assertEquals("Rural", rural);
     }
 
@@ -1912,7 +3675,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         AffiliateMercantile mercantile = new AffiliateMercantile();
         mercantile.setEconomicActivity(new ArrayList<>());
 
-        Map<Long, Boolean> result = (Map<Long, Boolean>) ReflectionTestUtils.invokeMethod(service, "economicActivities", mercantile);
+        Map<Long, Boolean> result = (Map<Long, Boolean>) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "economicActivities", mercantile);
 
         assertTrue(result.isEmpty());
     }
@@ -1921,8 +3684,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     @DisplayName("createAffiliateActivityEconomic should create activities and work centers")
     void createAffiliateActivityEconomic_success() {
         Affiliation affiliation = new Affiliation();
+        affiliation.setDepartment(11L);
+        affiliation.setCityMunicipality(7L);
+        affiliation.setAddress("CRA 53 N 127-40");
         Affiliate affiliate = new Affiliate();
         affiliate.setIdAffiliate(1L);
+        UserMain userMain = new UserMain();
+        userMain.setIdentificationType("CC");
+        userMain.setIdentification("1234");
         MainOffice mainOffice = new MainOffice();
 
         List<String> codes = List.of("1970001", "1970002", "3970001", "3869201");
@@ -1933,12 +3702,11 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
                     ea.setClassRisk("I");
                     return ea;
                 }).toList();
-        when(iEconomicActivityRepository.findAllByEconomicActivityCodeIn(codes)).thenReturn(activities);
 
-        when(webClient.getByIdentification(anyString())).thenReturn(Optional.of(new UserDtoApiRegistry()));
+        when(iEconomicActivityRepository.findAllByEconomicActivityCodeIn(codes)).thenReturn(activities);
         when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenReturn(new WorkCenter());
 
-        List<AffiliateActivityEconomic> result = (List<AffiliateActivityEconomic>) ReflectionTestUtils.invokeMethod(service, "createAffiliateActivityEconomic", affiliation, affiliate, mainOffice);
+        List<AffiliateActivityEconomic> result = (List<AffiliateActivityEconomic>) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "createAffiliateActivityEconomic", affiliation, affiliate, userMain);
 
         assertEquals(4, result.size());
         assertTrue(result.stream().anyMatch(AffiliateActivityEconomic::getIsPrimary));
@@ -1951,7 +3719,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         List<EconomicActivity> activities = new ArrayList<>();
         when(iEconomicActivityRepository.findAllByEconomicActivityCodeIn(codes)).thenReturn(activities);
 
-        List<EconomicActivity> result = (List<EconomicActivity>) ReflectionTestUtils.invokeMethod(service, "economicActivityList", codes);
+        List<EconomicActivity> result = (List<EconomicActivity>) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "economicActivityList", codes);
 
         assertEquals(activities, result);
         verify(iEconomicActivityRepository).findAllByEconomicActivityCodeIn(codes);
@@ -1961,7 +3729,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
     void findDataDaily_noInterview() {
         when(dateInterviewWebRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
 
-        DataDailyDTO result = (DataDailyDTO) ReflectionTestUtils.invokeMethod(service, "findDataDaily", "1");
+        DataDailyDTO result = (DataDailyDTO) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "findDataDaily", "1");
 
         assertNull(result);
     }
@@ -1974,7 +3742,7 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         try (MockedConstruction<XSSFWorkbook> mocked = Mockito.mockConstruction(XSSFWorkbook.class, (mock, context) -> {
             when(mock.createSheet(anyString())).thenThrow(new IOException("Mocked IO error"));
         })) {
-            assertThrows(RuntimeException.class, () -> service.generateExcel(filter));
+            assertThrows(RuntimeException.class, () -> affiliationEmployerDomesticServiceIndependentServiceImpl.generateExcel(filter));
         }
     }
     @Test
@@ -1987,15 +3755,17 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliation.setMunicipalityEmployer(2L);
         affiliation.setAddressEmployer("Test Address");
         affiliation.setEconomicActivity(new ArrayList<>());
+        EconomicActivity economicActivity = new EconomicActivity();
+        economicActivity.setClassRisk("1");
+        economicActivity.setEconomicActivityCode("1970001");
+        UserMain userMain = new UserMain();
+        userMain.setIdentificationType("CC");
+        userMain.setIdentification("1234");
         MainOffice mainOffice = new MainOffice();
-
-        UserDtoApiRegistry userDto = new UserDtoApiRegistry();
-        userDto.setIdentification("123");
-        when(webClient.getByIdentification("123")).thenReturn(Optional.of(userDto));
 
         when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenReturn(new WorkCenter());
 
-        ReflectionTestUtils.invokeMethod(service, "createWorkCenter", affiliation, "I", 1, "1970001", mainOffice, 1L);
+        ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "createWorkCenter", affiliation, economicActivity, 1, mainOffice, 1L, userMain);
 
         ArgumentCaptor<WorkCenter> captor = ArgumentCaptor.forClass(WorkCenter.class);
         verify(workCenterService).saveWorkCenter(captor.capture());
@@ -2007,9 +3777,9 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         DataDocumentAffiliate doc = new DataDocumentAffiliate();
         doc.setState(false);
         doc.setRevised(true);
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(List.of(doc));
 
-        List<DataDocumentAffiliate> result = (List<DataDocumentAffiliate>) ReflectionTestUtils.invokeMethod(service, "findDocumentsRejects", 1L);
+        List<DataDocumentAffiliate> result = (List<DataDocumentAffiliate>) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "findDocumentsRejects", 1L);
 
         assertEquals(1, result.size());
     }
@@ -2020,15 +3790,15 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         affiliation.setId(1L);
         affiliation.setIdentificationDocumentNumber("12345");
         affiliation.setEconomicActivity(new ArrayList<>());
-        when(repositoryAffiliation.findById(1L)).thenReturn(Optional.of(affiliation));
+        when(iAffiliationEmployerDomesticServiceIndependentRepository.findById(1L)).thenReturn(Optional.of(affiliation));
 
-        UserDtoApiRegistry userDto = new UserDtoApiRegistry();
+        UserMain userDto = new UserMain();
+        userDto.setIdentificationType("CC");
         userDto.setIdentification("12345");
-        when(webClient.getByIdentification("12345")).thenReturn(Optional.of(userDto));
+        when(iUserPreRegisterRepository.findOne(any(Specification.class))).thenReturn(Optional.of(userDto));
 
         when(filedService.getNextFiledNumberAffiliation()).thenReturn("F999");
         when(affiliateService.createAffiliate(any(Affiliate.class))).thenReturn(new Affiliate());
-
 
         MainOffice mainOffice = new MainOffice();
         mainOffice.setId(1L);
@@ -2037,10 +3807,10 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         when(alfrescoService.getIdDocumentsFolder(anyString())).thenReturn(Optional.of(new ConsultFiles()));
         when(alfrescoService.uploadAffiliationDocuments(anyString(), anyString(), anyList())).thenReturn(new ResponseUploadOrReplaceFilesDTO());
 
-        service.createAffiliationStep3(1L, mock(MultipartFile.class));
+        affiliationEmployerDomesticServiceIndependentServiceImpl.createAffiliationStep3(1L, mock(MultipartFile.class));
 
         ArgumentCaptor<Affiliation> captor = ArgumentCaptor.forClass(Affiliation.class);
-        verify(repositoryAffiliation).save(captor.capture());
+        verify(iAffiliationEmployerDomesticServiceIndependentRepository).save(captor.capture());
         assertNotNull(captor.getValue().getEconomicActivity());
         assertTrue(captor.getValue().getEconomicActivity().isEmpty());
     }
@@ -2051,14 +3821,14 @@ class AffiliationEmployerDomesticServiceIndependentServiceImplTest {
         List<String> codes = List.of("1970001", "1970002");
         when(iEconomicActivityRepository.findAllByEconomicActivityCodeIn(codes)).thenThrow(new RuntimeException("Repository error"));
 
-        assertThrows(RuntimeException.class, () -> ReflectionTestUtils.invokeMethod(service, "economicActivityList", codes));
+        assertThrows(RuntimeException.class, () -> ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "economicActivityList", codes));
     }
     @Test
     @DisplayName("findDocumentsRejects should handle empty list")
     void findDocumentsRejects_emptyList() {
-        when(dataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
+        when(iDataDocumentRepository.findAll(any(Specification.class))).thenReturn(new ArrayList<>());
 
-        List<DataDocumentAffiliate> result = (List<DataDocumentAffiliate>) ReflectionTestUtils.invokeMethod(service, "findDocumentsRejects", 1L);
+        List<DataDocumentAffiliate> result = (List<DataDocumentAffiliate>) ReflectionTestUtils.invokeMethod(affiliationEmployerDomesticServiceIndependentServiceImpl, "findDocumentsRejects", 1L);
 
         assertTrue(result.isEmpty());
     }

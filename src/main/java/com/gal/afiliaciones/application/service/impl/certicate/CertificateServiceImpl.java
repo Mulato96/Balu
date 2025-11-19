@@ -38,6 +38,7 @@ import com.gal.afiliaciones.domain.model.Collection;
 import com.gal.afiliaciones.domain.model.ContributionCorrection;
 import com.gal.afiliaciones.domain.model.EconomicActivity;
 import com.gal.afiliaciones.domain.model.Occupation;
+import com.gal.afiliaciones.domain.model.OccupationDecree1563;
 import com.gal.afiliaciones.domain.model.QrDocument;
 import com.gal.afiliaciones.domain.model.RequestCollectionReturn;
 import com.gal.afiliaciones.domain.model.UserMain;
@@ -63,6 +64,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.Certificat
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
+import com.gal.afiliaciones.infrastructure.dao.repository.decree1563.OccupationDecree1563Repository;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateMercantileSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
@@ -104,6 +106,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final AffiliationDependentRepository affiliationDependentRepository;
     private final OccupationRepository occupationRepository;
     private final ICertificateAffiliateRepository certificateAffiliateRepository;
+    private final OccupationDecree1563Repository occupationDecree1563Repository;
 
     private static final String CERTIFICATE_LABEL = "certificado";
     private static final String IDENTIFICATION_TYPE_LABEL = "tipo_identificacion";
@@ -579,13 +582,14 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     private String findOccupationById(Long id){
-        Occupation occupation = occupationRepository.findById(id).orElse(null);
-        if(occupation!=null) {
-            String nameOccupation = occupation.getNameOccupation();
-            return capitalize(nameOccupation);
+        if (id == null) {
+            return "";
         }
-
-        return "";
+        return occupationRepository.findById(id)
+                .map(Occupation::getNameOccupation)
+                .filter(Objects::nonNull)
+                .map(CertificateServiceImpl::capitalize)
+                .orElse("");
     }
 
     private String generateValidationCodeDependent(String numberDocument, String typeDocument) {
@@ -606,6 +610,24 @@ public class CertificateServiceImpl implements CertificateService {
         }
         return "";
 
+    }
+
+    /**
+     * Determina el estado del contrato basado en las fechas inicial y final
+     * @param initContractDate fecha inicial del contrato
+     * @param endContractDate fecha final del contrato
+     * @return estado del contrato: "Inactiva", "Activa" o "Retirado"
+     */
+    private String getIndependentContractStatus(LocalDate initContractDate, LocalDate endContractDate) {
+        LocalDate currentDate = LocalDate.now();
+        
+        if (Objects.isNull(initContractDate) || currentDate.isBefore(initContractDate)) {
+            return Constant.AFFILIATION_STATUS_INACTIVE;
+        } else if (endContractDate != null && currentDate.isAfter(endContractDate)) {
+            return Constant.AFFILIATION_STATUS_RETIRED;
+        } else {
+            return Constant.AFFILIATION_STATUS_ACTIVE;
+        }
     }
 
     private Certificate saveIndependentAndDomesticCertificate(Certificate certificate, Affiliate affiliate,
@@ -648,6 +670,15 @@ public class CertificateServiceImpl implements CertificateService {
 
         Integer dependentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_DEPENDENT);
         Integer independentWorkersNumber = affiliateRepository.countWorkers(affiliate.getNitCompany(), Constant.AFFILIATION_STATUS_ACTIVE, Constant.TYPE_AFFILLATE_INDEPENDENT);
+        Optional<OccupationDecree1563> occupation = occupationDecree1563Repository.findByOccupationIgnoreCaseAndAccents(affiliation.getOccupation());
+        String employerDocumentType = findDocumentTypeEmployer(affiliate.getNitCompany());
+        Long decentralizedConsecutive = affiliateMercantileRepository
+            .findFirstDecentralizedConsecutiveByTypeDocumentIdentificationAndNumberIdentificationOrderByIdDesc(
+                    employerDocumentType, affiliate.getNitCompany());
+        // Determinar estado del contrato basado en fechas
+        LocalDate initContractDate = affiliation.getContractStartDate() != null ? affiliation.getContractStartDate() : certificate.getCoverageDate();
+        LocalDate endContractDate = affiliation.getContractEndDate();
+        String contractStatus = getIndependentContractStatus(initContractDate, endContractDate);
 
         certificate.setTypeDocument(affiliate.getDocumentType());
         String completeName = concatCompleteName(affiliation.getFirstName(), affiliation.getSecondName(),
@@ -656,7 +687,7 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setVinculationType(affiliate.getAffiliationType());
         certificate.setVinculationSubType(affiliate.getAffiliationSubType());
         certificate.setCompany(affiliate.getCompany());
-        certificate.setDocumentTypeContrator(findDocumentTypeEmployer(affiliate.getNitCompany()));
+        certificate.setDocumentTypeContrator(employerDocumentType);
         certificate.setNitContrator(affiliate.getNitCompany());
         certificate.setRetirementDate(validateRetimentDate(String.valueOf(affiliate.getRetirementDate())));
         certificate.setCoverageDate(affiliate.getCoverageStartDate() != null ? affiliate.getCoverageStartDate() : LocalDate.parse(tomorrow.format(formatter)));
@@ -664,14 +695,18 @@ public class CertificateServiceImpl implements CertificateService {
         certificate.setValidatorCode(generateValidationCode(affiliate.getDocumentNumber(), affiliate.getDocumentType()));
         certificate.setExpeditionDate(formatDate(today));
         certificate.setPosition(affiliation.getOccupation());
-        certificate.setInitContractDate(LocalDate.from(affiliation.getContractStartDate()!=null ? affiliation.getContractStartDate() : certificate.getCoverageDate()));
+        certificate.setOccupationCode(occupation.isPresent() ? String.valueOf(occupation.get().getCode()) : null);
+        certificate.setInitContractDate(Objects.nonNull(initContractDate) ? LocalDate.from(initContractDate) : null);
         certificate.setCity(Constant.CITY_ARL);
         certificate.setMembershipDate(LocalDate.parse(today.format(formatter)));
         certificate.setRisk(affiliation.getRisk());
-        certificate.setEndContractDate(affiliation.getContractEndDate()!=null ? affiliation.getContractEndDate().toString() : null);
+        certificate.setEndContractDate(Objects.nonNull(endContractDate) ? endContractDate.toString() : null);
         certificate.setFiledNumber(filedService.getNextFiledNumberCertificate());
         certificate.setDependentWorkersNumber(dependentWorkersNumber);
         certificate.setIndependentWorkersNumber(independentWorkersNumber);
+        certificate.setDecentralizedConsecutive(Objects.nonNull(decentralizedConsecutive) ? decentralizedConsecutive.intValue() : 0);
+        certificate.setContractStatus(contractStatus);
+        
         return certificateRepository.save(certificate);
 
     }

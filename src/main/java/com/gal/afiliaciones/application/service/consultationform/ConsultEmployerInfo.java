@@ -21,7 +21,7 @@ public interface ConsultEmployerInfo {
 
     AffiliationInformationDTO getAffiliationInfoEmployeer(String filedNumber);
 
-    DocumentsOfAffiliationDTO getDocumentsAffiliation(String filedNumber);
+    DocumentsOfAffiliationDTO getDocumentsAffiliation(Long idAffiliate);
 
     DocumentsCollectionAffiliationDTO getDcoumentsColection(String typeIdentification, String identification);
 

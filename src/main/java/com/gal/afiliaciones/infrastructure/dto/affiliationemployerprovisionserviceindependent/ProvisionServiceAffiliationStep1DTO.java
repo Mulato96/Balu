@@ -8,10 +8,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProvisionServiceAffiliationStep1DTO {
+
     private Long id;
     private String identificationDocumentType;
     private String identificationDocumentNumber;
     private ContractorDataStep1DTO contractorDataDTO;
     private InformationIndependentWorkerDTO informationIndependentWorkerDTO;
     private Boolean is723;
+    private Long idAffiliateEmployer;
+
 }

@@ -1,5 +1,12 @@
 package com.gal.afiliaciones.application.service.impl;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Optional;
+
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.CodeValidCertificationService;
 import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCreateSequence;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
@@ -9,13 +16,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.ICodeValidCertificateR
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +50,23 @@ public class CodeValidCertificationServiceImpl implements CodeValidCertification
 
 
         return code.length() == Constant.CERTIFICATE_VALIDATION_CODE_SIZE ? code : dataPersonal.concat(complete(sequence, code.length()));
+    }
+
+    @Override
+    public String consultCodeWorkerArlIntegration(String identificationType, String identification, String firstName, String surname) {
+        LocalDateTime now = LocalDateTime.now();
+        String sequence = String.valueOf(updateCode(sequence()));
+        
+        String dataPersonal = identificationType
+                .concat(now.format(formatter))
+                .concat(firstName.substring(0, 1))
+                .concat(identification)
+                .concat(surname.substring(0, 1));
+
+        String code = dataPersonal.concat(sequence);
+
+        return code.length() == Constant.CERTIFICATE_VALIDATION_CODE_SIZE ? 
+                code : dataPersonal.concat(complete(sequence, code.length()));
     }
 
     private String dataPersonal(UserMain user){

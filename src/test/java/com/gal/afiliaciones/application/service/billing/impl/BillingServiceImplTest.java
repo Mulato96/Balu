@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.gal.afiliaciones.config.util.CollectProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -28,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.data.jpa.domain.Specification;
 
+import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.BillDetail;
 import com.gal.afiliaciones.domain.model.Billing;
 import com.gal.afiliaciones.domain.model.Policy;
@@ -150,18 +150,17 @@ class BillingServiceImplTest {
         SalaryDTO salaryDTO = new SalaryDTO();
         salaryDTO.setValue(1000L);
         when(webClient.getSmlmvByYear(anyInt())).thenReturn(salaryDTO);
+        
+        // Mock consecutive methods
+        when(billingRepository.findConsecutiveEmployer()).thenReturn(Optional.of(1L));
+        when(billingRepository.findConsecutiveWorker()).thenReturn(Optional.of(1L));
 
         // Run method
         billingService.generateBilling();
 
-        // Verify moveCurrentBillsToHistory called repository methods
-        verify(billingRepository).findAll();
-        verify(billingHistoryRepository).saveAll(anyList());
-        verify(billingRepository).deleteAll();
-
-        verify(billDetailRepository).findAll();
-        verify(billDetailHistoryRepository).saveAll(anyList());
-        verify(billDetailRepository).deleteAll();
+        // Verify consecutive methods were called
+        verify(billingRepository).findConsecutiveEmployer();
+        verify(billingRepository).findConsecutiveWorker();
 
         // Verify new bills saved
         verify(billingRepository).saveAll(anyList());

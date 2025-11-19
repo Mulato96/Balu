@@ -34,6 +34,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.boot.autoconfigure.rsocket.RSocketProperties.Server.Spec;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -357,30 +358,28 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
     }
 
     @Override
+    @Transactional
     public Boolean updateLegalRepresentativeData(RequestUpdateLegalRepresentativeDTO dto){
-        String emailEmployer = "";
-        String nameEmployer = "";
 
         UserMain userMain = userPreRegisterRepository.findByIdentificationTypeAndIdentification(
                         dto.getTypeDocumentPersonResponsible(), dto.getNumberDocumentPersonResponsible())
                 .orElseThrow(() -> new UserNotRegisteredException("User not found"));
         String currentEmail = userMain.getEmail();
 
-        if (dto.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)){
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification
-                    .findDomesticEmployerByLegalRepresentative(dto.getNumberDocumentPersonResponsible());
-            Optional<Affiliate> affiliateOpt = affiliateRepository.findOne(spcAffiliate);
+        Specification<Affiliate> spcLegalRep = AffiliateSpecification.findByEmployerAndIdentification(
+                dto.getTypeDocumentPersonResponsible(), dto.getNumberDocumentPersonResponsible());
+        List<Affiliate> affiliateList = affiliateRepository.findAll(spcLegalRep);
 
-            if(affiliateOpt.isPresent()){
+        affiliateList.forEach( affiliate -> {
+
+            if (affiliate.getAffiliationSubType().equals(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES)){
+
                 Specification<Affiliation> spcAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications
-                        .hasFiledNumber(affiliateOpt.get().getFiledNumber());
+                        .hasFiledNumber(affiliate.getFiledNumber());
                 Optional<Affiliation> affiliationOpt = domesticRepository.findOne(spcAffiliation);
 
                 if(affiliationOpt.isPresent()){
                     Affiliation affiliation = affiliationOpt.get();
-
-                    emailEmployer = affiliation.getEmail();
-                    nameEmployer = affiliation.getFirstName().concat(" ").concat(affiliation.getSurname());
 
                     BeanUtils.copyProperties(dto, affiliation);
                     affiliation.setDateOfBirth(dto.getDateBirth());
@@ -393,23 +392,15 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
                     userPreRegisterRepository.updateLastDateUpdate(userMain.getId(), LocalDateTime.now());
 
                 }
-            }
 
-        } else if (dto.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
-            Specification<Affiliate> spcAffiliate = AffiliateSpecification
-                    .findMercantileByLegalRepresentative(dto.getNumberDocumentPersonResponsible());
-            Optional<Affiliate> affiliateOpt = affiliateRepository.findOne(spcAffiliate);
+            } else if (affiliate.getAffiliationSubType().equals(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE)) {
 
-            if(affiliateOpt.isPresent()){
                 Specification<AffiliateMercantile> spcAffiliation = AffiliateMercantileSpecification
-                        .findByFieldNumber(affiliateOpt.get().getFiledNumber());
+                        .findByFieldNumber(affiliate.getFiledNumber());
                 Optional<AffiliateMercantile> affiliationOpt = affiliateMercantileRepository.findOne(spcAffiliation);
 
                 if(affiliationOpt.isPresent()){
                     AffiliateMercantile affiliation = affiliationOpt.get();
-
-                    emailEmployer = affiliation.getEmail();
-                    nameEmployer = affiliation.getBusinessName();
 
                     affiliation.setEps(dto.getEps());
                     affiliation.setAfp(dto.getAfp());
@@ -419,10 +410,13 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
                     userMain.setPhoneNumber(dto.getPhone1());
                     userMain.setPhoneNumber2(dto.getPhone2());
                     userMain.setLastUpdate(LocalDateTime.now());
+                    userMain.setHealthPromotingEntity(dto.getEps());
+                    userMain.setPensionFundAdministrator(dto.getAfp());
                     userPreRegisterRepository.save(userMain);
                 }
+
             }
-        }
+        });
 
         //Actualizacion en keycloak
         if(!currentEmail.equalsIgnoreCase(dto.getEmail())) {
@@ -433,11 +427,11 @@ public class UpdateEmployerServiceImpl implements UpdateEmployerService {
         }
 
         //Enviar correo de actualización
-        if(!emailEmployer.isBlank()) {
+        if(!dto.getEmail().isBlank()) {
             DataEmailUpdateEmployerDTO dataEmail = new DataEmailUpdateEmployerDTO();
-            dataEmail.setNameEmployer(nameEmployer);
+            dataEmail.setNameEmployer(userMain.getFirstName() + " " + userMain.getSurname());
             dataEmail.setSectionUpdated("Datos representante legal");
-            dataEmail.setEmailEmployer(emailEmployer);
+            dataEmail.setEmailEmployer(dto.getEmail());
 
             sendEmails.emailUpdateEmployer(dataEmail);
         }

@@ -1,5 +1,12 @@
 package com.gal.afiliaciones.application.service.preemploymentexamsite.impl;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.preemploymentexamsite.PreEmploymentExamSiteService;
@@ -12,14 +19,8 @@ import com.gal.afiliaciones.infrastructure.dto.MessageResponse;
 import com.gal.afiliaciones.infrastructure.dto.municipality.MunicipalityDTO;
 import com.gal.afiliaciones.infrastructure.dto.preemploymentexamsite.CreatePreEmploymentExamSiteRequest;
 import com.gal.afiliaciones.infrastructure.dto.preemploymentexamsite.PreEmploymentExamSiteDTO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -102,7 +103,6 @@ public class PreEmploymentExamSiteServiceImpl implements PreEmploymentExamSiteSe
     @Override
     public List<PreEmploymentExamSiteDTO> getPreEmploymentExamSitesByCity(String nameCity){
         try {
-            List<PreEmploymentExamSite> entities = siteDao.findAll();
             BodyResponseConfig<List<MunicipalityDTO>> municipalities = webClient.getMunicipalitiesByName(nameCity);
 
             ObjectMapper mapper = new ObjectMapper();
@@ -110,13 +110,20 @@ public class PreEmploymentExamSiteServiceImpl implements PreEmploymentExamSiteSe
                     new TypeReference<List<MunicipalityDTO>>() {
             });
 
+            // Extraer IDs de municipios para filtrar en base de datos
+            List<Long> municipalityIds = listMunicipalities.stream()
+                    .map(MunicipalityDTO::getIdMunicipality)
+                    .toList();
+
+            // Filtrado optimizado en base de datos usando método personalizado
+            List<PreEmploymentExamSite> entities = siteDao.findByMunicipalityIds(municipalityIds);
+
             // Convertir el array de municipios a un Map para acceso rápido
             Map<Long, String> municipalitiesMap = listMunicipalities.stream()
                     .collect(Collectors.toMap(MunicipalityDTO::getIdMunicipality,
                             MunicipalityDTO::getMunicipalityName));
 
             return entities.stream()
-                    .filter(entity -> municipalitiesMap.containsKey(entity.getIdMunicipality()))
                     .map(entidad -> {
                         PreEmploymentExamSiteDTO dto = new PreEmploymentExamSiteDTO();
                         dto.setId(entidad.getId());

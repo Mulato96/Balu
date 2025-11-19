@@ -92,6 +92,7 @@ public class CertificateServiceHelper {
         parameters.put(Constant.NAME_CONTRACTOR, certificate.getCompany());
         parameters.put(Constant.CONSECUTIVE_DOCUMENT, certificate.getFiledNumber());
         parameters.put(Constant.ECONOMY_ACTIVITY, String.valueOf(certificate.getCodeActivityEconomicPrimary()));
+        parameters.put(Constant.NAME_ACTIVITY, certificate.getNameActivityEconomic());
 
         if(certificate.getEndContractDate() == null)
             parameters.put(Constant.END_CONTRACT_DATE, Constant.NO_RECORD_LABEL);
@@ -102,6 +103,10 @@ public class CertificateServiceHelper {
         parameters.put(Constant.IDENTIFICATION, certificate.getTypeDocument() + ". " + certificate.getNumberDocument());
         parameters.put(Constant.NAME, certificate.getName());
         parameters.put(Constant.ADDRESSED_TO_LABEL, certificate.getAddressedTo());
+        parameters.put(Constant.OCCUPATION_CODE, certificate.getOccupationCode());
+        parameters.put(Constant.POSITION, certificate.getPosition());
+        parameters.put(Constant.DECENTRALIZED_CONSECUTIVE, String.valueOf(certificate.getDecentralizedConsecutive()));
+        parameters.put(Constant.CONTRACT_STATUS_FIELD, certificate.getContractStatus());
 
         reportRequestDTO.setParameters(parameters);
         return reportRequestDTO;

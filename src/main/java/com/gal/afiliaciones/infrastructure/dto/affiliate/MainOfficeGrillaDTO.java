@@ -13,8 +13,6 @@ import lombok.NoArgsConstructor;
 public class MainOfficeGrillaDTO {
 
     private Long id;
-    private String mainOfficeDepartment;
-    private String mainOfficeCity;
     private String code;
     private Boolean main;
     private String mainOfficeName;
@@ -22,6 +20,10 @@ public class MainOfficeGrillaDTO {
     private String mainOfficePhoneNumber;
     private Long idDepartment;
     private Long idCity;
+    private String mainOfficeDepartment;
+    private String mainOfficeCity;
+    private Long idAffiliate;
+    private String company;
     private Long idMainStreet;
     private Long idNumberMainStreet;
     private Long idLetter1MainStreet;
@@ -41,6 +43,11 @@ public class MainOfficeGrillaDTO {
     private Long idHorizontalProperty4;
     private Long idNumHorizontalProperty4;
     private UserMain officeManager;
-
-
+    private String typeAffiliation;
+    private String phoneOneLegalRepresentative;
+    private String phoneTwoLegalRepresentative;
+    private String typeDocumentPersonResponsible;
+    private String numberDocumentPersonResponsible;
+    private String legalRepresentativeFullName;
+    private String businessName;
 }

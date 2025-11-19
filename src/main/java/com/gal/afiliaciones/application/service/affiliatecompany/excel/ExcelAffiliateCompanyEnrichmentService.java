@@ -1,20 +1,21 @@
 package com.gal.afiliaciones.application.service.affiliatecompany.excel;
 
-import com.gal.afiliaciones.infrastructure.dto.affiliatecompany.AffiliateCompanyDbApproxResponseDTO;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
+import com.gal.afiliaciones.infrastructure.dto.affiliatecompany.AffiliateCompanyDbApproxResponseDTO;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * Service for enriching Excel affiliate company data with descriptive names.
@@ -138,9 +139,7 @@ public class ExcelAffiliateCompanyEnrichmentService {
                     .ifPresent(occ -> dto.setOcupacion(occ.getNameOccupation()));
             } catch (NumberFormatException e) {
                 // It's actually a name, do reverse lookup for ID
-                occupationRepository.findAll().stream()
-                    .filter(occ -> dto.getOcupacion().equalsIgnoreCase(occ.getNameOccupation()))
-                    .findFirst()
+                occupationRepository.findByNameOccupationIgnoreCase(dto.getOcupacion())
                     .ifPresent(occ -> dto.setIdOcupacion(occ.getIdOccupation().intValue()));
             }
         }

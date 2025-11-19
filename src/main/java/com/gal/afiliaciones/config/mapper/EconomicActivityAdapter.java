@@ -28,7 +28,7 @@ public class EconomicActivityAdapter {
                 .classRisk(entity.getClassRisk())
                 .codeCIIU(entity.getCodeCIIU())
                 .additionalCode(entity.getAdditionalCode())
-                .description(entity.getCodeCIIU() + " - " + entity.getDescription())
+                .description(entity.getEconomicActivityCode() + " - " + entity.getDescription())
                 .idEconomicSector(entity.getIdEconomicSector())
                 .build();
     };

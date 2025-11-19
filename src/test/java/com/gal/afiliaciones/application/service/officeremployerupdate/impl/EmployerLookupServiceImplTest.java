@@ -1,9 +1,11 @@
 package com.gal.afiliaciones.application.service.officeremployerupdate.impl;
 
+import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.infrastructure.dao.repository.updateEmployerData.OfficerAffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicProjection;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerUpdateDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepUpdateRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepViewDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +26,8 @@ class EmployerLookupServiceImplTest {
 
     @Mock
     private OfficerAffiliateMercantileRepository mercRepo;
-
+    @Mock
+    private IUserRegisterService userRegisterService;
     @InjectMocks
     private EmployerLookupServiceImpl service;
 
@@ -56,11 +59,11 @@ class EmployerLookupServiceImplTest {
     @Test
     void findBasic_shouldReturnEmployer_whenFound() {
         EmployerBasicProjection mockProjection = mock(EmployerBasicProjection.class);
+        when(mockProjection.getDocNumber()).thenReturn("123456789");
+        when(mockProjection.getDv()).thenReturn("1");  // ← Con esto ya no entra al if
         when(mercRepo.findBasicByDoc(anyString(), anyString()))
                 .thenReturn(Optional.of(mockProjection));
-
-        Optional<EmployerBasicProjection> result = service.findBasic("CC", "123456789");
-
+        Optional<EmployerBasicDTO> result = service.findBasic("CC", "123456789");
         assertTrue(result.isPresent());
         verify(mercRepo, times(1)).findBasicByDoc("CC", "123456789");
     }
@@ -70,7 +73,7 @@ class EmployerLookupServiceImplTest {
         when(mercRepo.findBasicByDoc(anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        Optional<EmployerBasicProjection> result = service.findBasic("CC", "999999999");
+        Optional<EmployerBasicDTO> result = service.findBasic("CC", "999999999");
 
         assertFalse(result.isPresent());
         verify(mercRepo, times(1)).findBasicByDoc("CC", "999999999");

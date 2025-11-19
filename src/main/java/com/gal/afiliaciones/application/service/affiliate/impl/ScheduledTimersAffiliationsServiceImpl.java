@@ -1,5 +1,23 @@
 package com.gal.afiliaciones.application.service.affiliate.impl;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.CertificateBulkService;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.ScheduleInterviewWebService;
@@ -15,19 +33,20 @@ import com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.ArlInformation;
 import com.gal.afiliaciones.domain.model.DateInterviewWeb;
+import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReason;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReasonWorker;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
-import com.gal.afiliaciones.domain.model.Retirement;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.client.generic.novelty.WorkerRetirementNoveltyClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
@@ -40,30 +59,13 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.TemplateSendEmailsDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNoveltyRequest;
+import com.gal.afiliaciones.infrastructure.dto.novelty.WorkerRetirementNoveltyRequest;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.DataContributorDTO;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.NoveltyRuafDTO;
 import com.gal.afiliaciones.infrastructure.dto.workerretirement.DataWorkerRetirementDTO;
-import com.gal.afiliaciones.infrastructure.dto.novelty.WorkerRetirementNoveltyRequest;
-import com.gal.afiliaciones.infrastructure.client.generic.novelty.WorkerRetirementNoveltyClient;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
@@ -294,7 +296,7 @@ public class ScheduledTimersAffiliationsServiceImpl {
 
         iAffiliateRepository.findAllAffiliates()
                 .forEach(affiliate -> {
-                    if (ChronoUnit.DAYS.between(affiliate.getAffiliationDate(), LocalDate.now()) > 30) {
+                    if (ChronoUnit.DAYS.between(affiliate.getAffiliationDate(), LocalDateTime.now()) > 30) {
                         iAffiliateRepository.updateAffiliationCancelled(affiliate.getIdAffiliate());
                         documentNumber.add(affiliate.getDocumentNumber());
                     }
@@ -319,19 +321,21 @@ public class ScheduledTimersAffiliationsServiceImpl {
 
     @Scheduled(cron = "${cron.execute.scheduled}")
     public void retirement() {
-        List<Retirement> retirementListi = retirementRepository.findAll();
-
         LocalDate today = LocalDate.now();
 
         Long onlyAffiliateId = testFilterAffiliateId.getAndSet(null);
+        List<Retirement> retirementList;
+
+        // Filtrado optimizado en base de datos según el caso
         if (onlyAffiliateId != null) {
             log.info("[Cron][Retirement] Test filter active. Processing only affiliateId={}", onlyAffiliateId);
+            retirementList = retirementRepository.findByIdAffiliateEquals(onlyAffiliateId);
+        } else {
+            // Caso normal: buscar solo retiros con fecha de hoy
+            retirementList = retirementRepository.findByRetirementDate(today);
         }
 
-        retirementListi.stream()
-                .filter(retirement -> (onlyAffiliateId != null) || today.equals(retirement.getRetirementDate()))
-                .filter(retirement -> onlyAffiliateId == null || retirement.getIdAffiliate().equals(onlyAffiliateId))
-                .forEach(retirement -> {
+        retirementList.forEach(retirement -> {
                     DataWorkerRetirementDTO dataWorker = new DataWorkerRetirementDTO();
                     Affiliate affiliateToRetired = updateAffiliate(retirement.getIdAffiliate());
 
@@ -702,44 +706,90 @@ public class ScheduledTimersAffiliationsServiceImpl {
 
     @Scheduled(cron = "${cron.execute.scheduled.regularization}")
     public void expireTimeRegularizationAffiliation() {
+        try {
+            LocalDateTime today = LocalDateTime.now();
+            LocalDateTime limitUpload = today.minusHours(properties.getLimitUploadDocumentsRegularization());
 
-        LocalDateTime today = LocalDateTime.now();
-        LocalDateTime limitUpload = today.minusHours(properties.getLimitUploadDocumentsRegularization());
+            int domesticSuspended = 0;
+            int mercantileSuspended = 0;
+            int failures = 0;
 
-        Specification<Affiliation> spcAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications
-                .regularizationNotCompleted(limitUpload);
-        List<Affiliation> regularizationAffiliationList = repositoryAffiliation.findAll(spcAffiliation);
+            // Process domestic/independent affiliations with error handling
+            try {
+                Specification<Affiliation> spcAffiliation = AffiliationEmployerDomesticServiceIndependentSpecifications
+                        .regularizationNotCompleted(limitUpload);
+                List<Affiliation> regularizationAffiliationList = repositoryAffiliation.findAll(spcAffiliation);
 
-        if (!regularizationAffiliationList.isEmpty()) {
-            log.info("Suspend affiliationa because expired limit upload documents");
-            regularizationAffiliationList.forEach(affiliation -> {
-                Affiliate affiliateToSuspend = iAffiliateRepository.findByFiledNumber(affiliation.getFiledNumber())
-                        .orElseThrow(() -> new AffiliateNotFoundException(NOT_FOUND_AFFILIATE));
-                affiliateToSuspend.setAffiliationCancelled(Boolean.TRUE);
-                affiliateToSuspend.setDateAffiliateSuspend(LocalDateTime.now());
-                iAffiliateRepository.save(affiliateToSuspend);
+                if (!regularizationAffiliationList.isEmpty()) {
+                    log.info("Found {} domestic/independent affiliations to suspend due to expired document upload time",
+                            regularizationAffiliationList.size());
 
-                affiliation.setStageManagement(Constant.SUSPENDED);
-                repositoryAffiliation.save(affiliation);
-            });
-        }
+                    for (Affiliation affiliation : regularizationAffiliationList) {
+                        try {
+                            Affiliate affiliateToSuspend = iAffiliateRepository.findByFiledNumber(affiliation.getFiledNumber())
+                                    .orElseThrow(() -> new AffiliateNotFoundException(NOT_FOUND_AFFILIATE));
+                            affiliateToSuspend.setAffiliationCancelled(Boolean.TRUE);
+                            affiliateToSuspend.setDateAffiliateSuspend(LocalDateTime.now());
+                            iAffiliateRepository.save(affiliateToSuspend);
 
-        Specification<AffiliateMercantile> spcMercantile = AffiliateMercantileSpecification
-                .regularizationNotCompleted(limitUpload);
-        List<AffiliateMercantile> regularizationMercantileList = affiliateMercantileRepository.findAll(spcMercantile);
+                            affiliation.setStageManagement(Constant.SUSPENDED);
+                            repositoryAffiliation.save(affiliation);
 
-        if (!regularizationMercantileList.isEmpty()) {
-            log.info("Suspend mercantile affiliations because expired limit upload documents");
-            regularizationMercantileList.forEach(affiliation -> {
-                Affiliate affiliateToSuspend = iAffiliateRepository.findByFiledNumber(affiliation.getFiledNumber())
-                        .orElseThrow(() -> new AffiliateNotFoundException(NOT_FOUND_AFFILIATE));
-                affiliateToSuspend.setAffiliationCancelled(Boolean.TRUE);
-                affiliateToSuspend.setDateAffiliateSuspend(LocalDateTime.now());
-                iAffiliateRepository.save(affiliateToSuspend);
+                            domesticSuspended++;
+                            log.debug("Successfully suspended domestic affiliation: {}", affiliation.getFiledNumber());
+                        } catch (Exception e) {
+                            failures++;
+                            log.error("Failed to suspend domestic affiliation {}: {} - Continuing with next record",
+                                    affiliation.getFiledNumber(), e.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error querying domestic/independent regularizations: {} - Continuing to mercantile",
+                        e.getMessage(), e);
+            }
 
-                affiliation.setStageManagement(Constant.SUSPENDED);
-                affiliateMercantileRepository.save(affiliation);
-            });
+            // Process mercantile affiliations with error handling
+            try {
+                Specification<AffiliateMercantile> spcMercantile = AffiliateMercantileSpecification
+                        .regularizationNotCompleted(limitUpload);
+                List<AffiliateMercantile> regularizationMercantileList = affiliateMercantileRepository.findAll(spcMercantile);
+
+                if (!regularizationMercantileList.isEmpty()) {
+                    log.info("Found {} mercantile affiliations to suspend due to expired document upload time",
+                            regularizationMercantileList.size());
+
+                    for (AffiliateMercantile affiliation : regularizationMercantileList) {
+                        try {
+                            Affiliate affiliateToSuspend = iAffiliateRepository.findByFiledNumber(affiliation.getFiledNumber())
+                                    .orElseThrow(() -> new AffiliateNotFoundException(NOT_FOUND_AFFILIATE));
+                            affiliateToSuspend.setAffiliationCancelled(Boolean.TRUE);
+                            affiliateToSuspend.setDateAffiliateSuspend(LocalDateTime.now());
+                            iAffiliateRepository.save(affiliateToSuspend);
+
+                            affiliation.setStageManagement(Constant.SUSPENDED);
+                            affiliateMercantileRepository.save(affiliation);
+
+                            mercantileSuspended++;
+                            log.debug("Successfully suspended mercantile affiliation: {}", affiliation.getFiledNumber());
+                        } catch (Exception e) {
+                            failures++;
+                            log.error("Failed to suspend mercantile affiliation {}: {} - Continuing with next record",
+                                    affiliation.getFiledNumber(), e.getMessage());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Error querying mercantile regularizations: {}", e.getMessage(), e);
+            }
+
+            if (domesticSuspended > 0 || mercantileSuspended > 0 || failures > 0) {
+                log.info("Regularization expiration completed - Domestic: {}, Mercantile: {}, Failures: {}",
+                        domesticSuspended, mercantileSuspended, failures);
+            }
+
+        } catch (Exception e) {
+            log.error("Critical error in regularization expiration cron: {}", e.getMessage(), e);
         }
     }
 

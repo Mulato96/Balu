@@ -48,4 +48,7 @@ public class AffiliationsView {
     @Column(name = "revision_doc_asignada_a")
     private String asignadoA;
 
+    @Column(name = "id_affiliate")
+    private Long idAffiliate;
+
 }

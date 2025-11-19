@@ -3,6 +3,7 @@ package com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliationdetail.AffiliateBasicInfoDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -353,6 +354,138 @@ public interface AffiliationDetailRepository extends JpaRepository<Affiliation, 
                                                        @Param("tDocAfi") String tDocAfi,
                                                        @Param("idAfi") String idAfi);
 
-    // Query to find independents by filed_number
+    List<Affiliation> findByIdAffiliateIn(List<Long> affiliateIds);
+
+    @Query(value = """
+SELECT
+  ad.id AS idAffiliate,
+  TRIM(CONCAT_WS(' ',
+    NULLIF(ad.first_name, ''),
+    NULLIF(ad.second_name, ''),
+    NULLIF(ad.surname, ''),
+    NULLIF(ad.second_surname, '')
+  )) AS legalRepresentativeName,
+  ad.identification_document_type AS documentType,
+  ad.identification_document_number AS documentNumber,
+  ad.phone_1 AS phoneNumber,
+  ad.phone_2 AS phoneNumberAlt,
+  ad.email AS email,
+  ad.type_affiliation AS affiliationType
+FROM affiliation_detail ad
+WHERE regexp_replace(ad.identification_document_number::text, '\\D', '', 'g')
+      = regexp_replace(:documentNumber, '\\D', '', 'g')
+  AND UPPER(ad.identification_document_type) = UPPER(:documentType)
+LIMIT 1
+""", nativeQuery = true)
+    Optional<BasicInfoView> findBasicInfoByDocument(
+            @Param("documentType") String documentType,
+            @Param("documentNumber") String documentNumber);
+
+
+    public interface MercantileView {
+        Long getIdAffiliate();
+        String getBusinessName();
+        String getAffiliationType();
+        String getPhoneResponsible1();
+        String getPhoneResponsible2();
+        String getTypeDocumentResponsible();
+        String getNumberDocumentResponsible();
+        Integer getRealNumberWorkers();
+    }
+    @Query(value = """
+SELECT 
+    am.id_affiliate                     AS idAffiliate,
+    am.business_name                    AS businessName,
+    am.type_affiliation                 AS affiliationType,
+    am.phone_one_legal_representative   AS phoneResponsible1,
+    am.phone_two_legal_representative   AS phoneResponsible2,
+    am.type_document_identification     AS typeDocumentResponsible,
+    am.number_identification            AS numberDocumentResponsible,
+   COALESCE(am.number_workers, 0)      AS numberOfWorkers,
+    COALESCE(am.real_number_workers, 0) AS realNumberWorkers
+FROM affiliate_mercantile am
+WHERE am.id_affiliate = :idAffiliate
+LIMIT 1
+""", nativeQuery = true)
+    Optional<MercantileView> findMercantileData(@Param("idAffiliate") Long idAffiliate);
+
+
+    public interface BasicInfoView {
+        Long getIdAffiliate();
+        String getLegalRepresentativeName();
+        String getDocumentType();
+        String getDocumentNumber();
+        String getPhoneNumber();
+        String getPhoneNumberAlt();
+        String getAffiliationType();
+    }
+    public interface EmployerFullInfoView {
+        String getEmployerDocumentType();
+        String getEmployerDocumentNumber();
+        String getEmployerName();
+        String getEmployerPhone();
+        String getEmployerEmail();
+        Integer getRealNumberWorkers();
+
+        String getRepDocumentType();
+        String getRepDocumentNumber();
+        String getRepName();
+        String getRepPhone();
+        String getRepEmail();
+    }
+    @Query(value = """
+WITH employer AS (
+  SELECT 
+    am.id_affiliate,
+    am.business_name,
+    am.type_document_identification AS emp_doc_type,
+    am.number_identification AS emp_doc_number,
+    am.phone_one AS emp_phone,
+    am.email_contact_company AS emp_email,
+    am.real_number_workers,
+    am.type_document_person_responsible AS rep_doc_type,
+    am.number_document_person_responsible AS rep_doc_number
+  FROM affiliate_mercantile am
+  WHERE am.type_document_identification = :documentType
+    AND regexp_replace(am.number_identification::text, '\\D', '', 'g')
+        = regexp_replace(:documentNumber, '\\D', '', 'g')
+),
+rep_detail AS (
+  SELECT 
+    TRIM(CONCAT_WS(' ',
+      NULLIF(ad.first_name, ''),
+      NULLIF(ad.second_name, ''),
+      NULLIF(ad.surname, ''),
+      NULLIF(ad.second_surname, '')
+    )) AS rep_full_name,
+    COALESCE(ad.phone_1, ad.phone_2) AS rep_phone,
+    ad.email AS rep_email
+  FROM affiliation_detail ad
+  WHERE UPPER(ad.identification_document_type) = UPPER((SELECT rep_doc_type FROM employer))
+    AND regexp_replace(ad.identification_document_number::text, '\\D', '', 'g')
+        = regexp_replace((SELECT rep_doc_number FROM employer), '\\D', '', 'g')
+  LIMIT 1
+)
+SELECT 
+  e.emp_doc_type AS employerDocumentType,
+  e.emp_doc_number AS employerDocumentNumber,
+  e.business_name AS employerName,
+  e.emp_phone AS employerPhone,
+  e.emp_email AS employerEmail,
+  e.real_number_workers AS realNumberWorkers,
+  e.rep_doc_type AS repDocumentType,
+  e.rep_doc_number AS repDocumentNumber,
+  COALESCE(rd.rep_full_name, 'Nombre no encontrado') AS repName,
+  COALESCE(rd.rep_phone, e.emp_phone) AS repPhone,
+  rd.rep_email AS repEmail
+FROM employer e
+LEFT JOIN rep_detail rd ON TRUE
+LIMIT 1
+""", nativeQuery = true)
+    Optional<EmployerFullInfoView> findFullEmployerInfo(
+            @Param("documentType") String documentType,
+            @Param("documentNumber") String documentNumber);
+
+
 
 }

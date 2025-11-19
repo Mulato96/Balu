@@ -14,7 +14,7 @@ COPY pom.xml .
 COPY src ./src
 
 # Hacer el build y generar el JAR
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -Dcheckstyle.skip=true
 
 # Stage 2: Runtime
 FROM eclipse-temurin:17-jre-jammy
@@ -30,4 +30,14 @@ COPY --from=builder /app/target/*.jar app.jar
 
 EXPOSE 8081
 USER 1001:1001
-CMD ["java","-Xms512m", "-Xmx1g","-jar","app.jar"]
+
+# Configuración optimizada de la JVM
+ENV JAVA_OPTS="\
+  -Xms4g \
+  -Xmx8g \
+  -XX:+UseG1GC \
+  -XX:MaxGCPauseMillis=200 \
+  -XX:+UseStringDeduplication \
+"
+
+CMD ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

@@ -27,5 +27,6 @@ public class  ManagementAffiliationDTO {
     private String asignadoA;
     @JsonIgnore
     private Boolean cancelled;
+    private Long idAffiliate;
 
 }

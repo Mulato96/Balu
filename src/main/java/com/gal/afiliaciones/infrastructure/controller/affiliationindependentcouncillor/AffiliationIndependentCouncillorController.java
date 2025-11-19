@@ -6,6 +6,7 @@ import com.gal.afiliaciones.config.ex.affiliation.AffiliationAlreadyExistsError;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep1DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep2DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3Response;
 import com.gal.afiliaciones.infrastructure.dto.mayoraltydependence.MayoraltyDependenceDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
@@ -56,10 +57,10 @@ public class AffiliationIndependentCouncillorController {
     }
 
     @PostMapping(value = "/createaffiliation/step3", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<AffiliationCouncillorStep3DTO> createAffiliationStep3(
+    public ResponseEntity<AffiliationCouncillorStep3Response> createAffiliationStep3(
             AffiliationCouncillorStep3DTO dto, @RequestParam(name = "files") List<MultipartFile> files) {
         try{
-            AffiliationCouncillorStep3DTO response = service.createAffiliationStep3(dto, files);
+            AffiliationCouncillorStep3Response response = service.createAffiliationStep3(dto, files);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }catch (AffiliationAlreadyExistsError ex){
             throw new AffiliationAlreadyExistsError(Type.ERROR_AFFILIATION_ALREADY_EXISTS);

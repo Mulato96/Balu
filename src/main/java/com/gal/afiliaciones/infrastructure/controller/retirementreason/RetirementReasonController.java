@@ -30,7 +30,7 @@ public class RetirementReasonController {
     }
 
 
-   @GetMapping("get-info-empresa")
+   @GetMapping("/get-info-empresa")
     public ResponseEntity<BodyResponseConfig<CompanyInfoDTO>> getCompanyInfo(@Param("id") String identification,
                                                                              @Param("id") String identificationType) {
         return new ResponseEntity<>(
@@ -38,7 +38,7 @@ public class RetirementReasonController {
     }
 
 
-    @PostMapping("retirement-employer")
+    @PostMapping("/retirement-employer")
             public ResponseEntity<BodyResponseConfig<String>> getCompanyInfo(@RequestBody RetirementEmployerDTO retirementEmployerDTO) throws MessagingException, IOException {
         return new ResponseEntity<>(
                 new BodyResponseConfig<>(retirementReasonService.retirementEmployer(retirementEmployerDTO)), HttpStatus.OK);

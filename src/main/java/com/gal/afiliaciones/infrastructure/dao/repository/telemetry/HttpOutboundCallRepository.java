@@ -14,10 +14,12 @@ import java.util.List;
 public interface HttpOutboundCallRepository extends JpaRepository<HttpOutboundCall, Long> {
     
     @Query("SELECT new com.gal.afiliaciones.infrastructure.dto.telemetry.PositivaLogExportDTO(" +
-           "h.id, h.createdAt, h.targetPath, h.targetMethod, h.targetUrl, h.requestBody, h.targetQuery, h.responseBody, h.responseStatus) " +
+           "h.id, h.createdAt, h.targetPath, h.targetMethod, h.targetUrl, " +
+           "SUBSTRING(h.requestBody, 1, 30000), h.targetQuery, SUBSTRING(h.responseBody, 1, 30000), h.responseStatus) " +
            "FROM HttpOutboundCall h " +
            "WHERE h.targetHost = :targetHost " +
            "AND h.createdAt BETWEEN :startDate AND :endDate " +
+           "AND h.targetMethod != 'GET' " +
            "ORDER BY h.createdAt DESC")
     List<PositivaLogExportDTO> findPositivaLogsByDateRange(
             @Param("targetHost") String targetHost,

@@ -1,13 +1,15 @@
 package com.gal.afiliaciones.infrastructure.dao.repository.preemploymentexamsite.impl;
 
+import java.util.List;
+
+import org.springframework.stereotype.Repository;
+
 import com.gal.afiliaciones.domain.model.PreEmploymentExamSite;
 import com.gal.afiliaciones.infrastructure.dao.repository.preemploymentexamsite.PreEmploymentExamSiteDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.preemploymentexamsite.PreEmploymentExamSiteRepository;
 import com.gal.afiliaciones.infrastructure.dto.preemploymentexamsite.CreatePreEmploymentExamSiteRequest;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
@@ -102,6 +104,11 @@ public class PreEmploymentExamSiteDaoImpl implements PreEmploymentExamSiteDao {
     @Override
     public List<PreEmploymentExamSite> findAll(){
         return repository.findAll();
+    }
+
+    @Override
+    public List<PreEmploymentExamSite> findByMunicipalityIds(List<Long> municipalityIds) {
+        return repository.findByMunicipalityIds(municipalityIds);
     }
 
 }

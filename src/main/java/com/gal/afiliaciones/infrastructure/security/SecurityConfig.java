@@ -47,50 +47,51 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf // Ignorar CSRF en estas rutas
-                        .ignoringRequestMatchers(HttpMethod.POST,"/api/login")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/api/v1/integration-test/siarp/consultaEstadoAfiliado/raw")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/WSAlissta2/consultaEstadoAfiliado/**")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/WSAlissta2/consultaAfiliado2/**")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/api/refreshToken")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/api/users/register")
-                        .ignoringRequestMatchers(HttpMethod.PUT,"/api/users/registerpassword")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/certificates/generate-create")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/consultcartificated/consultcertificated")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/certificates/findByTypeAndNumber")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/certificates/validate")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/consultcartificated/consultuser/**")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/usernotification/findAllAffiliatedUser")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consulting/{identificationType}/{identification}")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/otp/**")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consulting/{identification}")
-                        .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consultDvNit/{nit}")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/certificates/generate-certificate")
-                        .ignoringRequestMatchers(HttpMethod.GET, "consultcard/cosultuserCard/**")
-                        .ignoringRequestMatchers(HttpMethod.GET, "consultcard/generatedCard")
-                        .ignoringRequestMatchers(HttpMethod.GET, "consultcard/consultCard/{id}")
-                        .ignoringRequestMatchers(HttpMethod.GET, "affiliationdependent/search/{identificationType}/{identification}")
-                        .ignoringRequestMatchers(HttpMethod.PUT,HttpMethod.POST,HttpMethod.DELETE,HttpMethod.GET, "keycloak/**")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/api/affiliates/by-type-and-number/**")
-                        .ignoringRequestMatchers(HttpMethod.POST,"/certificates/create-non-affiliate-certificate/**")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/certificates/qr/{id}")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/api/activity/economic/**")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/preemploymentexamsite/findEntitiesByNameCity/**")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/actuator/prometheus/**")
-                        .ignoringRequestMatchers(HttpMethod.POST, "novelty/createNovelty") // Se deja de manera temporal porque debe ser invocado desde recaudo
-                        .ignoringRequestMatchers(HttpMethod.POST, "/inactive-pre-registred-users/active-account")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/api/affiliates/latest")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/affiliationemployeractivitiesmercantile/affiliate-bus")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/affiliationdependent/createaffiliation")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/api/person/insert")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/api/dependent-relationship/insert")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/api/independent-relationship/contract/insert")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/poliza/crear")
-                        .ignoringRequestMatchers(HttpMethod.POST, REGISTRADURIA_CONSULT_ENDPOINT)
-                        .ignoringRequestMatchers(HttpMethod.GET, REGISTRADURIA_CONSULT_ENDPOINT + "/**")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/api/webhook/employer/excel/async")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/afiliado-postiva/**")
-                        .ignoringRequestMatchers(HttpMethod.POST, "/consultcartificated/generatecertificatebalu")
-                        .ignoringRequestMatchers(HttpMethod.GET, "/employermigrated/searchEmployer/**")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/api/login")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/api/v1/integration-test/siarp/consultaEstadoAfiliado/raw")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/WSAlissta2/consultaEstadoAfiliado/**")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/WSAlissta2/consultaAfiliado2/**")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/api/refreshToken")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/api/users/register")
+                                .ignoringRequestMatchers(HttpMethod.PUT,"/api/users/registerpassword")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/certificates/generate-create")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/consultcartificated/consultcertificated")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/certificates/findByTypeAndNumber")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/certificates/validate")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/consultcartificated/consultuser/**")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/usernotification/findAllAffiliatedUser")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consulting/{identificationType}/{identification}")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/otp/**")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consulting/{identification}")
+                                .ignoringRequestMatchers(HttpMethod.GET,"/api/users/consultDvNit/{nit}")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/certificates/generate-certificate")
+                                .ignoringRequestMatchers(HttpMethod.GET, "consultcard/cosultuserCard/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, "consultcard/generatedCard")
+                                .ignoringRequestMatchers(HttpMethod.GET, "consultcard/consultCard/{id}")
+                                .ignoringRequestMatchers(HttpMethod.GET, "affiliationdependent/search/{identificationType}/{identification}")
+                                .ignoringRequestMatchers(HttpMethod.PUT,HttpMethod.POST,HttpMethod.DELETE,HttpMethod.GET, "keycloak/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/api/affiliates/by-type-and-number/**")
+                                .ignoringRequestMatchers(HttpMethod.POST,"/certificates/create-non-affiliate-certificate/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/certificates/qr/{id}")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/api/activity/economic/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/preemploymentexamsite/findEntitiesByNameCity/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/actuator/prometheus/**")
+                                .ignoringRequestMatchers(HttpMethod.POST, "novelty/createNovelty") // Se deja de manera temporal porque debe ser invocado desde recaudo
+                                .ignoringRequestMatchers(HttpMethod.POST, "/inactive-pre-registred-users/active-account")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/api/affiliates/latest")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/affiliationemployeractivitiesmercantile/affiliate-bus")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/affiliationdependent/createaffiliation")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/api/person/insert")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/api/dependent-relationship/insert")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/api/independent-relationship/contract/insert")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/poliza/crear")
+                                .ignoringRequestMatchers(HttpMethod.POST, REGISTRADURIA_CONSULT_ENDPOINT)
+                                .ignoringRequestMatchers(HttpMethod.GET, REGISTRADURIA_CONSULT_ENDPOINT + "/**")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/api/webhook/employer/excel/async")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/afiliado-postiva/**")
+                                .ignoringRequestMatchers(HttpMethod.POST, "/consultcartificated/generatecertificatebalu")
+                                .ignoringRequestMatchers(HttpMethod.GET, "/employermigrated/searchEmployer/**")
+                                .ignoringRequestMatchers(HttpMethod.GET, HttpMethod.POST, "/value-contract/**")
 //                        .ignoringRequestMatchers(HttpMethod.GET, "/api/confecamaras/consult/**")
                 ).authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
@@ -152,6 +153,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/user-portal").permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/confecamaras/consult/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/afiliado-postiva/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, HttpMethod.POST, "/value-contract/**").permitAll()
                         .anyRequest().authenticated() // Proteger endpoint con permisos
                 ).oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(bearerTokenResolver())
@@ -188,53 +190,55 @@ public class SecurityConfig {
         CorsConfiguration cfg = new CorsConfiguration();
 
         cfg.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "http://localhost:4200",
-            "https://operacionesarl.positiva.gov.co",
-            "https://prod-grafana-gal.linktic.com",
-            "https://gal-back.linktic.com",
-            "https://gal-back-qa.linktic.com",
-            "https://gal-back-dev.linktic.com"
+                "http://localhost:3000",
+                "http://localhost:4200",
+                "https://operacionesarl.positiva.gov.co",
+                "https://positiva-arl.vercel.app",
+                "https://prod-grafana-gal.linktic.com",
+                "https://gal-back.linktic.com",
+                "https://gal-back-qa.linktic.com",
+                "https://gal-back-dev.linktic.com"
         ));
 
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         cfg.setAllowedHeaders(List.of(
-            "Origin", "Content-Type", "Accept", "Authorization",
-            "X-Requested-With", "Cache-Control",
+                "Origin", "Content-Type", "Accept", "Authorization",
+                "X-Requested-With", "Cache-Control",
 
-            "Content-Disposition", "Content-Length", "Content-Transfer-Encoding",
-            "X-File-Name", "X-File-Size", "X-File-Type",
+                "Content-Disposition", "Content-Length", "Content-Transfer-Encoding",
+                "X-File-Name", "X-File-Size", "X-File-Type",
 
-            "Accept-Encoding", "Accept-Language", "User-Agent",
+                "Accept-Encoding", "Accept-Language", "User-Agent",
 
-            "X-Application-Version", "X-Request-ID", "X-Client-ID",
+                "X-Application-Version", "X-Request-ID", "X-Client-ID",
 
-            "SOAPAction",
+                "SOAPAction",
 
-            "X-Forwarded-For", "X-Real-IP", "X-Forwarded-Host",
+                "X-Forwarded-For", "X-Real-IP", "X-Forwarded-Host",
 
-            "X-Upload-File-Name", "X-Upload-File-Size", "X-Upload-File-Type",
-            "X-Download-File-Name", "X-Download-File-Size",
+                "X-Upload-File-Name", "X-Upload-File-Size", "X-Upload-File-Type",
+                "X-Download-File-Name", "X-Download-File-Size",
 
-            "X-Transaction-ID", "X-Session-ID", "X-Request-Timestamp",
+                "X-Transaction-ID", "X-Session-ID", "X-Request-Timestamp",
 
-            "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Methods", "Access-Control-Allow-Headers"
+                "Access-Control-Allow-Credentials", "Access-Control-Allow-Origin",
+                "Access-Control-Allow-Methods", "Access-Control-Allow-Headers",
+                "X-User-Role","role"
         ));
 
         cfg.setExposedHeaders(List.of(
-            "Authorization", "Content-Type", "Content-Disposition",
-            "Content-Length", "Content-Transfer-Encoding",
+                "Authorization", "Content-Type", "Content-Disposition",
+                "Content-Length", "Content-Transfer-Encoding",
 
-            "X-File-Name", "X-File-Size", "X-File-Type",
-            "X-Upload-File-Name", "X-Upload-File-Size", "X-Upload-File-Type",
-            "X-Download-File-Name", "X-Download-File-Size",
+                "X-File-Name", "X-File-Size", "X-File-Type",
+                "X-Upload-File-Name", "X-Upload-File-Size", "X-Upload-File-Type",
+                "X-Download-File-Name", "X-Download-File-Size",
 
-            "X-Application-Version", "X-Request-ID", "X-Client-ID",
-            "X-Transaction-ID", "X-Session-ID", "X-Request-Timestamp",
+                "X-Application-Version", "X-Request-ID", "X-Client-ID",
+                "X-Transaction-ID", "X-Session-ID", "X-Request-Timestamp",
 
-            "X-Response-Time", "X-Response-Size", "X-Response-Status"
+                "X-Response-Time", "X-Response-Size", "X-Response-Status"
         ));
 
         cfg.setMaxAge(3600L);

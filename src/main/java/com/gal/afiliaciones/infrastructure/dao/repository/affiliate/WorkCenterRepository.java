@@ -11,9 +11,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
-import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
-
 @Repository
 public interface WorkCenterRepository extends JpaRepository<WorkCenter, Long>, JpaSpecificationExecutor<WorkCenter> {
 
@@ -34,5 +31,9 @@ public interface WorkCenterRepository extends JpaRepository<WorkCenter, Long>, J
     // Fast path: only one needed
     Optional<WorkCenter> findFirstByWorkCenterManager_IdOrderByIdAsc(Long id);
 
+    @Query(value = "SELECT wc.* FROM work_center wc " +
+            "WHERE id_main_office = :idMainOffice and is_enable ",
+            nativeQuery = true)
+    List<WorkCenter> findWorkCenterActiveByMainOffice(Long idMainOffice);
 
 }

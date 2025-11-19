@@ -6,6 +6,7 @@ import com.gal.afiliaciones.config.ex.DocumentsFromCollectionNotFoundExcepcion;
 import com.gal.afiliaciones.config.ex.NotFoundException;
 import com.gal.afiliaciones.config.ex.UpdateNotFoundException;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.domain.model.*;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
@@ -271,8 +272,10 @@ public class ConsultEmployerInfoImpl implements ConsultEmployerInfo {
 
 
     @Override
-    public DocumentsOfAffiliationDTO getDocumentsAffiliation(String filedNumber) {
-        ManagementDTO infoAffiliation = affiliationEmployerDomesticServiceIndependentService.management(filedNumber);
+    public DocumentsOfAffiliationDTO getDocumentsAffiliation(Long idAffiliate) {
+        Affiliate affiliate = affiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
+        ManagementDTO infoAffiliation = affiliationEmployerDomesticServiceIndependentService.management(idAffiliate, affiliate.getUserId());
 
         List<String> documentsBse64 = getDocumentsBase64(infoAffiliation);
 
@@ -280,7 +283,7 @@ public class ConsultEmployerInfoImpl implements ConsultEmployerInfo {
 
         if (affiliation instanceof DomesticServiceResponseDTO) {
 
-            Affiliation affiliationDomestic = affiliationRepository.findByFiledNumber(filedNumber).orElseThrow(
+            Affiliation affiliationDomestic = affiliationRepository.findByFiledNumber(affiliate.getFiledNumber()).orElseThrow(
                     () -> new AffiliateNotFoundException(Constant.AFFILIATE_NOT_FOUND));
 
             return DocumentsOfAffiliationDTO.builder()
@@ -295,7 +298,7 @@ public class ConsultEmployerInfoImpl implements ConsultEmployerInfo {
 
         } else if (affiliation instanceof FullDataMercantileDTO) {
 
-            AffiliateMercantile mercantile = affiliateMercantileRepository.findByFiledNumber(filedNumber).orElseThrow(
+            AffiliateMercantile mercantile = affiliateMercantileRepository.findByFiledNumber(affiliate.getFiledNumber()).orElseThrow(
                     () -> new AffiliateNotFoundException(Constant.AFFILIATE_NOT_FOUND));
 
             UserMain representantLegal = userPreRegisterRepository.findByIdentificationTypeAndIdentification(

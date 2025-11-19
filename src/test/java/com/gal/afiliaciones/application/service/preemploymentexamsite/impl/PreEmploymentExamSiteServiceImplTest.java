@@ -169,7 +169,11 @@ class PreEmploymentExamSiteServiceImplTest {
         BodyResponseConfig<List<MunicipalityDTO>> bodyResponse = new BodyResponseConfig<>();
         bodyResponse.setData(municipalities);
 
-        when(siteDao.findAll()).thenReturn(entities);
+        // Mock the correct repository method used in implementation
+        when(siteDao.findByMunicipalityIds(List.of(10L, 30L))).thenReturn(List.of(
+                buildSite(1L, 10L, "Site1"),
+                buildSite(3L, 30L, "Site3")
+        ));
         when(webClient.getMunicipalitiesByName(city)).thenReturn(bodyResponse);
 
         List<PreEmploymentExamSiteDTO> result = service.getPreEmploymentExamSitesByCity(city);

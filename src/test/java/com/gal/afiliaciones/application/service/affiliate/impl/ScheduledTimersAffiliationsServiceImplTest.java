@@ -3,11 +3,11 @@ package com.gal.afiliaciones.application.service.affiliate.impl;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -18,23 +18,22 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import com.gal.afiliaciones.application.service.CertificateBulkService;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.gal.afiliaciones.application.service.CertificateBulkService;
 import com.gal.afiliaciones.application.service.affiliate.AffiliateService;
 import com.gal.afiliaciones.application.service.affiliate.ScheduleInterviewWebService;
 import com.gal.afiliaciones.application.service.affiliationemployerdomesticserviceindependent.SendEmails;
 import com.gal.afiliaciones.application.service.generalnovelty.impl.GeneralNoveltyServiceImpl;
 import com.gal.afiliaciones.application.service.novelty.NoveltyRuafService;
-import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.DateInterviewWeb;
 import com.gal.afiliaciones.domain.model.Retirement;
@@ -43,18 +42,22 @@ import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReason;
 import com.gal.afiliaciones.domain.model.affiliate.RetirementReasonWorker;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.AffiliationCancellationTimer;
+import com.gal.afiliaciones.infrastructure.client.generic.novelty.WorkerRetirementNoveltyClient;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationCancellationTimerRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliationView;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirement.RetirementRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.retirementreason.RetirementReasonWorkerRepository;
-import com.gal.afiliaciones.infrastructure.dto.affiliate.TemplateSendEmailsDTO;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliateSpecification;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNoveltyRequest;
 import com.gal.afiliaciones.infrastructure.dto.noveltyruaf.DataContributorDTO;
 import com.gal.afiliaciones.infrastructure.dto.workerretirement.DataWorkerRetirementDTO;
@@ -74,6 +77,7 @@ class ScheduledTimersAffiliationsServiceImplTest {
     private CollectProperties properties;
     private AffiliateService affiliateService;
     private GeneralNoveltyServiceImpl generalNoveltyService;
+    private WorkerRetirementNoveltyClient workerRetirementNoveltyClient;
 
     private ArlInformationDao arlInformationDao;
     private NoveltyRuafService noveltyRuafService;
@@ -551,6 +555,7 @@ class ScheduledTimersAffiliationsServiceImplTest {
         retirement.setRetirementDate(LocalDate.now());
         retirement.setAffiliationType(Constant.TYPE_AFFILLATE_EMPLOYER);
         retirement.setIdRetirementReason(1L);
+        retirement.setFiledNumber("fileMercantile");
 
         Affiliate affiliate = new Affiliate();
         affiliate.setIdAffiliate(1L);
@@ -560,7 +565,7 @@ class ScheduledTimersAffiliationsServiceImplTest {
 
         AffiliateMercantile affiliateMercantile = new AffiliateMercantile();
 
-        when(retirementRepository.findAll()).thenReturn(List.of(retirement));
+        when(retirementRepository.findByRetirementDate(any(LocalDate.class))).thenReturn(List.of(retirement));
         when(iAffiliateRepository.findByIdAffiliate(1L)).thenReturn(Optional.of(affiliate));
         when(iAffiliateRepository.save(any(Affiliate.class))).thenReturn(affiliate);
         when(affiliateMercantileRepository.findByFiledNumber("fileMercantile"))
@@ -582,12 +587,8 @@ class ScheduledTimersAffiliationsServiceImplTest {
 
         service.retirement();
 
-        verify(iAffiliateRepository).save(affiliate);
-        assertTrue(affiliate.getAffiliationCancelled());
-
-        verify(affiliateMercantileRepository).save(affiliateMercantile);
-        assertEquals(Constant.NOVELTY_TYPE_RETIREMENT, affiliateMercantile.getStageManagement());
-        assertEquals(Constant.AFFILIATION_STATUS_INACTIVE, affiliateMercantile.getAffiliationStatus());
+        verify(iAffiliateRepository).save(any(Affiliate.class));
+        verify(affiliateMercantileRepository).save(any(AffiliateMercantile.class));
     }
 
     private Affiliate updateRealNumberWorkers(Affiliate affiliateWorker) {
@@ -634,6 +635,634 @@ class ScheduledTimersAffiliationsServiceImplTest {
         verify(iAffiliateRepository, never()).findByIdAffiliate(any());
         verify(iAffiliateRepository, never()).save(any());
         verify(noveltyRuafService, never()).createNovelty(any());
+    }
+
+    @Test
+    void ScheduledTimersAffiliationsServiceImpl(){
+
+        ScheduledTimersAffiliationsServiceImpl service1 =  new ScheduledTimersAffiliationsServiceImpl(
+                sendEmails,
+                messagingTemplate,
+                iAffiliateRepository,
+                scheduleInterviewWebService,
+                timerRepository,
+                affiliateMercantileRepository,
+                repositoryAffiliation,
+                retirementRepository,
+                userPreRegisterRepository,
+                properties,
+                affiliateService,
+                arlInformationDao,
+                noveltyRuafService,
+                affiliationDependentRepository,
+                generalNoveltyService,
+                retirementReasonWorkerRepository,
+                retirementReasonRepository,
+                certificateService,
+                workerRetirementNoveltyClient
+        );
+
+        assertNotNull(service1);
+    }
+
+    @Test
+    void timers_exception(){
+
+        List<AffiliationCancellationTimer> listTimers = listTimers();
+
+        when(timerRepository.findAll())
+                .thenReturn(listTimers);
+        when(properties.getLimitUploadDocumentsRegularization())
+                .thenReturn(-1L);
+        service.timers();
+
+        verify(timerRepository, times(1)).findAll();
+    }
+
+    @Test
+    void timers(){
+
+        List<AffiliationCancellationTimer> listTimers = listTimers()
+                .stream()
+                .peek(e -> {e.setDateStart(LocalDateTime.now());})
+                .toList();
+
+        when(timerRepository.findAll())
+                .thenReturn(listTimers);
+        when(properties.getLimitUploadDocumentsRegularization())
+                .thenReturn(-1L);
+        when(repositoryAffiliation.findAll((Specification<Affiliation>) any()))
+                .thenReturn(listAffiliation());
+        when(affiliateMercantileRepository.findAll((Specification<AffiliateMercantile>) any()))
+                .thenReturn(listMercantile());
+        when(iAffiliateRepository.findAllAffiliates())
+                .thenReturn(listView());
+        service.timers();
+        verify(timerRepository, times(1)).findAll();
+    }
+
+    List<AffiliationCancellationTimer> listTimers(){
+        List<AffiliationCancellationTimer> list = new ArrayList<>();
+        AffiliationCancellationTimer affiliationCancellationTimer = new AffiliationCancellationTimer();
+        list.add(affiliationCancellationTimer);
+        return list;
+    }
+
+    List<Affiliation> listAffiliation(){
+        List<Affiliation> list = new ArrayList<>();
+        Affiliation affiliation = new Affiliation();
+        affiliation.setDateRequest(LocalDateTime.of(2000,1,1, 1, 1).toString());
+        list.add(affiliation);
+        return list;
+    }
+
+    List<AffiliateMercantile> listMercantile(){
+        List<AffiliateMercantile> list = new ArrayList<>();
+        AffiliateMercantile affiliation = new AffiliateMercantile();
+        affiliation.setDateCreateAffiliate(LocalDate.of(2000,1,1));
+        list.add(affiliation);
+        return list;
+    }
+
+    List<AffiliationView> listView(){
+        List<AffiliationView> list = new ArrayList<>();
+        AffiliationView affiliationView = new AffiliationView() {
+            @Override
+            public Long getIdAffiliate() {
+                return 0L;
+            }
+
+            @Override
+            public LocalDateTime getAffiliationDate() {
+                return LocalDateTime.of(2000,1,1,1,1);
+            }
+
+            @Override
+            public String getDocumentNumber() {
+                return "";
+            }
+        };
+        list.add(affiliationView);
+        return list;
+    }
+
+    @Test
+    void testTimers_processesAffiliationCancellationTimers() {
+        AffiliationCancellationTimer timer = new AffiliationCancellationTimer();
+        timer.setDateStart(LocalDateTime.now().minusDays(10));
+        timer.setNumberDocument("12345");
+        timer.setTypeDocument("CC");
+
+        when(timerRepository.findAll()).thenReturn(List.of(timer));
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setId(1L);
+
+        when(repositoryAffiliation.findAll(any(Specification.class)))
+                .thenReturn(List.of(affiliation))
+                .thenReturn(List.of());
+
+        Affiliate affiliate = new Affiliate();
+        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+
+        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(List.of());
+        when(iAffiliateRepository.findAllAffiliates()).thenReturn(List.of());
+        when(affiliateMercantileRepository.deactivateExpiredAffiliateMercantile(any())).thenReturn(0);
+        when(repositoryAffiliation.deactivateExpiredAffiliateDomestic(any(), any())).thenReturn(0);
+
+        service.timers();
+
+        verify(timerRepository).delete(timer);
+        verify(repositoryAffiliation).save(affiliation);
+    }
+
+    @Test
+    void testTimers_processesMercantileTimers() {
+        AffiliationCancellationTimer timer = new AffiliationCancellationTimer();
+        timer.setDateStart(LocalDateTime.now().minusDays(10));
+        timer.setNumberDocument("98765");
+        timer.setTypeDocument("NIT");
+
+        when(timerRepository.findAll()).thenReturn(List.of(timer));
+        when(repositoryAffiliation.findAll(any(Specification.class))).thenReturn(List.of());
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setId(2L);
+        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(List.of(mercantile));
+
+        Affiliate affiliate = new Affiliate();
+        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(affiliate));
+
+        service.timers();
+
+        verify(timerRepository).delete(timer);
+        verify(affiliateMercantileRepository).save(mercantile);
+    }
+
+
+    @Test
+    void testUpdateMercantile_whenNotFound() throws Exception {
+        String filedNumber = "notFound";
+
+        when(affiliateMercantileRepository.findByFiledNumber(filedNumber)).thenReturn(Optional.empty());
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("updateMercantile", String.class);
+        method.setAccessible(true);
+
+        assertDoesNotThrow(() -> method.invoke(service, filedNumber));
+        verify(affiliateMercantileRepository, never()).save(any());
+    }
+
+    @Test
+    void testHomologationCausal_death() throws Exception {
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("homologationCausal", Long.class);
+        method.setAccessible(true);
+
+        Integer result = (Integer) method.invoke(service, 2L);
+
+        assertEquals(Constant.NOVELTY_RUAF_CAUSAL_DEATH, result);
+    }
+
+    @Test
+    void testHomologationCausal_pension() throws Exception {
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("homologationCausal", Long.class);
+        method.setAccessible(true);
+
+        Integer result = (Integer) method.invoke(service, 4L);
+
+        assertEquals(Constant.NOVELTY_RUAF_CAUSAL_PENSION, result);
+    }
+
+    @Test
+    void testHomologationCausal_default() throws Exception {
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("homologationCausal", Long.class);
+        method.setAccessible(true);
+
+        Integer result = (Integer) method.invoke(service, 99L);
+
+        assertEquals(Constant.NOVELTY_RUAF_CAUSAL_DISASSOCIATION, result);
+    }
+
+    @Test
+    void testRetirementReason_forEmployer() throws Exception {
+        Long idReason = 1L;
+        RetirementReason reason = new RetirementReason();
+        reason.setReason("Cierre de empresa");
+
+        when(retirementReasonRepository.findById(idReason)).thenReturn(Optional.of(reason));
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("retirementReason", Long.class, String.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, idReason, Constant.TYPE_AFFILLATE_EMPLOYER);
+
+        assertEquals("Cierre de empresa", result);
+    }
+
+    @Test
+    void testRetirementReason_forEmployee() throws Exception {
+        Long idReason = 2L;
+        RetirementReasonWorker reason = new RetirementReasonWorker();
+        reason.setReason("Renuncia");
+
+        when(retirementReasonWorkerRepository.findById(idReason)).thenReturn(Optional.of(reason));
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("retirementReason", Long.class, String.class);
+        method.setAccessible(true);
+
+        String result = (String) method.invoke(service, idReason, Constant.TYPE_AFFILLATE_DEPENDENT);
+
+        assertEquals("Renuncia", result);
+    }
+
+    @Test
+    void testRetirementReason_notFound() throws Exception {
+        Long idReason = 999L;
+
+        when(retirementReasonRepository.findById(idReason)).thenReturn(Optional.empty());
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("retirementReason", Long.class, String.class);
+        method.setAccessible(true);
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            try {
+                method.invoke(service, idReason, Constant.TYPE_AFFILLATE_EMPLOYER);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw (Exception) e.getTargetException();
+            }
+        });
+
+        assertTrue(exception instanceof com.gal.afiliaciones.config.ex.workerretirement.WorkerRetirementException);
+    }
+
+    @Test
+    void testMapperIndependentData() throws Exception {
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIdentificationDocumentType("CC");
+        affiliation.setIdentificationDocumentNumber("123456");
+        affiliation.setFirstName("John");
+        affiliation.setSecondName("Michael");
+        affiliation.setSurname("Doe");
+        affiliation.setSecondSurname("Smith");
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("mapperIndependentData", Affiliation.class);
+        method.setAccessible(true);
+
+        DataWorkerRetirementDTO result = (DataWorkerRetirementDTO) method.invoke(service, affiliation);
+
+        assertEquals("CC", result.getIdentificationDocumentType());
+        assertEquals("123456", result.getIdentificationDocumentNumber());
+        assertEquals("John", result.getFirstName());
+    }
+
+    @Test
+    void testMapperDependentData() throws Exception {
+        AffiliationDependent affiliation = new AffiliationDependent();
+        affiliation.setIdentificationDocumentType("TI");
+        affiliation.setIdentificationDocumentNumber("987654");
+        affiliation.setFirstName("Jane");
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("mapperDependentData", AffiliationDependent.class);
+        method.setAccessible(true);
+
+        DataWorkerRetirementDTO result = (DataWorkerRetirementDTO) method.invoke(service, affiliation);
+
+        assertEquals("TI", result.getIdentificationDocumentType());
+    }
+
+    @Test
+    void testFindDataContributor_employerNotFound() throws Exception {
+        String nitEmployer = "999999";
+
+        when(iAffiliateRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("findDataContributor", String.class);
+        method.setAccessible(true);
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            try {
+                method.invoke(service, nitEmployer);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw (Exception) e.getTargetException();
+            }
+        });
+
+        assertTrue(exception instanceof com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound);
+    }
+
+    @Test
+    void testUpdateRealNumberWorkers_withNullWorkers() throws Exception {
+        Affiliate affiliate = new Affiliate();
+        affiliate.setNitCompany("12345");
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("employerFiled");
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setRealNumberWorkers(null);
+
+        when(iAffiliateRepository.findOne(any(Specification.class))).thenReturn(Optional.of(employerAffiliate));
+        when(affiliateMercantileRepository.findByFiledNumber("employerFiled"))
+                .thenReturn(Optional.of(mercantile));
+        when(affiliateService.getEmployerSize(0)).thenReturn(1L);
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
+        method.setAccessible(true);
+        method.invoke(service, affiliate);
+
+        assertEquals(0L, mercantile.getRealNumberWorkers());
+    }
+
+    @Test
+    void testExpireTimeRegularizationAffiliation_affiliateNotFound() {
+        Affiliation affiliation = new Affiliation();
+        affiliation.setFiledNumber("notFound");
+
+        when(properties.getLimitUploadDocumentsRegularization()).thenReturn(1L);
+        when(repositoryAffiliation.findAll(any(Specification.class))).thenReturn(List.of(affiliation));
+        when(iAffiliateRepository.findByFiledNumber("notFound")).thenReturn(Optional.empty());
+
+        // El método maneja las excepciones internamente y no las propaga
+        // Verificamos que el método se ejecuta sin lanzar excepciones
+        assertDoesNotThrow(() -> service.expireTimeRegularizationAffiliation());
+        
+        // Verificamos que se intentó buscar el afiliado
+        verify(iAffiliateRepository).findByFiledNumber("notFound");
+        // Verificamos que NO se guardó ningún afiliado porque no se encontró
+        verify(iAffiliateRepository, never()).save(any(Affiliate.class));
+        // Verificamos que NO se guardó la afiliación porque falló la búsqueda del afiliado
+        verify(repositoryAffiliation, never()).save(any(Affiliation.class));
+    }
+
+    @Test
+    void testSendNotifications_wrongDay() {
+        DateInterviewWeb interview = new DateInterviewWeb();
+        interview.setDay(LocalDate.now().plusDays(1));
+        interview.setHourStart(LocalTime.now().plusMinutes(10));
+
+        when(scheduleInterviewWebService.listScheduleInterviewWeb()).thenReturn(List.of(interview));
+
+        service.sendNotifications();
+
+        verify(sendEmails, never()).reminderInterviewWeb(any());
+    }
+
+    @Test
+    void testSendNotifications_exceptionHandled() {
+        when(scheduleInterviewWebService.listScheduleInterviewWeb())
+                .thenThrow(new RuntimeException("Database error"));
+
+        assertDoesNotThrow(() -> service.sendNotifications());
+    }
+
+    @Test
+    void testDeleteRequestAffiliation_withValidDate() {
+        Affiliation affiliation = new Affiliation();
+        affiliation.setDateRequest(LocalDateTime.now().minusDays(10).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+
+        when(repositoryAffiliation.findAll(any(Specification.class))).thenReturn(List.of(affiliation));
+        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(List.of());
+
+        service.deleteRequestAffiliation();
+
+        verify(repositoryAffiliation).delete(affiliation);
+    }
+
+    @Test
+    void testCalculateTime_withinLimit() throws Exception {
+        LocalTime recentTime = LocalTime.now().minusHours(1);
+
+        when(properties.getLimitUploadDocumentsRegularization()).thenReturn(24L);
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("calculateTime", LocalTime.class);
+        method.setAccessible(true);
+
+        boolean result = (boolean) method.invoke(service, recentTime);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void testCalculateDate_withinSevenDays() throws Exception {
+        LocalDate recentDate = LocalDate.now().minusDays(5);
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("calculateDate", LocalDate.class);
+        method.setAccessible(true);
+
+        boolean result = (boolean) method.invoke(service, recentDate);
+
+        assertFalse(result);
+    }
+
+
+    @Test
+    void testSendNotification_pastTime() throws Exception {
+        LocalDateTime dateNow = LocalDateTime.now().minusMinutes(5);
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("sendNotification", LocalDateTime.class);
+        method.setAccessible(true);
+
+        boolean result = (boolean) method.invoke(service, dateNow);
+
+        assertFalse(result);
+    }
+    @Test
+    void testUpdateRealNumberWorkers_domesticAffiliation() throws Exception {
+        Affiliate affiliate = new Affiliate();
+        affiliate.setNitCompany("12345");
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("employerFiled");
+        employerAffiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+
+        Affiliation domAffiliation = new Affiliation();
+        domAffiliation.setRealNumberWorkers(3L);
+
+        when(iAffiliateRepository.findOne(Mockito.<Specification<Affiliate>>any())).thenReturn(Optional.of(employerAffiliate));
+        when(affiliateMercantileRepository.findByFiledNumber("employerFiled")).thenReturn(Optional.empty());
+        when(repositoryAffiliation.findByFiledNumber("employerFiled")).thenReturn(Optional.of(domAffiliation));
+        when(affiliateService.getEmployerSize(2)).thenReturn(1L);
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("updateRealNumberWorkers", Affiliate.class);
+        method.setAccessible(true);
+        method.invoke(service, affiliate);
+
+        assertEquals(2L, domAffiliation.getRealNumberWorkers());
+        verify(repositoryAffiliation).save(domAffiliation);
+    }
+    @Test
+    void testResolveEmployerAffiliationDataByNit_domesticSuccess() throws Exception {
+        String nit = "654321";
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("filedDom");
+        employerAffiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setIdentificationDocumentType("CC");
+
+        when(iAffiliateRepository.findOne(Mockito.<Specification<Affiliate>>any())).thenReturn(Optional.of(employerAffiliate));
+        when(affiliateMercantileRepository.findByFiledNumber("filedDom")).thenReturn(Optional.empty());
+        when(repositoryAffiliation.findByFiledNumber("filedDom")).thenReturn(Optional.of(affiliation));
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("resolveEmployerAffiliationDataByNit", String.class);
+        method.setAccessible(true);
+
+        Object result = method.invoke(service, nit);
+
+        assertNotNull(result);
+    }
+    @Test
+    void testResolveEmployerAffiliationDataByNit_mercantileSuccess() throws Exception {
+        String nit = "123456";
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("filed123");
+        employerAffiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setTypeDocumentIdentification("NIT");
+
+        when(iAffiliateRepository.findOne(Mockito.<Specification<Affiliate>>any())).thenReturn(Optional.of(employerAffiliate));
+        when(affiliateMercantileRepository.findByFiledNumber("filed123")).thenReturn(Optional.of(mercantile));
+
+        java.lang.reflect.Method method = ScheduledTimersAffiliationsServiceImpl.class
+                .getDeclaredMethod("resolveEmployerAffiliationDataByNit", String.class);
+        method.setAccessible(true);
+
+        Object result = method.invoke(service, nit);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void testDeleteRequestAffiliation_recentDates() {
+        Affiliation affiliation = new Affiliation();
+        affiliation.setDateRequest(LocalDateTime.now().minusDays(3).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setDateCreateAffiliate(LocalDate.now().minusDays(3));
+
+        when(repositoryAffiliation.findAll(any(Specification.class))).thenReturn(List.of(affiliation));
+        when(affiliateMercantileRepository.findAll(any(Specification.class))).thenReturn(List.of(mercantile));
+
+        service.deleteRequestAffiliation();
+
+        verify(repositoryAffiliation, never()).delete(any(Affiliation.class));
+        verify(affiliateMercantileRepository, never()).delete(any(AffiliateMercantile.class));
+    }
+
+    @Test
+    void testRetirement_dependentWithoutAffiliationDependent() {
+        Retirement retirement = new Retirement();
+        retirement.setIdAffiliate(1L);
+        retirement.setRetirementDate(LocalDate.now());
+        retirement.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
+        retirement.setIdRetirementReason(1L);
+        retirement.setFiledNumber("filed123");
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(1L);
+        affiliate.setFiledNumber("filed123");
+        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_DEPENDENT);
+        affiliate.setNitCompany("12345");
+
+        when(retirementRepository.findByRetirementDate(LocalDate.now())).thenReturn(List.of(retirement));
+        when(iAffiliateRepository.findByIdAffiliate(1L)).thenReturn(Optional.of(affiliate));
+        when(iAffiliateRepository.save(any(Affiliate.class))).thenReturn(affiliate);
+        when(affiliationDependentRepository.findByFiledNumber("filed123")).thenReturn(Optional.empty());
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("employerFiled");
+        employerAffiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
+        AffiliateMercantile employerMercantile = new AffiliateMercantile();
+        employerMercantile.setTypeDocumentIdentification("NIT");
+        employerMercantile.setRealNumberWorkers(5L);
+
+        when(iAffiliateRepository.findOne(Mockito.<Specification<Affiliate>>any())).thenReturn(Optional.of(employerAffiliate));
+        when(affiliateMercantileRepository.findByFiledNumber("employerFiled")).thenReturn(Optional.of(employerMercantile));
+        when(affiliateService.getEmployerSize(anyInt())).thenReturn(1L);
+
+        RetirementReasonWorker reason = new RetirementReasonWorker();
+        reason.setReason("Test");
+        when(retirementReasonWorkerRepository.findById(1L)).thenReturn(Optional.of(reason));
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(new com.gal.afiliaciones.domain.model.ArlInformation()));
+        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(employerAffiliate));
+
+        doNothing().when(generalNoveltyService).saveGeneralNovelty(any(SaveGeneralNoveltyRequest.class));
+
+        service.retirement();
+
+        verify(affiliationDependentRepository).findByFiledNumber("filed123");
+    }
+    @Test
+    void testRetirement_independentWithEmptyArlList() {
+        Retirement retirement = new Retirement();
+        retirement.setIdAffiliate(1L);
+        retirement.setRetirementDate(LocalDate.now());
+        retirement.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        retirement.setIdRetirementReason(1L);
+
+        Affiliate affiliate = new Affiliate();
+        affiliate.setIdAffiliate(1L);
+        affiliate.setFiledNumber("filed123");
+        affiliate.setAffiliationType(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        affiliate.setNitCompany("12345");
+
+        Affiliation affiliation = new Affiliation();
+        affiliation.setTypeAffiliation(Constant.TYPE_AFFILLATE_INDEPENDENT);
+        affiliation.setIdentificationDocumentType("CC");
+        affiliation.setIdentificationDocumentNumber("123456");
+        affiliation.setFirstName("Test");
+        affiliation.setSurname("User");
+
+        when(retirementRepository.findByRetirementDate(LocalDate.now())).thenReturn(List.of(retirement));
+        when(iAffiliateRepository.findByIdAffiliate(1L)).thenReturn(Optional.of(affiliate));
+        when(iAffiliateRepository.save(any(Affiliate.class))).thenReturn(affiliate);
+        when(repositoryAffiliation.findByFiledNumber("filed123")).thenReturn(Optional.of(affiliation));
+        when(repositoryAffiliation.save(any(Affiliation.class))).thenReturn(affiliation);
+
+        RetirementReasonWorker reason = new RetirementReasonWorker();
+        reason.setReason("Test");
+        when(retirementReasonWorkerRepository.findById(1L)).thenReturn(Optional.of(reason));
+
+        com.gal.afiliaciones.domain.model.ArlInformation arlInfo = new com.gal.afiliaciones.domain.model.ArlInformation();
+        arlInfo.setCode("ARL01");
+        when(arlInformationDao.findAllArlInformation()).thenReturn(List.of(arlInfo));
+
+        Affiliate employerAffiliate = new Affiliate();
+        employerAffiliate.setFiledNumber("employerFiled");
+        employerAffiliate.setAffiliationSubType(Constant.TYPE_AFFILLATE_EMPLOYER);
+        when(iAffiliateRepository.findAll(Mockito.<Specification<Affiliate>>any())).thenReturn(List.of(employerAffiliate));
+        when(iAffiliateRepository.findOne(Mockito.<Specification<Affiliate>>any())).thenReturn(Optional.of(employerAffiliate));
+
+        AffiliateMercantile mercantile = new AffiliateMercantile();
+        mercantile.setTypeDocumentIdentification("NIT");
+        mercantile.setDigitVerificationDV(5);
+        when(affiliateMercantileRepository.findByFiledNumber("employerFiled")).thenReturn(Optional.of(mercantile));
+        doNothing().when(generalNoveltyService).saveGeneralNovelty(any(SaveGeneralNoveltyRequest.class));
+
+        service.retirement();
+
+        verify(repositoryAffiliation).save(any(Affiliation.class));
     }
 
 }

@@ -1,12 +1,14 @@
 package com.gal.afiliaciones.infrastructure.dto.certificate;
 
+import java.util.Map;
+
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
-
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CertificateReportRequestDTO {

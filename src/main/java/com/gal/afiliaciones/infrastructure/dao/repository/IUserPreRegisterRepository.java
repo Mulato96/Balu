@@ -58,12 +58,11 @@ public interface IUserPreRegisterRepository extends JpaRepository<UserMain, Long
 
 
     @Query(value = """
-        SELECT u.* 
-        FROM public.usuario u
-        WHERE regexp_replace(u.numero_identificacion::text, '\\D','','g') =
-              regexp_replace(CAST(:doc AS text), '\\D','','g')
-        LIMIT 1
-        """, nativeQuery = true)
+    SELECT *
+    FROM usuario
+    WHERE numero_identificacion = CAST(:doc AS TEXT)
+    LIMIT 1
+""", nativeQuery = true)
     Optional<UserMain> findByDocumentoNormalizado(@Param("doc") String documento);
 
 

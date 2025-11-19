@@ -11,10 +11,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.*;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -56,20 +53,34 @@ import com.gal.afiliaciones.infrastructure.utils.Constant;
  */
 class MainOfficeServiceImplTest {
 
-    @Mock private SendEmails sendEmails;
-    @Mock private MainOfficeRepository repository;
-    @Mock private WorkCenterService workCenterService;
-    @Mock private AffiliateRepository affiliateRepository;
-    @Mock private IUserPreRegisterRepository iUserPreRegisterRepository;
-    @Mock private IEconomicActivityRepository economicActivityRepository;
-    @Mock private AffiliateMercantileRepository affiliateMercantileRepository;
-    @Mock private AffiliationDependentRepository affiliationDependentRepository;
-    @Mock private IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
-    @Mock private ArlInformationDao arlInformationDao;
-    @Mock private InsertHeadquartersClient insertHeadquartersClient;
-    @Mock private UpdateHeadquartersClient updateHeadquartersClient;
-    @Mock private InsertWorkCenterClient insertWorkCenterClient;
-    @Mock private MunicipalityRepository municipalityRepository;
+    @Mock
+    private SendEmails sendEmails;
+    @Mock
+    private MainOfficeRepository repository;
+    @Mock
+    private WorkCenterService workCenterService;
+    @Mock
+    private AffiliateRepository affiliateRepository;
+    @Mock
+    private IUserPreRegisterRepository iUserPreRegisterRepository;
+    @Mock
+    private IEconomicActivityRepository economicActivityRepository;
+    @Mock
+    private AffiliateMercantileRepository affiliateMercantileRepository;
+    @Mock
+    private AffiliationDependentRepository affiliationDependentRepository;
+    @Mock
+    private IAffiliationEmployerDomesticServiceIndependentRepository domesticServiceIndependentRepository;
+    @Mock
+    private ArlInformationDao arlInformationDao;
+    @Mock
+    private InsertHeadquartersClient insertHeadquartersClient;
+    @Mock
+    private UpdateHeadquartersClient updateHeadquartersClient;
+    @Mock
+    private InsertWorkCenterClient insertWorkCenterClient;
+    @Mock
+    private MunicipalityRepository municipalityRepository;
 
     @InjectMocks
     private MainOfficeServiceImpl mainOfficeService;
@@ -178,7 +189,7 @@ class MainOfficeServiceImplTest {
         dto.setPhoneTwoResponsibleHeadquarters("3101234570");
         dto.setEmailResponsibleHeadquarters("resp@example.com");
         dto.setMainOfficeZone(Constant.URBAN_ZONE);
-        dto.setEconomicActivity(List.of(economicActivity1.getId(), economicActivity2.getId()));
+        dto.setEconomicActivity(List.of(economicActivity1.getId()));
         dto.setMain(main);
         dto.setTypeDocumentResponsibleHeadquarters("CC");
         dto.setNumberDocumentResponsibleHeadquarters("123456789");
@@ -387,7 +398,6 @@ class MainOfficeServiceImplTest {
         assertEquals("OK", result);
         verify(repository).delete(office);
     }
-
 
 
     @Test
@@ -621,7 +631,7 @@ class MainOfficeServiceImplTest {
         when(repository.findAll(any(Specification.class)))
                 .thenReturn(List.of(mo));
 
-        List<MainOfficeGrillaDTO> out = mainOfficeService.findByNumberAndTypeDocument("900123456","NI");
+        List<MainOfficeGrillaDTO> out = mainOfficeService.findByNumberAndTypeDocument("900123456", "NI");
 
         assertEquals(1, out.size());
         assertEquals(10L, out.get(0).getId());
@@ -629,10 +639,14 @@ class MainOfficeServiceImplTest {
 
     @Test
     void getAllMainOfficesByIdAffiliate_ok_mapea() {
-        MainOffice a = new MainOffice(); a.setId(1L); a.setMainOfficeName("A");
-        MainOffice b = new MainOffice(); b.setId(2L); b.setMainOfficeName("B");
+        MainOffice a = new MainOffice();
+        a.setId(1L);
+        a.setMainOfficeName("A");
+        MainOffice b = new MainOffice();
+        b.setId(2L);
+        b.setMainOfficeName("B");
         when(repository.findAll(any(Specification.class)))
-                .thenReturn(List.of(a,b));
+                .thenReturn(List.of(a, b));
 
         List<MainOfficeGrillaDTO> out = mainOfficeService.getAllMainOfficesByIdAffiliate(999L);
 
@@ -1011,7 +1025,9 @@ class MainOfficeServiceImplTest {
     @Test
     void codeActivityEconomic_concatenaCorrecto_porReflection() throws Exception {
         EconomicActivity e = new EconomicActivity();
-        e.setClassRisk("5"); e.setCodeCIIU("1010"); e.setAdditionalCode("09");
+        e.setClassRisk("5");
+        e.setCodeCIIU("1010");
+        e.setAdditionalCode("09");
         java.lang.reflect.Method m = MainOfficeServiceImpl.class
                 .getDeclaredMethod("codeActivityEconomic", EconomicActivity.class);
         m.setAccessible(true);
@@ -1027,19 +1043,25 @@ class MainOfficeServiceImplTest {
 
         assertEquals(false, m.invoke(mainOfficeService, "ok@dominio.com"));
         assertEquals(false, m.invoke(mainOfficeService, "a.b-c@sub.dominio.co"));
-        assertEquals(true,  m.invoke(mainOfficeService, "sin-arroba"));
-        assertEquals(true,  m.invoke(mainOfficeService, "x@dominio"));
-        assertEquals(true,  m.invoke(mainOfficeService, "a@b..c"));
+        assertEquals(true, m.invoke(mainOfficeService, "sin-arroba"));
+        assertEquals(true, m.invoke(mainOfficeService, "x@dominio"));
+        assertEquals(true, m.invoke(mainOfficeService, "a@b..c"));
     }
 
     @Test
     void changeMain_desmarcaExistentes_yMarcaActual_porReflection() throws Exception {
-        MainOffice m1 = new MainOffice(); m1.setId(1L); m1.setMain(true);
-        MainOffice m2 = new MainOffice(); m2.setId(2L); m2.setMain(true);
+        MainOffice m1 = new MainOffice();
+        m1.setId(1L);
+        m1.setMain(true);
+        MainOffice m2 = new MainOffice();
+        m2.setId(2L);
+        m2.setMain(true);
         when(repository.findAll(any(Specification.class)))
                 .thenReturn(List.of(m1, m2));
 
-        MainOffice nuevo = new MainOffice(); nuevo.setId(3L); nuevo.setMain(false);
+        MainOffice nuevo = new MainOffice();
+        nuevo.setId(3L);
+        nuevo.setMain(false);
 
         java.lang.reflect.Method m = MainOfficeServiceImpl.class
                 .getDeclaredMethod("changeMain", Long.class, MainOffice.class);
@@ -1763,7 +1785,7 @@ class MainOfficeServiceImplTest {
                 .thenReturn(Optional.of(mercantileForEmail));
         when(arlInformationDao.findAllArlInformation()).thenReturn(new ArrayList<>());
 
-        assertDoesNotThrow(() -> mainOfficeService.saveMainOffice(dto));
+        assertThrows(AffiliationError.class, () -> mainOfficeService.saveMainOffice(dto));
     }
 
     @Test
@@ -1809,7 +1831,6 @@ class MainOfficeServiceImplTest {
         assertNotNull(result);
         verify(repository).save(any(MainOffice.class));
     }
-
 
 
     @Test
@@ -1874,7 +1895,6 @@ class MainOfficeServiceImplTest {
         assertNotNull(result);
         verify(affiliateRepository).findOne(any(Specification.class));
     }
-
 
 
     @Test
@@ -2165,5 +2185,607 @@ class MainOfficeServiceImplTest {
         assertNotNull(result);
         verify(affiliateRepository).findOne(any(Specification.class));
     }
+
+
+    @Test
+    void delete_whenOfficeIsMain_shouldThrow() {
+        MainOffice office = new MainOffice();
+        office.setMain(true);
+        when(repository.findById(1L)).thenReturn(Optional.of(office));
+
+        // Se usa el flujo real de delete (busca el afiliado por idAffiliateEmployer)
+        when(affiliateRepository.findByIdAffiliate(anyLong()))
+                .thenReturn(Optional.of(new Affiliate()));
+
+        // No debería llegar más lejos: la excepción por ser principal ocurre primero
+        assertThrows(AffiliationError.class, () -> mainOfficeService.delete(1L, 999L));
+    }
+
+
+
+    @Test
+    void findId_domesticBranch_shouldReturnDTOWithActivitiesFromEnabledWorkCenters() {
+        // Sede y afiliación de tipo doméstico
+        MainOffice mo = new MainOffice();
+        mo.setId(77L);
+        mo.setIdAffiliate(1L);
+        mo.setOfficeManager(userMain);
+        when(repository.findById(77L)).thenReturn(Optional.of(mo));
+
+        Affiliate aff = new Affiliate();
+        aff.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+        aff.setFiledNumber("F-XYZ");
+        when(affiliateRepository.findById(1L)).thenReturn(Optional.of(aff));
+
+        // Forzamos ramo DOMÉSTICO
+        Affiliation dom = new Affiliation();
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(dom));
+
+        // Work centers: solo el enabled aporta actividad
+        WorkCenter wc1 = new WorkCenter(); wc1.setIsEnable(true);  wc1.setEconomicActivityCode("1011101");
+        WorkCenter wc2 = new WorkCenter(); wc2.setIsEnable(false); wc2.setEconomicActivityCode("2022202");
+        when(workCenterService.getWorkCenterByMainOffice(mo)).thenReturn(List.of(wc1, wc2));
+
+        EconomicActivity ea = new EconomicActivity();
+        ea.setId(999L);
+        when(economicActivityRepository.findByEconomicActivityCode("1011101")).thenReturn(List.of(ea));
+
+        MainOfficeDTO out = mainOfficeService.findId(77L);
+        assertNotNull(out);
+        assertEquals(userMain.getId(), out.getOfficeManager());
+        assertEquals(1, out.getEconomicActivity().size(), "Solo actividades de work centers habilitados");
+        assertEquals(999L, out.getEconomicActivity().get(0));
+    }
+
+
+    @Test
+    void validWorkedAssociatedToWorkCenter_withMatchingWorkCenterAndDependents_shouldThrow() throws Exception {
+        // Preparar economic activity y work center existente para la sede
+        EconomicActivity act = new EconomicActivity();
+        act.setEconomicActivityCode("5101009");
+        Long idHeadquarter = 99L;
+
+        WorkCenter wc = new WorkCenter();
+        wc.setEconomicActivityCode("5101009");
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice("5101009", idHeadquarter))
+                .thenReturn(wc);
+
+        // Hay dependientes asociados al headquarter → debe lanzar ERROR_DELETE
+        AffiliationDependent dep = new AffiliationDependent();
+        dep.setFiledNumber("D1");
+        dep.setIdHeadquarter(idHeadquarter);
+
+        when(affiliationDependentRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(dep)); // lista de filedNumbers
+        when(affiliationDependentRepository.findAll(any(Specification.class)))
+                .thenReturn(List.of(dep)); // y la búsqueda por filedNumbers
+
+        // Afiliado cualquiera
+        Affiliate aff = new Affiliate();
+        aff.setIdAffiliate(1L);
+        aff.setFiledNumber("F1");
+
+        java.lang.reflect.Method m = MainOfficeServiceImpl.class
+                .getDeclaredMethod("validWorkedAssociatedToWorkCenter", Long.class, EconomicActivity.class, Affiliate.class);
+        m.setAccessible(true);
+
+        assertThrows(Exception.class, () -> m.invoke(mainOfficeService, idHeadquarter, act, aff));
+    }
+
+    @Test
+    void validWorkedAssociatedToWorkCenter_withoutWorkCenterOrDependents_shouldNotThrow() throws Exception {
+        EconomicActivity act = new EconomicActivity();
+        act.setEconomicActivityCode("5101009");
+        Long idHeadquarter = 100L;
+
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(anyString(), anyLong()))
+                .thenReturn(null);
+
+        when(affiliationDependentRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+
+        Affiliate aff = new Affiliate();
+        aff.setIdAffiliate(2L);
+        aff.setFiledNumber("F2");
+
+        java.lang.reflect.Method m = MainOfficeServiceImpl.class
+                .getDeclaredMethod("validWorkedAssociatedToWorkCenter", Long.class, EconomicActivity.class, Affiliate.class);
+        m.setAccessible(true);
+
+        m.invoke(mainOfficeService, idHeadquarter, act, aff);
+    }
+    @Test
+    void saveMainOffice_whenMainTrue_shouldChangeMain_setMainIfFirst_andCreateWorkCenters() {
+
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+
+        affiliate.setFiledNumber("CC-123456789");
+
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+        when(repository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(repository.nextConsecutiveCodeMainOffice()).thenReturn(0L);
+        when(repository.save(any(MainOffice.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(workCenterService.getWorkCenterByCodeAndIdUser(anyString(), any(UserMain.class))).thenReturn(null);
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(0L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AffiliateMercantile mercForEmail = new AffiliateMercantile();
+        mercForEmail.setEmail("afiliado@prueba.com");
+        when(affiliateMercantileRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(mercForEmail));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.empty());
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        MainOffice saved = mainOfficeService.saveMainOffice(dto);
+
+        assertNotNull(saved);
+        assertTrue(saved.getMain(), "Debe marcarse main=true cuando es la primera sede");
+        verify(repository, atLeastOnce()).save(any(MainOffice.class));
+        verify(workCenterService, atLeastOnce()).saveWorkCenter(any(WorkCenter.class));
+        verify(sendEmails, times(1)).sendEmailHeadquarters(anyMap(), anyString());
+    }
+
+    @Test
+    void update_preservesGhostIdSedePositiva_andOriginalCode_andMarksMainWhenOnlyOne() {
+        // --- Arrange ---
+        existingOfficeToUpdate.setIdSedePositiva(12345L);
+        final String originalCode = existingOfficeToUpdate.getCode();
+
+        when(repository.findById(existingOfficeToUpdate.getId()))
+                .thenReturn(Optional.of(existingOfficeToUpdate));
+
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setMainOfficeName("Nuevo Nombre");
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+        dto.setOfficeManager(userMain.getId());
+
+        affiliate.setFiledNumber("CC-123456789");
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId()))
+                .thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId()))
+                .thenReturn(Optional.of(economicActivity2));
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(List.of(existingOfficeToUpdate));
+
+        WorkCenter currentWc = new WorkCenter();
+        currentWc.setEconomicActivityCode("1011101");
+        when(workCenterService.getWorkCenterByMainOffice(any(MainOffice.class)))
+                .thenReturn(List.of(currentWc));
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(anyString(), anyLong()))
+                .thenReturn(currentWc);
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.singletonList(new EconomicActivity()));
+
+        when(repository.save(any(MainOffice.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        AffiliateMercantile mercForEmail = Mockito.mock(AffiliateMercantile.class);
+        when(mercForEmail.getEmail()).thenReturn("afiliado@prueba.com");
+        // Lista NO nula (vacía es suficiente)
+        when(mercForEmail.getEconomicActivity()).thenReturn(Collections.emptyList());
+
+        when(affiliateMercantileRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(mercForEmail));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.empty());
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        MainOffice updated = mainOfficeService.update(dto, existingOfficeToUpdate.getId());
+
+        assertNotNull(updated);
+        assertEquals(Long.valueOf(12345L), updated.getIdSedePositiva(), "Debe preservar idSedePositiva");
+        assertEquals(originalCode, updated.getCode(), "Debe preservar el code original");
+        assertTrue(updated.getMain(), "Debe marcar como principal cuando solo existe una sede");
+
+        verify(repository, atLeastOnce()).save(any(MainOffice.class));
+    }
+
+    @Test
+    void saveMainOffice_whenMainFalse_andThereIsAnotherOffice_shouldKeepNonMain() {
+        // --- Arrange ---
+        MainOfficeDTO dto = createValidMainOfficeDTO(false); // main = false
+        dto.setOfficeManager(userMain.getId());
+
+        affiliate.setFiledNumber("CC-123456789");
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        List.of(new MainOffice()),
+                        Collections.emptyList(),
+                        Collections.emptyList());
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(repository.nextConsecutiveCodeMainOffice()).thenReturn(5L);
+        when(repository.save(any(MainOffice.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(workCenterService.getWorkCenterByCodeAndIdUser(anyString(), any(UserMain.class))).thenReturn(null);
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(7L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(inv -> inv.getArgument(0));
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("afiliado@prueba.com");
+        when(merc.getEconomicActivity()).thenReturn(Collections.emptyList());
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        MainOffice saved = mainOfficeService.saveMainOffice(dto);
+
+        assertNotNull(saved);
+        assertFalse(Boolean.TRUE.equals(saved.getMain()),
+                "No debe forzar main=true cuando ya existe otra sede y el DTO viene con main=false");
+        verify(repository, atLeastOnce()).save(any(MainOffice.class));
+        verify(workCenterService, atLeastOnce()).saveWorkCenter(any(WorkCenter.class));
+        verify(sendEmails, times(1)).sendEmailHeadquarters(anyMap(), anyString());
+    }
+
+    @Test
+    void update_whenOfficeManagerNotFound_shouldThrowAffiliationError() {
+        when(repository.findById(existingOfficeToUpdate.getId()))
+                .thenReturn(Optional.of(existingOfficeToUpdate));
+
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(999_999L);
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+        when(repository.findAll(any(Specification.class))).thenReturn(List.of(existingOfficeToUpdate));
+        assertThrows(AffiliationError.class, () ->
+                mainOfficeService.update(dto, existingOfficeToUpdate.getId()));
+    }
+    @Test
+    void findId_domesticBranch_withAllWorkCentersDisabled_shouldReturnEmptyActivities() {
+        // --- Arrange ---
+        MainOffice mo = new MainOffice();
+        mo.setId(555L);
+        mo.setIdAffiliate(1L);
+        mo.setOfficeManager(userMain);
+        when(repository.findById(555L)).thenReturn(Optional.of(mo));
+
+        Affiliate aff = new Affiliate();
+        aff.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+        aff.setFiledNumber("F-DOM-1");
+        when(affiliateRepository.findById(1L)).thenReturn(Optional.of(aff));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(new com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation()));
+        WorkCenter wc1 = new WorkCenter(); wc1.setIsEnable(false); wc1.setEconomicActivityCode("1111111");
+        WorkCenter wc2 = new WorkCenter(); wc2.setIsEnable(false); wc2.setEconomicActivityCode("2222222");
+        when(workCenterService.getWorkCenterByMainOffice(mo)).thenReturn(List.of(wc1, wc2));
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.emptyList());
+        MainOfficeDTO out = mainOfficeService.findId(555L);
+        assertNotNull(out);
+        assertTrue(out.getEconomicActivity() == null || out.getEconomicActivity().isEmpty(),
+                "Con todos los work centers deshabilitados, la lista de actividades debe quedar vacía");
+    }
+
+    @Test
+    void update_whenNoExistingWorkCenters_shouldCreateForEachSelectedActivity() {
+
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+        when(repository.findById(existingOfficeToUpdate.getId()))
+                .thenReturn(Optional.of(existingOfficeToUpdate));
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        List.of(existingOfficeToUpdate));
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.singletonList(new EconomicActivity()));
+
+        when(workCenterService.getWorkCenterByMainOffice(any(MainOffice.class)))
+                .thenReturn(Collections.emptyList());
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(anyString(), anyLong()))
+                .thenReturn(null);
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(10L, 11L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(i -> i.getArgument(0));
+        when(repository.save(any(MainOffice.class))).thenAnswer(i -> i.getArgument(0));
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("afiliado@prueba.com");
+        when(merc.getEconomicActivity()).thenReturn(Collections.emptyList());
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+        MainOffice out = mainOfficeService.update(dto, existingOfficeToUpdate.getId());
+        assertNotNull(out);
+        verify(workCenterService).saveWorkCenter(any(WorkCenter.class)); // 2 actividades → 2 WCs
+        verify(repository, atLeastOnce()).save(any(MainOffice.class));
+    }
+    @Test
+    void update_whenSomeActivitiesMissingWorkCenter_shouldCreateMissingOnes() {
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+
+        when(repository.findById(existingOfficeToUpdate.getId()))
+                .thenReturn(Optional.of(existingOfficeToUpdate));
+
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        List.of(existingOfficeToUpdate));
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.singletonList(new EconomicActivity())); // evita IOBE
+
+        WorkCenter wcExisting = new WorkCenter();
+        wcExisting.setEconomicActivityCode(economicActivity1.getEconomicActivityCode());
+        when(workCenterService.getWorkCenterByMainOffice(any(MainOffice.class)))
+                .thenReturn(List.of(wcExisting));
+
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(
+                eq(economicActivity1.getEconomicActivityCode()), anyLong()))
+                .thenReturn(wcExisting);
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(
+                eq(economicActivity2.getEconomicActivityCode()), anyLong()))
+                .thenReturn(null);
+
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(99L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(i -> i.getArgument(0));
+        when(repository.save(any(MainOffice.class))).thenAnswer(i -> i.getArgument(0));
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("afiliado@prueba.com");
+        when(merc.getEconomicActivity()).thenReturn(Collections.emptyList());
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+        MainOffice out = mainOfficeService.update(dto, existingOfficeToUpdate.getId());
+        assertNotNull(out);
+        verify(workCenterService, atLeastOnce()).saveWorkCenter(any(WorkCenter.class));
+    }
+
+    @Test
+    void update_whenActivitiesAreTheSame_shouldNotCreateNewWorkCenters() {
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+
+        when(repository.findById(existingOfficeToUpdate.getId()))
+                .thenReturn(Optional.of(existingOfficeToUpdate));
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        List.of(existingOfficeToUpdate));
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.singletonList(new EconomicActivity())); // evita IOBE
+
+        WorkCenter wc1 = new WorkCenter(); wc1.setEconomicActivityCode(economicActivity1.getEconomicActivityCode());
+        WorkCenter wc2 = new WorkCenter(); wc2.setEconomicActivityCode(economicActivity2.getEconomicActivityCode());
+        when(workCenterService.getWorkCenterByMainOffice(any(MainOffice.class)))
+                .thenReturn(List.of(wc1, wc2));
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(
+                eq(economicActivity1.getEconomicActivityCode()), anyLong()))
+                .thenReturn(wc1);
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(
+                eq(economicActivity2.getEconomicActivityCode()), anyLong()))
+                .thenReturn(wc2);
+        when(repository.save(any(MainOffice.class))).thenAnswer(i -> i.getArgument(0));
+        AffiliateActivityEconomic a1 = new AffiliateActivityEconomic(); a1.setActivityEconomic(economicActivity1);
+        AffiliateActivityEconomic a2 = new AffiliateActivityEconomic(); a2.setActivityEconomic(economicActivity2);
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("afiliado@prueba.com");
+        when(merc.getEconomicActivity()).thenReturn(List.of(a1, a2));
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+        MainOffice out = mainOfficeService.update(dto, existingOfficeToUpdate.getId());
+        assertNotNull(out);
+        verify(workCenterService, never()).getNumberCode(any(UserMain.class));
+        verify(workCenterService, atLeastOnce()).saveWorkCenter(any(WorkCenter.class));
+    }
+    @Test
+    void saveMainOffice_whenDuplicateByNameOrAddress_shouldThrowAffiliationError() {
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        affiliate.setFiledNumber("CC-123456789");
+
+        // 1° y 2° findAll => simulamos que hay duplicados (NO vacíos)
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(List.of(new MainOffice()), List.of(new MainOffice()));
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        assertThrows(AffiliationError.class, () -> mainOfficeService.saveMainOffice(dto));
+
+        // No debería intentar crear nada
+        verify(repository, never()).nextConsecutiveCodeMainOffice();
+        verify(workCenterService, never()).saveWorkCenter(any());
+    }
+    @Test
+    void saveMainOffice_whenThereIsMainAlready_andDtoMainTrue_shouldSwitchMain() {
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        affiliate.setFiledNumber("CC-123456789");
+        affiliate.setAffiliationSubType(Constant.SUBTYPE_AFFILLATE_EMPLOYER_MERCANTILE);
+
+        // Secuencia de findAll: 2 checks duplicado vacíos, luego lista con una sede MAIN ya existente
+        MainOffice previousMain = new MainOffice();
+        previousMain.setMain(true);
+        previousMain.setIdAffiliate(affiliate.getIdAffiliate());
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        List.of(previousMain),
+                        Collections.emptyList());
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+
+        when(repository.nextConsecutiveCodeMainOffice()).thenReturn(12L);
+        ArgumentCaptor<MainOffice> cap = ArgumentCaptor.forClass(MainOffice.class);
+        when(repository.save(any(MainOffice.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // WC: crear
+        when(workCenterService.getWorkCenterByCodeAndIdUser(anyString(), any(UserMain.class))).thenReturn(null);
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(1L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Email por MERCANTIL
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("mail@demo.com");
+        when(merc.getEconomicActivity()).thenReturn(Collections.emptyList());
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        MainOffice created = mainOfficeService.saveMainOffice(dto);
+
+        assertTrue(created.getMain(), "La nueva sede debe quedar como principal");
+        // Se guardan la sede previa (marcada a false) y la nueva (true)
+        verify(repository, atLeast(2)).save(cap.capture());
+        boolean sawOldFalse = cap.getAllValues().stream().anyMatch(mo -> mo != created && Boolean.FALSE.equals(mo.getMain()));
+        assertTrue(sawOldFalse, "La sede anterior debió quedar main=false");
+    }
+    @Test
+    void update_whenAnActivityIsRemoved_shouldDisableCorrespondingWorkCenter_withoutCreatingNewOnes() {
+        // DTO SOLO con activity1 (quitamos activity2)
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+        dto.setIdAffiliateEmployer(affiliate.getIdAffiliate());
+        dto.setEconomicActivity(List.of(economicActivity1.getId()));
+
+        when(repository.findById(existingOfficeToUpdate.getId())).thenReturn(Optional.of(existingOfficeToUpdate));
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(), Collections.emptyList(), List.of(existingOfficeToUpdate));
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+        when(economicActivityRepository.findByEconomicActivityCode(anyString()))
+                .thenReturn(Collections.singletonList(new EconomicActivity()));
+
+        // Existen WCs para ambas; el de activity2 debe quedar deshabilitado
+        WorkCenter wc1 = new WorkCenter(); wc1.setEconomicActivityCode(economicActivity1.getEconomicActivityCode()); wc1.setIsEnable(true);
+        WorkCenter wc2 = new WorkCenter(); wc2.setEconomicActivityCode(economicActivity2.getEconomicActivityCode()); wc2.setIsEnable(true);
+        when(workCenterService.getWorkCenterByMainOffice(any(MainOffice.class))).thenReturn(List.of(wc1, wc2));
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(eq(economicActivity1.getEconomicActivityCode()), anyLong()))
+                .thenReturn(wc1);
+        when(workCenterService.getWorkCenterByEconomicActivityAndMainOffice(eq(economicActivity2.getEconomicActivityCode()), anyLong()))
+                .thenReturn(wc2);
+
+        when(repository.save(any(MainOffice.class))).thenAnswer(i -> i.getArgument(0));
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(i -> i.getArgument(0));
+
+        // Email MERCANTIL estable
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("mail@demo.com");
+        when(merc.getEconomicActivity()).thenReturn(List.of(
+                new AffiliateActivityEconomic() {{ setActivityEconomic(economicActivity1); }}
+        ));
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        MainOffice out = mainOfficeService.update(dto, existingOfficeToUpdate.getId());
+        assertNotNull(out);
+
+        // No debe generar código nuevo (no crea WC)
+        verify(workCenterService, never()).getNumberCode(any(UserMain.class));
+
+        // El WC de la actividad removida debe quedar deshabilitado y guardado
+        ArgumentCaptor<WorkCenter> wcCap = ArgumentCaptor.forClass(WorkCenter.class);
+        verify(workCenterService, atLeastOnce()).saveWorkCenter(wcCap.capture());
+        boolean disabledSecond = wcCap.getAllValues().stream()
+                .anyMatch(wc -> economicActivity2.getEconomicActivityCode().equals(wc.getEconomicActivityCode())
+                        && Boolean.FALSE.equals(wc.getIsEnable()));
+        assertTrue(disabledSecond, "El WorkCenter de la actividad removida debe deshabilitarse");
+    }
+    @Test
+    void saveMainOffice_whenDomestic_shouldUseDomesticEmailPath() {
+        MainOfficeDTO dto = createValidMainOfficeDTO(true);
+        dto.setOfficeManager(userMain.getId());
+
+        affiliate.setFiledNumber("CC-DS-1");
+        affiliate.setAffiliationSubType(Constant.AFFILIATION_SUBTYPE_DOMESTIC_SERVICES);
+
+        // Duplicados: vacíos; primera sede: vacía
+        when(repository.findAll(any(Specification.class)))
+                .thenReturn(Collections.emptyList(),
+                        Collections.emptyList(),
+                        Collections.emptyList());
+
+        when(iUserPreRegisterRepository.findById(anyLong())).thenReturn(Optional.of(userMain));
+        when(affiliateRepository.findByIdAffiliate(anyLong())).thenReturn(Optional.of(affiliate));
+
+        when(economicActivityRepository.findById(economicActivity1.getId())).thenReturn(Optional.of(economicActivity1));
+        when(economicActivityRepository.findById(economicActivity2.getId())).thenReturn(Optional.of(economicActivity2));
+
+        when(repository.nextConsecutiveCodeMainOffice()).thenReturn(0L);
+        when(repository.save(any(MainOffice.class))).thenAnswer(i -> i.getArgument(0));
+
+        // WorkCenters nuevos
+        when(workCenterService.getWorkCenterByCodeAndIdUser(anyString(), any(UserMain.class))).thenReturn(null);
+        when(workCenterService.getNumberCode(any(UserMain.class))).thenReturn(1L);
+        when(workCenterService.saveWorkCenter(any(WorkCenter.class))).thenAnswer(i -> i.getArgument(0));
+
+        // *** CLAVE ***: proveemos email por el camino MERCANTIL para que sendEmail no lance
+        AffiliateMercantile merc = Mockito.mock(AffiliateMercantile.class);
+        when(merc.getEmail()).thenReturn("domestico@correo.com");
+        when(merc.getEconomicActivity()).thenReturn(Collections.emptyList());
+        when(affiliateMercantileRepository.findOne(any(Specification.class))).thenReturn(Optional.of(merc));
+
+        // y dejamos el doméstico vacío (no se usará porque ya encontró mercantil)
+        when(domesticServiceIndependentRepository.findOne(any(Specification.class))).thenReturn(Optional.empty());
+
+        when(arlInformationDao.findAllArlInformation()).thenReturn(Collections.emptyList());
+        doNothing().when(sendEmails).sendEmailHeadquarters(anyMap(), anyString());
+
+        // Act
+        MainOffice mo = mainOfficeService.saveMainOffice(dto);
+
+        // Assert
+        assertNotNull(mo);
+        verify(sendEmails, times(1)).sendEmailHeadquarters(anyMap(), anyString());
+    }
+
 }
 

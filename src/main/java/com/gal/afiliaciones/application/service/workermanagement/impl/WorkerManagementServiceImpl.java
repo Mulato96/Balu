@@ -1,6 +1,5 @@
 package com.gal.afiliaciones.application.service.workermanagement.impl;
 
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +13,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +24,7 @@ import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.employer.DetailRecordMassiveUpdateWorkerService;
 import com.gal.afiliaciones.application.service.employer.RecordMassiveUpdateWorkerService;
 import com.gal.afiliaciones.application.service.excelprocessingdata.ExcelProcessingServiceData;
+import com.gal.afiliaciones.application.service.workermanagement.WorkerManagementProjection;
 import com.gal.afiliaciones.application.service.workermanagement.WorkerManagementService;
 import com.gal.afiliaciones.config.BodyResponseConfig;
 import com.gal.afiliaciones.config.ex.Error.Type;
@@ -31,7 +32,6 @@ import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationNotFoundError;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
 import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
-import com.gal.afiliaciones.config.ex.validationpreregister.UserNotFoundInDataBase;
 import com.gal.afiliaciones.config.ex.workermanagement.NotFoundWorkersException;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.domain.model.Occupation;
@@ -40,10 +40,10 @@ import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.domain.model.affiliate.FindAffiliateReqDTO;
 import com.gal.afiliaciones.domain.model.affiliate.RecordMassiveUpdateWorker;
+import com.gal.afiliaciones.domain.model.affiliate.TraceabilityOfficialUpdates;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
@@ -57,46 +57,42 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationEmployerDomesticServiceIndependentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.RecordMassiveUpdateWorkerSpecification;
+import com.gal.afiliaciones.infrastructure.dao.repository.traceability.TraceabilityOfficialUpdatesRepository;
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ResponseServiceDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.AffiliationWorkerDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.DataEmailUpdateEmployerDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.DataExcelMassiveUpdateDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateContractDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateContractResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateWorkerCoverageDateDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateWorkerCoverageDateResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementPaginatedResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchFilterDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchResponseDTO;
 import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadWorker;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.springframework.data.domain.Sort;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class WorkerManagementServiceImpl implements WorkerManagementService {
+
+    // Constantes para literales duplicados
+    private static final String AFFILIATE_NOT_FOUND_MSG = "Afiliado no encontrado con ID: ";
+    private static final String NEW_VALUE_SEPARATOR = " nuevo: ";
 
     private final AffiliateRepository affiliateRepository;
     private final AffiliationDependentRepository affiliationDependentRepository;
@@ -114,9 +110,10 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private final CertificateService certificateService;
     private final RetirementRepository retirementRepository;
     private final RegistraduriaUnifiedService registraduriaUnifiedService;
-
+    private final TraceabilityOfficialUpdatesRepository traceRepository;
     private static final String DOCUMENT_NUMBER_ERROR_TEXT = "Validar información del campo Número documento identificación.";
     private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
+    private static final String AFFILIATE_DEPENDENT_NOT_FOUND = "Afiliacion dependiente no encontrada.";
 
     @Override
     public List<WorkerManagementDTO> findWorkersByEmployer(FiltersWorkerManagementDTO filters){
@@ -148,28 +145,42 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         Specification<Affiliate> specAffiliation = AffiliateSpecification
                 .hasActiveStatusAndEmployer(filters);
 
-        // PASO 1: Contar total de afiliados (consulta rápida de conteo)
-        long totalAffiliates = affiliateRepository.count(specAffiliation);
-
-        
-        // PASO 2: Aplicar paginación solo a la página solicitada
+        // PASO 1: Aplicar paginación solo a la página solicitada
         Pageable pageable = PageRequest.of(filters.getPage(), filters.getSize(), Sort.by("filedNumber").descending());
 
-        // PASO 3: Procesar SOLO los afiliados de la página actual (NO todos)
-        Page<WorkerManagementDTO> pageWorkers = affiliateRepository.searchWorkersByFilters(
+        // PASO 2: Procesar SOLO los afiliados de la página actual (NO todos)
+        Page<WorkerManagementProjection> resultSearch = affiliateRepository.searchWorkersByFilters(
                 filters.getIdAffiliateEmployer(),
                 filters.getStartContractDate(),
                 filters.getEndContractDate(),
                 filters.getStatus(),
                 filters.getIdentificationDocumentType(),
                 filters.getIdentificationDocumentNumber(),
-                filters.getIdbondingType(),
+                //filters.getIdbondingType(),
                 filters.getUpdateRequired(),
                 pageable
         );
 
-        // PASO 4: Calcular métricas de paginación basadas en afiliados
-        int totalPages = (int) Math.ceil((double) totalAffiliates / filters.getSize());
+        Page<WorkerManagementDTO> pageWorkers = resultSearch.map(r ->
+                new WorkerManagementDTO(
+                        r.getIdentificationDocumentType(),
+                        r.getIdentificationDocumentNumber(),
+                        r.getCompleteName(),
+                        null,
+                        r.getStartContractDate(),
+                        r.getEndContractDate(),
+                        r.getStatus(),
+                        r.getFiledNumber(),
+                        r.getAffiliationType(),
+                        r.getAffiliationSubType(),
+                        r.getIdAffiliate(),
+                        r.getPendingCompleteFormPila(),
+                        r.getRetiredWorker()
+                )
+        );
+
+        // PASO 3: Calcular métricas de paginación basadas en afiliados
+        int totalPages = (int) Math.ceil((double) pageWorkers.getTotalElements() / filters.getSize());
         int currentPage = filters.getPage();
         
 
@@ -183,7 +194,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                 pageWorkers.getContent(),       // Contenido de la página actual
                 currentPage,                    // Página actual
                 filters.getSize(),              // Tamaño de página
-                totalAffiliates,                // Total de afiliados (no dependientes)
+                pageWorkers.getTotalElements(),                // Total de afiliados (no dependientes)
                 totalPages,                     // Total de páginas
                 currentPage < totalPages - 1,   // ¿Hay siguiente página?
                 currentPage > 0,                // ¿Hay página anterior?
@@ -355,14 +366,24 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
                 .findByFieldNumber(filedNumber);
         Optional<AffiliationDependent> optionalAffiliationDependent = affiliationDependentRepository.findOne(specAffiliationDependent);
 
-        if (optionalAffiliationDependent.isEmpty()) {
+        Optional<Affiliation> optionalAffiliationIndependent = affiliationRepository.findByFiledNumber(filedNumber);
+
+        if (optionalAffiliationDependent.isEmpty() && optionalAffiliationIndependent.isEmpty()) {
             throw new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND);
         }
 
-        BeanUtils.copyProperties(optionalAffiliationDependent.get(), affiliationDependent);
+        AffiliationWorkerDataDTO workerDataDTO = new AffiliationWorkerDataDTO();
+        if(optionalAffiliationDependent.isPresent()) {
+            BeanUtils.copyProperties(optionalAffiliationDependent.get(), affiliationDependent);
+            BeanUtils.copyProperties(optionalAffiliationDependent.get(), workerDataDTO);
+        }else {
+            BeanUtils.copyProperties(optionalAffiliationIndependent.get(), affiliationDependent);
+            BeanUtils.copyProperties(optionalAffiliationIndependent.get(), workerDataDTO);
+            affiliationDependent.setIdBondingType(4L);
+        }
 
         //Consultar registraduria
-        if(!isUserNameCorrect(optionalAffiliationDependent.get())){
+        if(!isUserNameCorrect(workerDataDTO)){
             response.setMessage("La información actual del trabajador no " +
                     "coincide con la información de la registraduría, por lo anterior debe ser actualizada.");
         }
@@ -371,7 +392,7 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
         return response;
     }
 
-    private boolean isUserNameCorrect(AffiliationDependent affiliation){
+    private boolean isUserNameCorrect(AffiliationWorkerDataDTO affiliation){
         if(!affiliation.getIdentificationDocumentType().equalsIgnoreCase(Constant.CC))
             return true;
 
@@ -901,5 +922,217 @@ public class WorkerManagementServiceImpl implements WorkerManagementService {
     private List<Retirement> findByDateRetirementWorker(LocalDate date){
         return retirementRepository.findByRetirementDate(date);
     }
+
+    @Override
+    public List<WorkerSearchResponseDTO> getWorkersByDocument(WorkerSearchFilterDTO filter) {
+        List<WorkerSearchResponseDTO> result = new ArrayList<>();
+
+        List<WorkerSearchResponseDTO> dependentWorkers = affiliateRepository.searchWorkersDependent(
+                filter.getIdentificationDocumentType(),
+                filter.getIdentificationDocumentNumber()
+        );
+
+        List<WorkerSearchResponseDTO> independentWorkers = affiliateRepository.searchWorkersInDependent(
+                filter.getIdentificationDocumentType(),
+                filter.getIdentificationDocumentNumber()
+        );
+
+        if (dependentWorkers != null && !dependentWorkers.isEmpty()) {
+            result.addAll(dependentWorkers);
+        }
+
+        if (independentWorkers != null && !independentWorkers.isEmpty()) {
+            result.addAll(independentWorkers);
+        }
+
+        if (result.isEmpty()) {
+            throw new NotFoundWorkersException(Type.NOT_FOUND_WORKERS);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public UpdateWorkerCoverageDateResponseDTO updateWorkerCoverageDate(UpdateWorkerCoverageDateDTO dto) {
+
+        Affiliate affiliate = affiliateRepository.findById(dto.getIdAffiliate())
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_NOT_FOUND_MSG + dto.getIdAffiliate()));
+
+        String affiliationType = affiliate.getAffiliationType();
+        LocalDate previousDate;
+
+        if (Constant.TYPE_AFFILLATE_DEPENDENT.equals(affiliationType)) {
+            // Es un TRABAJADOR DEPENDIENTE
+            previousDate = updateDependentCoverageDate(affiliate, dto.getNewCoverageDate(), dto.getUser());
+
+        } else if (Constant.TYPE_AFFILLATE_INDEPENDENT.equals(affiliationType)) {
+            // Es un TRABAJADOR INDEPENDIENTE
+            previousDate = updateIndependentCoverageDate(affiliate, dto.getNewCoverageDate(), dto.getUser());
+
+        }else {
+            throw new AffiliationError("Tipo de afiliación no válido: " + affiliationType);
+        }
+
+        return UpdateWorkerCoverageDateResponseDTO.builder()
+                .success(true)
+                .message("Fecha de cobertura actualizada exitosamente")
+                .workerType(affiliationType)
+                .previousDate(previousDate)
+                .newDate(dto.getNewCoverageDate())
+                .filedNumber(affiliate.getFiledNumber())
+                .build();
+    }
+
+    private LocalDate updateDependentCoverageDate(Affiliate affiliate, LocalDate newDate, String user) {
+        Specification<AffiliationDependent> spec = AffiliationDependentSpecification
+                .findByFieldNumber(affiliate.getFiledNumber());
+
+        AffiliationDependent dependent = affiliationDependentRepository.findOne(spec)
+                .orElseThrow(() -> new AffiliationError(AFFILIATE_DEPENDENT_NOT_FOUND));
+
+        if (dependent.getIdAffiliateEmployer() != null) {
+            Affiliate employerAffiliate = affiliateRepository.findByIdAffiliate(dependent.getIdAffiliateEmployer())
+                    .orElseThrow(() -> new AffiliationError("Empleador no encontrado para el dependiente."));
+            
+            if (employerAffiliate.getCoverageStartDate() == null || newDate.isBefore(employerAffiliate.getCoverageStartDate())) {
+                throw new AffiliationError("La fecha de cobertura del dependiente no puede ser anterior a la fecha de cobertura del empleador.");
+            }
+        }
+
+        TraceabilityOfficialUpdates trace = new TraceabilityOfficialUpdates();
+
+        trace.setUpdateBy(user);
+        trace.setIdAffiliate(dependent.getIdAffiliate());
+        trace.setModifyType("Actualizacion fecha de cobertura de la afiliacion dependiente, fecha anterior: "+dependent.getCoverageDate() + " nueva fecha: " + newDate);
+        trace.setUpdateDate(LocalDate.now());
+
+
+        LocalDate previousDate = dependent.getCoverageDate();
+        dependent.setCoverageDate(newDate);
+        affiliationDependentRepository.save(dependent);
+
+        affiliate.setCoverageStartDate(newDate);
+        affiliateRepository.save(affiliate);
+
+        traceRepository.save(trace);
+
+        return previousDate;
+    }
+
+    private LocalDate updateIndependentCoverageDate(Affiliate affiliate, LocalDate newDate, String user ) {
+        if (!Constant.AFFILIATION_STATUS_ACTIVE.equalsIgnoreCase(affiliate.getAffiliationStatus())) {
+            throw new AffiliationError("La afiliación debe estar activa para actualizar la fecha.");
+        }
+        if (affiliate.getAffiliationDate() != null
+                && newDate.isBefore(affiliate.getAffiliationDate().toLocalDate())) {
+            throw new AffiliationError("La fecha no puede ser anterior al inicio del contrato.");
+        }
+        TraceabilityOfficialUpdates trace = new TraceabilityOfficialUpdates();
+
+        trace.setUpdateBy(user);
+        trace.setIdAffiliate(affiliate.getIdAffiliate());
+        trace.setModifyType("Actualizacion fecha de cobertura de la afiliacion independiente, fecha anterior: "+affiliate.getCoverageStartDate() + " nueva fecha: " + newDate);
+        trace.setUpdateDate(LocalDate.now());
+
+        LocalDate previousDate = affiliate.getCoverageStartDate();
+        affiliate.setCoverageStartDate(newDate);
+        affiliateRepository.save(affiliate);
+        traceRepository.save(trace);
+
+        return previousDate;
+    }
+
+    @Override
+    public WorkerDetailDTO getWorkerDetail(Long idAffiliate) {
+        Affiliate affiliate = affiliateRepository.findById(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_NOT_FOUND_MSG + idAffiliate));
+
+        String affiliationType = affiliate.getAffiliationType();
+
+        if (Constant.TYPE_AFFILLATE_INDEPENDENT.equals(affiliationType)) {
+            return getIndependentWorkerDetail(affiliate);
+        } else if (Constant.TYPE_AFFILLATE_DEPENDENT.equals(affiliationType)) {
+            return getDependentWorkerDetail(affiliate);
+        } else {
+            throw new AffiliationError("Tipo de afiliación no soportado para consulta de detalle: " + affiliationType);
+        }
+    }
+
+
+    private WorkerDetailDTO getIndependentWorkerDetail(Affiliate affiliate) {
+        return affiliationRepository.findWorkerDetailByAffiliateId(affiliate.getIdAffiliate())
+                .orElseThrow(() -> new AffiliationError(
+                        "No se encontraron datos del contrato para el trabajador independiente"));
+    }
+
+
+    private WorkerDetailDTO getDependentWorkerDetail(Affiliate affiliate) {
+        return affiliationDependentRepository.findWorkerDetailByAffiliateId(affiliate.getIdAffiliate())
+                .orElseThrow(() -> new AffiliationError(
+                        "No se encontraron datos del contrato para el trabajador dependiente"));
+    }
+
+    @Override
+    @Transactional
+    public UpdateContractResponseDTO updateContract(UpdateContractDTO dto) {
+        Affiliate affiliate = affiliateRepository.findById(dto.getIdAffiliate())
+                .orElseThrow(() -> new AffiliateNotFound(AFFILIATE_NOT_FOUND_MSG + dto.getIdAffiliate()));
+
+        if (!Constant.TYPE_AFFILLATE_INDEPENDENT.equals(affiliate.getAffiliationType())) {
+            throw new AffiliationError("El afiliado no es un trabajador independiente. Tipo: " + affiliate.getAffiliationType());
+        }
+
+        if (!Constant.AFFILIATION_STATUS_ACTIVE.equalsIgnoreCase(affiliate.getAffiliationStatus())) {
+            throw new AffiliationError("La afiliación debe estar activa para actualizar el contrato.");
+        }
+
+        Specification<Affiliation> spec = AffiliationEmployerDomesticServiceIndependentSpecifications
+                .hasFieldNumber(affiliate.getFiledNumber());
+        
+        Affiliation affiliation = affiliationRepository.findOne(spec)
+                .orElseThrow(() -> new AffiliationError(
+                        "No se encontraron datos del contrato para el trabajador independiente"));
+
+        LocalDate previousStartDate = affiliation.getContractStartDate();
+        LocalDate previousEndDate = affiliation.getContractEndDate();
+        LocalDate previousCoverageDate = affiliate.getCoverageStartDate();
+
+        affiliation.setContractStartDate(dto.getContractStartDate());
+        affiliation.setContractEndDate(dto.getContractEndDate());
+        affiliation.setContractDuration(dto.getContractDuration());
+        affiliation.setContractTotalValue(dto.getContractTotalValue());
+        affiliation.setContractMonthlyValue(dto.getContractMonthlyValue());
+        affiliation.setContractIbcValue(dto.getContractIbcValue());
+        affiliationRepository.save(affiliation);
+
+        affiliate.setCoverageStartDate(dto.getCoverageDate());
+        affiliateRepository.save(affiliate);
+
+        TraceabilityOfficialUpdates trace = new TraceabilityOfficialUpdates();
+        trace.setUpdateBy(dto.getUser());
+        trace.setIdAffiliate(affiliate.getIdAffiliate());
+        trace.setUpdateDate(LocalDate.now());
+        
+        String modifyTypeMessage = "Actualizacion contrato independiente, inicio anterior: " +
+                previousStartDate + NEW_VALUE_SEPARATOR + dto.getContractStartDate() +
+                ", fin anterior: " + previousEndDate + NEW_VALUE_SEPARATOR + dto.getContractEndDate() +
+                ", cobertura anterior: " + previousCoverageDate + NEW_VALUE_SEPARATOR + dto.getCoverageDate();
+        
+        if (modifyTypeMessage.length() > 255) {
+            modifyTypeMessage = modifyTypeMessage.substring(0, 252) + "...";
+        }
+        
+        trace.setModifyType(modifyTypeMessage);
+        traceRepository.save(trace);
+
+        return UpdateContractResponseDTO.builder()
+                .success(true)
+                .message("Contrato actualizado exitosamente")
+                .filedNumber(affiliate.getFiledNumber())
+                .build();
+    }
+
+
 
 }

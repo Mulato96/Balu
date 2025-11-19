@@ -11,7 +11,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -41,13 +40,4 @@ public class Retirement {
     private Long idAffiliate;
     @Column(name = "id_retirement_reason")
     private Long idRetirementReason;
-    @Column(name = "user_who_managed_retirement")
-    private String userWhoManagedRetirement;
-    @Column(name = "management_date_time")
-    private LocalDateTime managementDateTime;
-    @Column(name = "reason")
-    private String reason;
-    @Column(name = "modified_contract")
-    private String modifiedContract;
-
 }

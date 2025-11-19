@@ -8,6 +8,6 @@
   <include file="changes/test-liquibase.xml" relativeToChangelogFile="true"/>
   <include file="changes/test_pipiline.xml" relativeToChangelogFile="true"/>
   <include file="changes/2025-09-29_inserts_nivelacion_qa_con_prod-snapshot.xml" relativeToChangelogFile="true"/>
+  <include file="changes/2025-10-15_masivo_trabajadores_uno_a_la_vez.xml" relativeToChangelogFile="true"/>
+  <include file="changes/2025-11-06_hu_303890-HU_50_Gal_Ajuste_Certificado_Afiliacion.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
-
-

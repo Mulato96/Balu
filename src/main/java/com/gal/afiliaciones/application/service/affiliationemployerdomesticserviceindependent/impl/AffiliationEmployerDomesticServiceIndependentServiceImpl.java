@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -16,6 +17,11 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.NotFoundException;
 
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.domain.model.Department;
+import com.gal.afiliaciones.domain.model.Municipality;
+import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -84,7 +90,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.Affilia
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DataDocumentSpecifications;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.DateInterviewWebSpecification;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.WorkCenterAddressIndependentDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.FullDataMercantileDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticserviceindependent.AffiliationsFilterDTO;
@@ -129,26 +134,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import javax.ws.rs.NotFoundException;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -185,8 +171,11 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     private final IEconomicActivityRepository iEconomicActivityRepository;
     private final IUserPreRegisterRepository userMainRepository;
     private final IAffiliationAssignRepository affiliationAssignRepository;
+    private final DepartmentRepository departmentRepository;
+    private final MunicipalityRepository municipalityRepository;
 
     private static final String SING = "firma";
+    private static final String USER_NOT_FOUND = "El usuario no existe";
 
     private final AffiliationsViewRepository affiliationsViewRepository;
 
@@ -274,14 +263,15 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     }
 
     @Override
-    public ManagementDTO management(String field) {
+    public ManagementDTO management(Long idAffiliate, Long idUser) {
 
         List<DocumentsDTO> listDocumentsDTO = new ArrayList<>();
         ManagementDTO managementDTO = new ManagementDTO();
         DataDailyDTO dataDailyDTO = new DataDailyDTO();
         Long idDocument;
 
-        Affiliate affiliate = findByFieldAffiliate(field);
+        Affiliate affiliate = iAffiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new AffiliateNotFound("Affiliate not found"));
         Optional<Affiliation> optionalAffiliation = findByFieldAffiliation(affiliate.getFiledNumber());
         Optional<AffiliateMercantile> optionalAffiliateMercantile = findByFieldMercantile(affiliate.getFiledNumber());
 
@@ -296,7 +286,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
 
             Affiliation affiliation = optionalAffiliation.get();
 
-            if(Boolean.TRUE.equals(affiliate.getAffiliationCancelled()) || Boolean.TRUE.equals(affiliate.getStatusDocument())){
+            if(isOfficer(idUser) &&
+                    (Boolean.TRUE.equals(affiliate.getAffiliationCancelled()) || Boolean.TRUE.equals(affiliate.getStatusDocument()))){
                 throw new AffiliationError(Constant.ERROR_AFFILIATION);
             }
 
@@ -307,10 +298,10 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
 
             AffiliateMercantile affiliateMercantile = optionalAffiliateMercantile.get();
 
-            if(Boolean.TRUE.equals(affiliateMercantile.getAffiliationCancelled()) || Boolean.TRUE.equals(affiliateMercantile.getStatusDocument())){
+            if(isOfficer(idUser) &&
+                    (Boolean.TRUE.equals(affiliateMercantile.getAffiliationCancelled()) || Boolean.TRUE.equals(affiliateMercantile.getStatusDocument()))){
                 throw new AffiliationError(Constant.ERROR_AFFILIATION);
             }
-
 
             newAffiliationDTO = getAffiliationMercantile(affiliateMercantile);
 
@@ -354,13 +345,19 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         return managementDTO;
     }
 
+    private boolean isOfficer(Long idUser){
+        Specification<UserMain> userSpc = UserSpecifications.findOfficierById(idUser);
+        UserMain userMain = userMainRepository.findOne(userSpc).orElse(null);
+        return userMain!=null;
+    }
+
     @Override
     @Transactional
     public Affiliation createAffiliationStep1(DomesticServiceAffiliationStep1DTO dto) {
 
-        UserMain userRegister = userPreRegisterRepository.findByIdentificationTypeAndIdentification(
-                        dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber())
-                .orElseThrow(() -> new UserNotFoundInDataBase("El usuario no existe"));
+        Specification<UserMain> spcUser = UserSpecifications.findExternalUserByDocumentTypeAndNumber(dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber());
+        UserMain userRegister = userPreRegisterRepository.findOne(spcUser)
+                .orElseThrow(() -> new UserNotFoundInDataBase(USER_NOT_FOUND));
 
         int age = Period.between(userRegister.getDateBirth(), LocalDate.now()).getYears();
         if(age <= properties.getMinimumAge() || age >= properties.getMaximumAge() )
@@ -402,7 +399,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 filedNumber = filedService.getNextFiledNumberAffiliation();
                 affiliation.setFiledNumber(filedNumber);
             }
-            Long idUser = findUser(affiliation);
+            Long idUser = userRegister.getId();
             Affiliate affiliateEntity;
             try {
                 // Si ya existe por filedNumber, reutilizar
@@ -421,9 +418,9 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     @Override
     public Affiliation createAffiliationStep2(DomesticServiceAffiliationStep2DTO dto) {
 
-        UserMain userRegister = userPreRegisterRepository.findByIdentificationTypeAndIdentification(
-                        dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber())
-                .orElseThrow(() -> new UserNotFoundInDataBase("El usuario no existe"));
+        Specification<UserMain> spcUser = UserSpecifications.findExternalUserByDocumentTypeAndNumber(dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber());
+        UserMain userRegister = userPreRegisterRepository.findOne(spcUser)
+                .orElseThrow(() -> new UserNotFoundInDataBase(USER_NOT_FOUND));
 
         if(userRegister.getPensionFundAdministrator() == null && userRegister.getHealthPromotingEntity() == null)
             iUserPreRegisterRepository.updateEPSandAFP(userRegister.getId(), dto.getHealthPromotingEntity(), dto.getPensionFundAdministrator());
@@ -434,6 +431,19 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             BeanUtils.copyProperties(dto, affiliationExists);
             affiliationExists.setNationality((dto.getNationality()!=null && !dto.getNationality().isBlank()) ?
                     Long.parseLong(dto.getNationality()) : null);
+            
+            // Update Affiliate's company field with the actual name
+            if (affiliationExists.getFiledNumber() != null && !affiliationExists.getFiledNumber().isBlank()) {
+                iAffiliateRepository.findByFiledNumber(affiliationExists.getFiledNumber()).ifPresent(affiliate -> {
+                    String fullName = (dto.getFirstName() != null ? dto.getFirstName() : "") + " " +
+                            (dto.getSecondName() != null ? dto.getSecondName() : "") + " " +
+                            (dto.getSurname() != null ? dto.getSurname() : "") + " " +
+                            (dto.getSecondSurname() != null ? dto.getSecondSurname() : "");
+                    affiliate.setCompany(fullName.trim().replaceAll("\\s+", " "));
+                    iAffiliateRepository.save(affiliate);
+                });
+            }
+            
             return repositoryAffiliation.save(affiliationExists);
         } catch (AffiliationError ex){
             throw new AffiliationError("Error al crear la afiliacion");
@@ -445,7 +455,12 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     public Affiliation createAffiliationStep3(Long idAffiliation, MultipartFile document) {
         try{
             Affiliation newAffiliation = getAffiliationById(idAffiliation);
+            String identificationDocumentType = newAffiliation.getIdentificationDocumentType();
             String identificationDocumentNumber = newAffiliation.getIdentificationDocumentNumber();
+
+            Specification<UserMain> spcUser = UserSpecifications.findExternalUserByDocumentTypeAndNumber(identificationDocumentType, identificationDocumentNumber);
+            UserMain userRegister = userPreRegisterRepository.findOne(spcUser)
+                    .orElseThrow(() -> new UserNotFoundInDataBase(USER_NOT_FOUND));
 
             // Usar filedNumber existente (creado en step1) o generar si no existe
             String filedNumber = newAffiliation.getFiledNumber();
@@ -454,11 +469,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 filedNumber = filedService.getNextFiledNumberAffiliation();
                 newAffiliation.setFiledNumber(filedNumber);
 
-                // Crear usuario en la tabla usuario
-                Long idUser = findUser(newAffiliation);
-
                 // Asociar a la tabla de afiliaciones
-                affiliate = saveAffiliate(newAffiliation, idUser, filedNumber);
+                affiliate = saveAffiliate(newAffiliation, userRegister.getId(), filedNumber);
             } else {
                 // Recuperar Affiliate ya creado en step1 por filedNumber
                 affiliate = findByFieldAffiliate(filedNumber);
@@ -468,20 +480,15 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
             String idFolderByEmployer = saveDocument(identificationDocumentNumber, document, affiliate.getIdAffiliate(),
                     filedNumber);
 
-            // Crear sede principal y centros de trabajo
-            MainOffice mainOffice = saveMainOffice(newAffiliation, affiliate);
-
             //Creacion de los centros de trabajo, y asocia las actividades economicas
             List<AffiliateActivityEconomic> affiliateActivityEconomics = createAffiliateActivityEconomic(newAffiliation,
-                    affiliate, mainOffice);
+                    affiliate, userRegister);
 
             newAffiliation.getEconomicActivity().addAll(affiliateActivityEconomics);
 
             newAffiliation.setFiledNumber(filedNumber);
             newAffiliation.setIdFolderAlfresco(idFolderByEmployer);
-            newAffiliation.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
-            newAffiliation.setIdMainHeadquarter(mainOffice.getId());
-
+            newAffiliation.setStageManagement(Constant.SING); // Skip documental review for independents - go directly to signature
 
             //Guardar indicador empleador vip
             newAffiliation.setIsVip(false);
@@ -621,18 +628,6 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         return affiliateService.createAffiliate(newAffiliate);
     }
 
-    private Long findUser(Affiliation dto){
-        try {
-            Optional<UserDtoApiRegistry> userExists = webClient.getByIdentification(dto.getIdentificationDocumentNumber());
-            if(userExists.isEmpty())
-                throw new UserNotFoundInDataBase(Constant.USER_NOT_FOUND_IN_DATA_BASE);
-
-            return userExists.get().getId();
-        }catch (Exception ex){
-            throw new AffiliationError("Error consultando el usuario de la afiliacion");
-        }
-    }
-
     private String saveDocument(String identificationDocumentNumber, MultipartFile document, Long idAffiliation,
                                 String filedNumber){
         String idFolderByEmployer = null;
@@ -670,23 +665,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         return affiliationExist.get();
     }
 
-    private MainOffice saveMainOffice(Affiliation affiliation, Affiliate affiliate){
-        Optional<UserDtoApiRegistry> userExists = webClient.getByIdentification(affiliation
-                .getIdentificationDocumentNumber());
-
-        UserDtoApiRegistry  userDtoApiRegistry = new UserDtoApiRegistry();
-        if(userExists.isPresent())
-            userDtoApiRegistry = userExists.get();
-
-        UserMain userMain = new UserMain();
-        BeanUtils.copyProperties(userDtoApiRegistry, userMain);
-
-
-        //construccion de la officina central
-        return buildMainOffice(affiliation, userMain, affiliate);
-    }
-
-    private MainOffice buildMainOffice(Affiliation affiliation, UserMain userMain, Affiliate affiliate){
+    private MainOffice buildMainOffice(Affiliation affiliation, UserMain userMain, Affiliate affiliate, String economicActivityCode, Boolean isPrimary){
 
         MainOffice mainOffice = new MainOffice();
 
@@ -694,9 +673,11 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
         if(Boolean.TRUE.equals(affiliation.getIsRuralZoneEmployer()))
             zone = Constant.RURAL_ZONE;
 
+        String nameMainOffice = buildNameMainOffice(affiliation, economicActivityCode);
+
         mainOffice.setCode(mainOfficeService.findCode());
-        mainOffice.setMainOfficeName("Principal");
-        mainOffice.setMain(Boolean.TRUE);
+        mainOffice.setMainOfficeName(nameMainOffice);
+        mainOffice.setMain(isPrimary);
         mainOffice.setMainOfficeZone(zone);
 
         mainOffice.setAddress(affiliation.getAddress());
@@ -706,7 +687,6 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
 
         //actividades economicas
         mainOffice.setIdAffiliate(affiliate.getIdAffiliate());
-
 
         // responsabel de la sede
         mainOffice.setTypeDocumentResponsibleHeadquarters(affiliation.getIdentificationDocumentType());
@@ -1072,8 +1052,7 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 ));
     }
 
-    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Affiliation affiliation, Affiliate affiliate,
-                                                                            MainOffice mainOffice){
+    private List<AffiliateActivityEconomic> createAffiliateActivityEconomic(Affiliation affiliation, Affiliate affiliate, UserMain userMain){
 
         Map<String, EconomicActivity> economicActivityMap = economicActivityList(List.of("1970001", "1970002", "3970001", "3869201"))
                 .stream()
@@ -1085,11 +1064,15 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 .entrySet()
                 .stream()
                 .map(activity -> {
-
                     EconomicActivity economicActivity =  economicActivityMap.get(activity.getKey());
-                    createWorkCenter(affiliation, economicActivity.getClassRisk(), counter.getAndIncrement(), economicActivity.getEconomicActivityCode(), mainOffice, affiliate.getIdAffiliate());
 
                     Boolean isPrimary = activity.getKey().equals(Constant.CODE_MAIN_ECONOMIC_ACTIVITY_DOMESTIC);
+
+                    // Crear sede principal y centros de trabajo
+                    MainOffice mainOffice = buildMainOffice(affiliation, userMain, affiliate, economicActivity.getEconomicActivityCode(), isPrimary);
+
+                    // Crear el centro de trabajo
+                    createWorkCenter(affiliation, economicActivity, counter.getAndIncrement(), mainOffice, affiliate.getIdAffiliate(), userMain);
 
                     AffiliateActivityEconomic affiliateActivityEconomic =  new AffiliateActivityEconomic();
                     affiliateActivityEconomic.setAffiliation(affiliation);
@@ -1101,18 +1084,8 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
                 .toList();
     }
 
-    private void createWorkCenter(Affiliation affiliation, String classRisk, int code, String codeActivityEconomic,
-                                  MainOffice mainOffice, Long idAffiliate){
-
-        Optional<UserDtoApiRegistry> userExists = webClient.getByIdentification(affiliation
-                .getIdentificationDocumentNumber());
-
-        UserDtoApiRegistry userDtoApiRegistry = new UserDtoApiRegistry();
-        if (userExists.isPresent())
-            userDtoApiRegistry = userExists.get();
-
-        UserMain userMain = new UserMain();
-        BeanUtils.copyProperties(userDtoApiRegistry, userMain);
+    private void createWorkCenter(Affiliation affiliation, EconomicActivity economicActivity, int code,
+                                  MainOffice mainOffice, Long idAffiliate, UserMain userMain){
 
         String zone = Constant.URBAN_ZONE;
         if (Boolean.TRUE.equals(affiliation.getIsRuralZoneEmployer()))
@@ -1120,9 +1093,9 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
 
         WorkCenter workCenter1 = new WorkCenter();
         workCenter1.setCode(String.valueOf(code));
-        workCenter1.setEconomicActivityCode(codeActivityEconomic);
+        workCenter1.setEconomicActivityCode(economicActivity.getEconomicActivityCode());
         workCenter1.setTotalWorkers(0);
-        workCenter1.setRiskClass(classRisk);
+        workCenter1.setRiskClass(economicActivity.getClassRisk());
         workCenter1.setWorkCenterDepartment(affiliation.getDepartmentEmployer());
         workCenter1.setWorkCenterCity(affiliation.getMunicipalityEmployer());
         workCenter1.setWorkCenterZone(zone);
@@ -1218,29 +1191,28 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
     }
 
     @Transactional
-    public void assignTo(String filedNumber, Long usuarioId) {
-
-        Affiliation affiliation = repositoryAffiliation.findByFiledNumber(filedNumber)
-                .orElseThrow(() -> new RuntimeException("Afiliación no encontrada"));
+    public void assignTo(Long idAffiliate, Long usuarioId) {
 
         UserMain usuario = userMainRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 1. Actualizar responsable actual en la afiliación
-        affiliation.setAssignTo(usuario);
-        repositoryAffiliation.save(affiliation);
 
-        // 2. Marcar anterior asignación como no actual
-        affiliationAssignRepository.findByAffiliationIdOrderByAssignmentDateDesc(affiliation.getId())
+        Affiliate affiliate = iAffiliateRepository.findByIdAffiliate(idAffiliate)
+                .orElseThrow(() -> new RuntimeException("Afiliado no encontrado"));
+
+
+        affiliate.setAssignTo(usuario);
+        iAffiliateRepository.save(affiliate);
+
+        affiliationAssignRepository.findByAffiliateIdAffiliateOrderByAssignmentDateDesc(affiliate.getIdAffiliate())
                 .stream().findFirst()
                 .ifPresent(assign -> {
                     assign.setIsCurrent(false);
                     affiliationAssignRepository.save(assign);
                 });
 
-        // 3. Insertar nueva asignación en el historial
         AffiliationAssignmentHistory newAssign = AffiliationAssignmentHistory.builder()
-                .affiliation(affiliation)
+                .affiliate(affiliate)
                 .usuario(usuario)
                 .assignmentDate(LocalDateTime.now())
                 .isCurrent(true)
@@ -1248,5 +1220,37 @@ public class AffiliationEmployerDomesticServiceIndependentServiceImpl implements
 
         affiliationAssignRepository.save(newAssign);
     }
+
+    private String buildNameMainOffice(Affiliation affiliation, String economicActivityCode){
+        String department = findDepartmentNameById(affiliation.getDepartment());
+        String city = findMunicipalityNameById(affiliation.getCityMunicipality());
+
+        return "SEDE " +
+                department + " | " +
+                city + " | " +
+                affiliation.getAddress().toUpperCase() + " | " +
+                economicActivityCode;
+    }
+
+    private String findDepartmentNameById(Long departmentId) {
+        Department department = departmentRepository.findByIdDepartment(departmentId!=null ? departmentId.intValue() : 1)
+                .orElse(null);
+
+        if (department != null)
+            return department.getDepartmentName().toUpperCase();
+
+        return null;
+    }
+
+    private String findMunicipalityNameById(Long municipalityId) {
+        Municipality municipality = municipalityRepository.findById(municipalityId)
+                .orElse(null);
+
+        if (municipality != null)
+            return municipality.getMunicipalityName().toUpperCase();
+
+        return null;
+    }
+
 }
 

@@ -18,28 +18,45 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import com.gal.afiliaciones.application.service.KeycloakService;
+import com.gal.afiliaciones.config.ex.validationpreregister.EmailAlreadyExists;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorDocumentConditions;
+import com.gal.afiliaciones.config.ex.validationpreregister.ErrorDocumentType;
+import com.gal.afiliaciones.config.ex.validationpreregister.PhoneAlreadyExists;
+import com.gal.afiliaciones.config.ex.validationpreregister.UserAndTypeAlreadyExists;
 import com.gal.afiliaciones.config.mapper.UpdatePreRegisterMapper;
 import com.gal.afiliaciones.config.mapper.UserMapper;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.dto.ExternalUserDTO;
+import com.gal.afiliaciones.infrastructure.dto.RegistryOfficeDTO;
+import com.gal.afiliaciones.infrastructure.dto.UpdateEmailExternalUserDTO;
+import com.gal.afiliaciones.infrastructure.dto.UserDtoApiRegistry;
+import com.gal.afiliaciones.infrastructure.dto.address.AddressDTO;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Example;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -66,7 +83,6 @@ import com.gal.afiliaciones.infrastructure.dao.repository.systemparam.SystemPara
 import com.gal.afiliaciones.infrastructure.dto.ResponseUserDTO;
 import com.gal.afiliaciones.infrastructure.dto.UpdateCredentialDTO;
 import com.gal.afiliaciones.infrastructure.dto.UpdatePasswordDTO;
-// import removed: UserDtoApiRegistry is not used
 import com.gal.afiliaciones.infrastructure.dto.UserPreRegisterDto;
 import com.gal.afiliaciones.infrastructure.dto.otp.OTPDataResponseDTO;
 import com.gal.afiliaciones.infrastructure.dto.user.UserNameDTO;
@@ -649,12 +665,6 @@ class UserPreRegisterServiceImplTest {
                 .idHorizontalProperty4IndependentWorker(180L)
                 .idNumHorizontalProperty4IndependentWorker(190L)
                 .build();
-        // Pre-set a value on a field not expected to change (e.g. id)
-        // This field should not be overwritten due to the ignore properties in
-        // copyProperties
-        // (Assuming Affiliation has an 'id' property, adjust according to your actual
-        // model)
-        // affiliation.setId("existing-id");
 
         // Act: Call the private method updateAffiliationDetail via reflection
         java.lang.reflect.Method method = UserPreRegisterServiceImpl.class
@@ -876,24 +886,6 @@ class UserPreRegisterServiceImplTest {
         AffiliateRepository affiliateRepo = Mockito.mock(AffiliateRepository.class);
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
-        // Instantiate the service with mocks
-        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-        //         webClient,
-        //         repo,
-        //         keycloakService,
-        //         statusService,
-        //         restTemplate,
-        //         affiliationProps,
-        //         genderRepo,
-        //         paramRepo,
-        //         request,
-        //         collectProps,
-        //         sendEmails,
-        //         otpService,
-        //         keycloakService, affiliateMercantileRepo,
-        //         affiliationDetailRepo,
-        //         affiliateRepo,
-        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         // Prepare a valid NIT for a natural employer.
         // Choose a base number that qualifies as natural: e.g., "700000000"
@@ -929,23 +921,6 @@ class UserPreRegisterServiceImplTest {
         AffiliateRepository affiliateRepo = Mockito.mock(AffiliateRepository.class);
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
-        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-        //         webClient,
-        //         repo,
-        //         keycloakService,
-        //         statusService,
-        //         restTemplate,
-        //         affiliationProps,
-        //         genderRepo,
-        //         paramRepo,
-        //         request,
-        //         collectProps,
-        //         sendEmails,
-        //         otpService,
-        //         keycloakService, affiliateMercantileRepo,
-        //         affiliationDetailRepo,
-        //         affiliateRepo,
-        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         String baseNumber = "700000000";
         int calculatedDV = service.calculateModulo11DV(baseNumber);
@@ -981,23 +956,6 @@ class UserPreRegisterServiceImplTest {
         AffiliateRepository affiliateRepo = Mockito.mock(AffiliateRepository.class);
         GenericWebClient genericWebClient2 = Mockito.mock(GenericWebClient.class);
 
-        // UserPreRegisterServiceImpl service = new UserPreRegisterServiceImpl(
-        //         webClient,
-        //         repo,
-        //         keycloakService,
-        //         statusService,
-        //         restTemplate,
-        //         affiliationProps,
-        //         genderRepo,
-        //         paramRepo,
-        //         request,
-        //         collectProps,
-        //         sendEmails,
-        //         otpService,
-        //         keycloakService, affiliateMercantileRepo,
-        //         affiliationDetailRepo,
-        //         affiliateRepo,
-        //         registraduriaUnifiedService, updatePreRegisterMapper, userMapper, arlRepository);
 
         // Test with a completely non-numeric NIT value
         String nonNumericNIT = "ABC123X";
@@ -1572,5 +1530,447 @@ class UserPreRegisterServiceImplTest {
 
         // Act & Assert
         assertThrows(UserNotRegisteredException.class, () -> service.updatePassword(dto));
+    }
+
+    @Test
+    void validPasswordOld(){
+
+        Map<String, Object> mockBody = new HashMap<>();
+        mockBody.put("access_token", "12345");
+        String url = "url";
+
+        ResponseEntity<Map<String, Object>> response =
+                new ResponseEntity<>(mockBody, HttpStatus.OK);
+
+        when(affiliationProperties.getKeycloakUrl())
+                .thenReturn(url);
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                any(ParameterizedTypeReference.class))
+        ).thenReturn(response);
+
+        boolean result = service.validPasswordOld("user", "pass");
+
+        assertTrue(result);
+
+    }
+
+    @Test
+    void validPasswordOld_exception(){
+
+        Map<String, Object> mockBody = new HashMap<>();
+        mockBody.put("access_token", "12345");
+        ResponseEntity<Map<String, Object>> response =
+                new ResponseEntity<>(mockBody, HttpStatus.OK);
+
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                any(ParameterizedTypeReference.class))
+        ).thenReturn(response);
+
+        boolean result = service.validPasswordOld("user", "pass");
+
+        assertFalse(result);
+
+    }
+
+    @Test
+    void updateExternalUser_userNotFound(){
+
+        UserMain userMain = new UserMain();
+        UpdateEmailExternalUserDTO userDTO =  new UpdateEmailExternalUserDTO();
+
+        when(iUserPreRegisterRepository.findOne((Example<UserMain>) any()))
+                .thenReturn(Optional.of(userMain));
+
+        boolean response = service.updateExternalUser(userDTO);
+
+        assertFalse(response);
+    }
+
+    @Test
+    void updateExternalUser_not_list_user(){
+
+        UserMain userMain = new UserMain();
+        userMain.setUserName("name");
+        userMain.setAge(18);
+        userMain.setIdentificationType("CC");
+        userMain.setIdentification("1234567890");
+        userMain.setFirstName("Juan");
+        userMain.setSecondName("Carlos");
+        userMain.setSurname("Pérez");
+        userMain.setSecondSurname("Gómez");
+        userMain.setDateBirth(LocalDate.of(1990, 5, 15));
+        userMain.setAge(35);
+        userMain.setSex("M");
+        userMain.setOtherSex(null);
+        userMain.setPhoneNumber("3001234567");
+        userMain.setEmail("juan.perez@example.com");
+        userMain.setStatusPreRegister(true);
+        userMain.setHealthPromotingEntity(10L);
+        userMain.setPensionFundAdministrator(20L);
+
+
+        UpdateEmailExternalUserDTO userDTO =  new UpdateEmailExternalUserDTO();
+        userDTO.setDocumentNumber("cc");
+        userDTO.setDocumentType("nombre");
+        List<UserRepresentation> listUser = new ArrayList<>();
+
+        when( iUserPreRegisterRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(userMain));
+        when(keycloakService.searchUserByUsernameComplete("name"))
+                .thenReturn(listUser);
+
+        boolean response = service.updateExternalUser(userDTO);
+
+        assertTrue(response);
+    }
+
+    @Test
+    void updateExternalUser(){
+
+        UserMain userMain = new UserMain();
+        userMain.setUserName("name");
+        userMain.setAge(18);
+        userMain.setIdentificationType("CC");
+        userMain.setIdentification("1234567890");
+        userMain.setFirstName("Juan");
+        userMain.setSecondName("Carlos");
+        userMain.setSurname("Pérez");
+        userMain.setSecondSurname("Gómez");
+        userMain.setDateBirth(LocalDate.of(1990, 5, 15));
+        userMain.setAge(35);
+        userMain.setSex("M");
+        userMain.setOtherSex(null);
+        userMain.setPhoneNumber("3001234567");
+        userMain.setEmail("juan.perez@example.com");
+        userMain.setStatusPreRegister(true);
+        userMain.setHealthPromotingEntity(10L);
+        userMain.setPensionFundAdministrator(20L);
+
+
+        UpdateEmailExternalUserDTO userDTO =  new UpdateEmailExternalUserDTO();
+        userDTO.setDocumentNumber("cc");
+        userDTO.setDocumentType("nombre");
+        List<UserRepresentation> listUser = listUser();
+
+        when( iUserPreRegisterRepository.findOne(any(Specification.class)))
+                .thenReturn(Optional.of(userMain));
+        when(keycloakService.searchUserByUsernameComplete("name"))
+                .thenReturn(listUser);
+
+        boolean response = service.updateExternalUser(userDTO);
+
+        assertTrue(response);
+    }
+
+    @Test
+    void consultExternalUser_exception(){
+
+        List<UserMain> userList = new ArrayList<>();
+
+        when(iUserPreRegisterRepository.findAll((Specification<UserMain>) any()))
+                .thenReturn(userList);
+
+        UserNotFoundInDataBase ex = assertThrows(
+                UserNotFoundInDataBase.class,
+                () -> service.consultExternalUser("", "")
+        );
+
+        assertNotNull(ex);
+    }
+
+    @Test
+    void consultExternalUser_exception_multi_user(){
+
+        List<UserMain> userList = listUserMain();
+
+        when(iUserPreRegisterRepository.findAll((Specification<UserMain>) any()))
+                .thenReturn(userList);
+
+        UserAndTypeAlreadyExists ex = assertThrows(
+                UserAndTypeAlreadyExists.class,
+                () -> service.consultExternalUser("", "")
+        );
+
+        assertNotNull(ex);
+    }
+
+
+    @Test
+    void consultExternalUser(){
+
+        List<UserMain> userList = List.of(listUserMain().get(0));
+
+        when(iUserPreRegisterRepository.findAll((Specification<UserMain>) any()))
+                .thenReturn(userList);
+
+        ExternalUserDTO response =  service.consultExternalUser("", "");
+
+        assertNotNull(response);
+    }
+
+    @Test
+    void searchUserInNationalRegistry(){
+
+        List<RegistryOfficeDTO> list =  listRegistry();
+
+        when(registraduriaUnifiedService.searchUserInNationalRegistry(""))
+                .thenReturn(list);
+
+        UserDtoApiRegistry response = service.searchUserInNationalRegistry("");
+
+        assertNotNull(response);
+    }
+
+    @Test
+    void calculateModulo11DV(){
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.calculateModulo11DV("")
+        );
+
+        assertNotNull(ex);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            // Tipo, Número, Resultado esperado
+            "CE, CE12345, false",
+            "PA, PAS123, true",
+            "NI, 900123456, false",
+            "TI, TI123456, false",
+            "CD, CD9876, true",
+            "PE, PE555, false",
+            "CC, 123456789, true",
+            "N, 987654, true",
+            "CC, ABC123, false",
+            "NI, 90012345A, false",
+            "XX, 123456, false",
+            "CC, , false",
+            "CC, null, false"
+    })
+    void validateEmployerRangeNaturalPerson(String type, String number, boolean expected) {
+
+        // Act
+        boolean result = service.validateEmployerRangeNaturalPerson(type, number);
+
+        // Assert
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void getByIdentification(){
+
+        UserDtoApiRegistry apiRegistry  = new UserDtoApiRegistry();
+
+        when(webClient.getByIdentification(""))
+                .thenReturn(Optional.of(apiRegistry));
+
+        Optional<UserDtoApiRegistry> response = service.getByIdentification("");
+        assertNotNull(response);
+    }
+
+    @Test
+    void registerPassword_exception_user_not_found(){
+
+        UpdatePasswordDTO dto = new UpdatePasswordDTO();
+
+        when(iUserPreRegisterRepository.findOne((Example<UserMain>) any()))
+                .thenReturn(null);
+
+
+        UserNotFoundInDataBase ex = assertThrows(
+                UserNotFoundInDataBase.class,
+                () -> service.registerPassword(dto)
+        );
+
+        assertNotNull(ex);
+    }
+
+    @Test
+    void registerPassword_exception(){
+
+        UpdatePasswordDTO dto = new UpdatePasswordDTO();
+        dto.setPassword("123");
+        dto.setContext("reset_password");
+        UserMain userMain = new UserMain();
+
+        Map<String, Object> mockBody = new HashMap<>();
+        mockBody.put("access_token", "12345");
+        String url = "url";
+
+        ResponseEntity<Map<String, Object>> response =
+                new ResponseEntity<>(mockBody, HttpStatus.OK);
+
+        when(affiliationProperties.getKeycloakUrl())
+                .thenReturn(url);
+
+        when(restTemplate.exchange(
+                anyString(),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                any(ParameterizedTypeReference.class))
+        ).thenReturn(response);
+
+        when(iUserPreRegisterRepository.findOne((Specification<UserMain>) any()))
+                .thenReturn(Optional.of(userMain));
+
+
+        UserNotRegisteredException ex = assertThrows(
+                UserNotRegisteredException.class,
+                () -> service.registerPassword(dto)
+        );
+
+        assertNotNull(ex);
+    }
+
+    @ParameterizedTest(name = "idNumber={0} → expected={1}")
+    @CsvSource({
+            "1, true",
+            "99999999, true",
+            "0, false",
+            "100000000, false",
+            "600000000, true",
+            "799999999, true",
+            "599999999, false",
+            "800000000, false",
+            "1000000000, true",
+            "999999999999, true",
+            "1000000000000, false"
+    })
+    void testIsEmployerPersonNatural(long idNumber, boolean expected) {
+        boolean result = service.isEmployerPersonNatural(idNumber);
+        assertEquals(expected, result,
+                "El resultado para idNumber=" + idNumber + " debería ser " + expected);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "799999999, false",
+            "800000000, true",
+            "850000000, true",
+            "999999999, true",
+            "1000000000, false"
+    })
+    void testIsEmployerPersonJuridica(long idNumber, boolean expected) {
+        assertEquals(expected, service.isEmployerPersonJuridica(idNumber));
+    }
+
+    @Test
+    void consultUser(){
+
+        List<RegistryOfficeDTO> list = listRegistry();
+
+        when(iUserPreRegisterRepository.findOne((Specification<UserMain>) any()))
+                .thenReturn(Optional.empty());
+        when(registraduriaUnifiedService.searchUserInNationalRegistry("1234567890"))
+                .thenReturn(list);
+
+        UserPreRegisterDto response = service.consultUser("CC", "1234567890");
+
+        assertNotNull(response);
+    }
+
+    @Test
+    void userPreRegister_exception_type(){
+
+        UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
+        userPreRegisterDto.setIdentificationType("CCCC");
+
+        ErrorDocumentType ex = assertThrows(
+                ErrorDocumentType.class,
+                () -> service.userPreRegister(userPreRegisterDto)
+        );
+
+        assertNotNull(ex);
+    }
+
+    @Test
+    void userPreRegister_exception_type_number(){
+
+        UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
+        userPreRegisterDto.setIdentificationType("CC");
+        userPreRegisterDto.setIdentification("1");
+
+        ErrorDocumentConditions ex = assertThrows(
+                ErrorDocumentConditions.class,
+                () -> service.userPreRegister(userPreRegisterDto)
+        );
+
+        assertNotNull(ex);
+    }
+
+    @Test
+    void userPreRegister_exception_email(){
+
+        UserPreRegisterDto userPreRegisterDto = new UserPreRegisterDto();
+        AddressDTO addressDTO =  new AddressDTO();
+        userPreRegisterDto.setIdentificationType("CC");
+        userPreRegisterDto.setIdentification("123456789");
+        userPreRegisterDto.setDateBirth(LocalDate.now());
+        userPreRegisterDto.setAddress(addressDTO);
+
+        when(iUserPreRegisterRepository.count((Specification<UserMain>) any()))
+                .thenReturn(2L);
+
+        EmailAlreadyExists ex = assertThrows(
+                EmailAlreadyExists.class,
+                () -> service.userPreRegister(userPreRegisterDto)
+        );
+
+        assertNotNull(ex);
+
+        when(iUserPreRegisterRepository.count((Specification<UserMain>) any()))
+                .thenReturn(0L, 2L);
+
+        PhoneAlreadyExists ext = assertThrows(
+                PhoneAlreadyExists.class,
+                () -> service.userPreRegister(userPreRegisterDto)
+        );
+
+        assertNotNull(ext);
+
+        when(iUserPreRegisterRepository.count((Specification<UserMain>) any()))
+                .thenReturn(0L, 0L, 2L);
+
+        UserAndTypeAlreadyExists extt = assertThrows(
+                UserAndTypeAlreadyExists.class,
+                () -> service.userPreRegister(userPreRegisterDto)
+        );
+
+        assertNotNull(extt);
+
+    }
+
+
+    List<UserRepresentation> listUser(){
+        UserRepresentation userRepresentation = new UserRepresentation();
+        List<UserRepresentation> list =  new ArrayList<>();
+        list.add(userRepresentation);
+        return list;
+    }
+
+    List<UserMain> listUserMain(){
+        UserMain userMain = new UserMain();
+        List<UserMain> list = new ArrayList<>();
+        list.add(userMain);
+        list.add(userMain);
+        return list;
+    }
+
+    List<RegistryOfficeDTO> listRegistry(){
+        RegistryOfficeDTO registryOfficeDTO = new RegistryOfficeDTO();
+        registryOfficeDTO.setBirthDate(LocalDate.now().toString());
+        List<RegistryOfficeDTO> list = new ArrayList<>();
+        list.add(registryOfficeDTO);
+        return list;
     }
 }

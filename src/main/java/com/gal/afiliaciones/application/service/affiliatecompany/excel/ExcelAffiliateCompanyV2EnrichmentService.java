@@ -1,20 +1,21 @@
 package com.gal.afiliaciones.application.service.affiliatecompany.excel;
 
-import com.gal.afiliaciones.infrastructure.dto.affiliatecompany.AffiliateCompanyV2ResponseDTO;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
+import com.gal.afiliaciones.infrastructure.dto.affiliatecompany.AffiliateCompanyV2ResponseDTO;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * V2 Service for enriching Excel affiliate company data with descriptive names.
@@ -114,9 +115,7 @@ public class ExcelAffiliateCompanyV2EnrichmentService {
             occupationRepository.findById(record.getIdCargo().longValue())
                 .ifPresent(occupation -> record.setCargo(occupation.getNameOccupation()));
         } else if (record.getCargo() != null && record.getIdCargo() == null) {
-            occupationRepository.findAll().stream()
-                .filter(occ -> record.getCargo().equalsIgnoreCase(occ.getNameOccupation()))
-                .findFirst()
+            occupationRepository.findByNameOccupationIgnoreCase(record.getCargo())
                 .ifPresent(occupation -> record.setIdCargo(occupation.getIdOccupation().intValue()));
         }
     }

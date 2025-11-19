@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceStep3Response;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionservi
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep1DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep2DTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceAffiliationStep3DTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationemployerprovisionserviceindependent.ProvisionServiceStep3Response;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ConsultFiles;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ReplacedDocumentDTO;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
@@ -79,8 +82,8 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         validateContractorData(dto);
         validateIndependentWorkerData(dto.getInformationIndependentWorkerDTO());
 
-        UserMain userRegister = userPreRegisterRepository.findByIdentificationTypeAndIdentification(
-                dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber())
+        Specification<UserMain> spc = UserSpecifications.findExternalUserByDocumentTypeAndNumber(dto.getIdentificationDocumentType(), dto.getIdentificationDocumentNumber());
+        UserMain userRegister = userPreRegisterRepository.findOne(spc)
                 .orElseThrow(() -> new UserNotFoundInDataBase("El usuario no existe"));
 
         int age = Period.between(userRegister.getDateBirth(), LocalDate.now()).getYears();
@@ -89,7 +92,6 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
 
         if(userRegister.getPensionFundAdministrator() == null && userRegister.getHealthPromotingEntity() == null)
             userPreRegisterRepository.updateEPSandAFP(userRegister.getId(), dto.getInformationIndependentWorkerDTO().getHealthPromotingEntity(), dto.getInformationIndependentWorkerDTO().getPensionFundAdministrator());
-
 
         Affiliation affiliationProvisionServiceStep1 = new Affiliation();
 
@@ -171,17 +173,19 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         // Calcular el valor máximo permitido (25 veces el salario mínimo)
         BigDecimal maxValue = smlmv.multiply(BigDecimal.valueOf(25));
 
-        // Validar que el valor mensual del contrato (monthlyContractValue) esté dentro del rango permitido
-        BigDecimal contractMonthlyValue = dto.getContractorDataStep2DTO().getContractMonthlyValue();
-        if (contractMonthlyValue.compareTo(smlmv) < 0 || contractMonthlyValue.compareTo(maxValue) > 0) {
+        // Validar que el valor del ibc este entre 1 salario minimo y 25
+        BigDecimal ibcValue = dto.getContractorDataStep2DTO().getContractIbcValue();
+        if (ibcValue.compareTo(smlmv) < 0 || ibcValue.compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
     }
 
     @Override
     @Transactional
-    public ProvisionServiceAffiliationStep3DTO createAffiliationProvisionServiceStep3(
+    public ProvisionServiceStep3Response createAffiliationProvisionServiceStep3(
             ProvisionServiceAffiliationStep3DTO dto, List<MultipartFile> documents){
+        ProvisionServiceStep3Response response = new ProvisionServiceStep3Response();
+
         // Busca la afiliación actual
         Affiliation affiliation = repositoryAffiliation.findById(dto.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, AFFILIATION_NOT_FOUND));
@@ -206,14 +210,17 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
 
         affiliation.setFiledNumber(filedNumber);
         affiliation.setIdFolderAlfresco(idFolderByEmployer);
-        affiliation.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+        affiliation.setStageManagement(Constant.SING); // Skip documental review for independents - go directly to signature
         affiliation.setTypeAffiliation(Constant.TYPE_AFFILLATE_INDEPENDENT);
         affiliation.setDateRequest(LocalDateTime.now().toString());
 
         Affiliation newAffiliation = repositoryAffiliation.save(affiliation);
-        dto.setId(newAffiliation.getId());
-        dto.setFiledNumber(newAffiliation.getFiledNumber());
-        return dto;
+
+        BeanUtils.copyProperties(dto, response);
+        response.setId(newAffiliation.getId());
+        response.setFiledNumber(newAffiliation.getFiledNumber());
+
+        return response;
     }
 
     void validateContractorData(ProvisionServiceAffiliationStep1DTO contractorDataDTO) {
@@ -340,6 +347,7 @@ public class AffiliationEmployerProvisionServiceIndependentServiceImpl implement
         affiliate.setDocumentNumber(dto.getIdentificationDocumentNumber());
         affiliate.setCompany(dto.getCompanyName());
         affiliate.setNitCompany(dto.getIdentificationDocumentNumberContractor());
+        affiliate.setDocumenTypeCompany(dto.getIdentificationDocumentTypeContractor());
         affiliate.setUserId(idUser);
         if (filedNumber != null && !filedNumber.isEmpty()) {
             affiliate.setFiledNumber(filedNumber);

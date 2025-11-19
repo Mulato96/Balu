@@ -55,4 +55,6 @@ public class AffiliationTaxiDriverIndependentPreLoadDTO {
 
     private Boolean is723;
 
+    private Long idAffiliateEmployer;
+
 }

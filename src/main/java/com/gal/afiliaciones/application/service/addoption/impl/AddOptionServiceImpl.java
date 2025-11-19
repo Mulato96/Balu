@@ -1,5 +1,11 @@
 package com.gal.afiliaciones.application.service.addoption.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Service;
+
 import com.gal.afiliaciones.application.service.addoption.AddOptionService;
 import com.gal.afiliaciones.config.ex.addoption.ActivityMaxSizeException;
 import com.gal.afiliaciones.domain.model.AddOption;
@@ -15,12 +21,8 @@ import com.gal.afiliaciones.infrastructure.dto.addoption.IconListDTO;
 import com.gal.afiliaciones.infrastructure.dto.addoption.ModuleDTO;
 import com.gal.afiliaciones.infrastructure.dto.addoption.OptionsDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -32,9 +34,9 @@ public class AddOptionServiceImpl implements AddOptionService {
 
     @Override
     public List<ModuleDTO> getAllModules() {
-        List<Module> modules = moduleRepository.findAll();
+        List<String> validTypes = List.of(Constant.REPORTS, Constant.NEWS);
+        List<Module> modules = moduleRepository.findByTypeModuleIn(validTypes);
         return modules.stream()
-                .filter(module -> Constant.REPORTS.equals(module.getTypeModule()) || Constant.NEWS.equals(module.getTypeModule()))
                 .map(module -> {
                     ModuleDTO dto = new ModuleDTO();
                     BeanUtils.copyProperties(module, dto);
@@ -45,13 +47,15 @@ public class AddOptionServiceImpl implements AddOptionService {
 
     @Override
     public List<OptionsDTO> getAllOptionNews() {
-        List<Options> optionNewsList = optionsRepository.findAll();
+        List<String> newsTypes = List.of(
+                Constant.ADD_WORKER,
+                Constant.UPDATE_DATA,
+                Constant.NORMALIZATIONS,
+                Constant.EMPLOYER_WORKER_WITHDRAWALS,
+                Constant.CREATE_COMPANY
+        );
+        List<Options> optionNewsList = optionsRepository.findByTypeOptionIn(newsTypes);
         return optionNewsList.stream()
-                .filter(options -> Constant.ADD_WORKER.equals(options.getTypeOption()) ||
-                        Constant.UPDATE_DATA.equals(options.getTypeOption())||
-                        Constant.NORMALIZATIONS.equals(options.getTypeOption())||
-                        Constant.EMPLOYER_WORKER_WITHDRAWALS.equals(options.getTypeOption())||
-                        Constant.CREATE_COMPANY.equals(options.getTypeOption()))
                 .map(option -> {
                     OptionsDTO dto = new OptionsDTO();
                     BeanUtils.copyProperties(option, dto);
@@ -62,14 +66,16 @@ public class AddOptionServiceImpl implements AddOptionService {
 
     @Override
     public List<OptionsDTO> getAllOptionReports() {
-        List<Options> optionNewsList = optionsRepository.findAll();
+        List<String> reportTypes = List.of(
+                Constant.REPORT_WORKER,
+                Constant.NORMALIZATIONS_MADE,
+                Constant.NORMALIZATIONS_SPECIAL,
+                Constant.NEWS,
+                Constant.FAILED_AFFILIATION,
+                Constant.GENERATE_CERTIFICATE
+        );
+        List<Options> optionNewsList = optionsRepository.findByTypeOptionIn(reportTypes);
         return optionNewsList.stream()
-                .filter(options -> Constant.REPORT_WORKER.equals(options.getTypeOption()) ||
-                        Constant.NORMALIZATIONS_MADE.equals(options.getTypeOption())||
-                        Constant.NORMALIZATIONS_SPECIAL.equals(options.getTypeOption())||
-                        Constant.NEWS.equals(options.getTypeOption())||
-                        Constant.FAILED_AFFILIATION.equals(options.getTypeOption())||
-                        Constant.GENERATE_CERTIFICATE.equals(options.getTypeOption()))
                 .map(option -> {
                     OptionsDTO dto = new OptionsDTO();
                     BeanUtils.copyProperties(option, dto);

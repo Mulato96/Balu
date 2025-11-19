@@ -245,13 +245,19 @@ public class GenerateCardAffiliatedServiceImpl implements GenerateCardAffiliated
         if (number == null && docType == null) return Optional.empty();
         Specification<AffiliateMercantile> spc = AffiliateMercantileSpecification.findByNumberAndTypeDocument(number, docType);
         List<AffiliateMercantile> list = affiliateMercantileRepository.findAll(spc);
-        return list.isEmpty() ? Optional.empty() : Optional.ofNullable(list.get(0).getIsVip());
+        if (list.isEmpty()) return Optional.empty();
+        Boolean isVip = list.get(0).getIsVip();
+        // Treat null from DB as false for business logic
+        return Optional.of(isVip != null ? isVip : Boolean.FALSE);
     }
 
     private Optional<Boolean> resolveVipFromAffiliationDetail(String filedNumber) {
         if (filedNumber == null) return Optional.empty();
         Optional<Affiliation> affiliation = affiliationDetailRepository.findByFiledNumber(filedNumber);
-        return affiliation.map(Affiliation::getIsVip);
+        if (affiliation.isEmpty()) return Optional.empty();
+        Boolean isVip = affiliation.get().getIsVip();
+        // Treat null from DB as false for business logic
+        return Optional.of(isVip != null ? isVip : Boolean.FALSE);
     }
 
     private Optional<Boolean> resolveVipForDependent(Card card) {
@@ -379,8 +385,7 @@ public class GenerateCardAffiliatedServiceImpl implements GenerateCardAffiliated
     }
 
     private Optional<UserMain> findUser(ValidCodeCertificateDTO validCodeCertificateDTO){
-
-        Specification<UserMain> spec = UserSpecifications.hasDocumentTypeAndNumber(validCodeCertificateDTO.getIdentificationType(), validCodeCertificateDTO.getIdentification());
+        Specification<UserMain> spec = UserSpecifications.findExternalUserByDocumentTypeAndNumber(validCodeCertificateDTO.getIdentificationType(), validCodeCertificateDTO.getIdentification());
         return iUserPreRegisterRepository.findOne(spec);
     }
 

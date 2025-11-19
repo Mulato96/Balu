@@ -124,4 +124,6 @@ public class AffiliationTaxiDriverIndependentCreateDTO {
 
     private Boolean is723;
 
+    private Long idAffiliateEmployer;
+
 }

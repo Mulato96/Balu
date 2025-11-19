@@ -2,10 +2,9 @@ package com.gal.afiliaciones.infrastructure.dto.affiliatecompany;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.gal.afiliaciones.infrastructure.client.generic.BaseResponseDTO;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Approximation of the external response shape for
@@ -22,22 +21,12 @@ import lombok.NoArgsConstructor;
  *   are not persisted in the affiliate-by-person flows; they exist in employer flows and may not align per person.
  * - Dates are stored as LocalDate/LocalDateTime and must be formatted back to strings; original time component may be lost.
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AffiliateCompanyDbApproxResponseDTO {
-
-    // Person identifiers
-    @JsonProperty("tipoDoc")
-    private String tipoDoc; // From Affiliate.documentType or Affiliation/Dependent identification type
-
-    @JsonProperty("idPersona")
-    private String idPersona; // From Affiliate.documentNumber or Affiliation/Dependent identification number
-
-    // Person basics
-    @JsonProperty("fechaNacimiento")
-    private String fechaNacimiento; // From Affiliation/Dependent dateOfBirth (format required)
+public class AffiliateCompanyDbApproxResponseDTO extends BaseResponseDTO {
 
     @JsonProperty("departamento")
     private String departamento; // Derive via Municipality lookup by idDepartamento
@@ -45,26 +34,6 @@ public class AffiliateCompanyDbApproxResponseDTO {
     @JsonProperty("municipio")
     private String municipio; // Derive via Municipality lookup by idMunicipio
 
-    @JsonProperty("idDepartamento")
-    private Integer idDepartamento; // From Affiliation/Dependent (stored as Long)
-
-    @JsonProperty("idMunicipio")
-    private Integer idMunicipio; // From Affiliation/Dependent (stored as Long)
-
-    @JsonProperty("nombre1")
-    private String nombre1; // From Affiliation/Dependent firstName
-
-    @JsonProperty("nombre2")
-    private String nombre2; // From Affiliation/Dependent secondName
-
-    @JsonProperty("apellido1")
-    private String apellido1; // From Affiliation/Dependent surname
-
-    @JsonProperty("apellido2")
-    private String apellido2; // From Affiliation/Dependent secondSurname
-
-    @JsonProperty("emailPersona")
-    private String emailPersona; // From Affiliation/Dependent email (or UserMain.email)
 
     @JsonProperty("idOcupacion")
     private Integer idOcupacion; // Only available for dependents (AffiliationDependent.idOccupation)
@@ -72,24 +41,12 @@ public class AffiliateCompanyDbApproxResponseDTO {
     @JsonProperty("ocupacion")
     private String ocupacion; // From Affiliation.occupation (independent)
 
-    @JsonProperty("telefonoPersona")
-    private String telefonoPersona; // Reliable for dependents (AffiliationDependent.phone1); independents may require UserMain
-
-    @JsonProperty("sexo")
-    private String sexo; // From Affiliation/Dependent gender
 
     @JsonProperty("estadoRl")
     private String estadoRl; // Not persisted as raw; only normalized status stored in Affiliate.affiliationStatus
 
     @JsonProperty("nomVinLaboral")
     private String nomVinLaboral; // Not persisted; only derived type/subtype exists
-
-    // Coverage / affiliation dates
-    @JsonProperty("fechaInicioVinculacion")
-    private String fechaInicioVinculacion; // From Affiliate.affiliationDate (format required)
-
-    @JsonProperty("fechaFinVinculacion")
-    private String fechaFinVinculacion; // From Affiliate.dateAffiliateSuspend (format required)
 
     // Social security
     @JsonProperty("afp")

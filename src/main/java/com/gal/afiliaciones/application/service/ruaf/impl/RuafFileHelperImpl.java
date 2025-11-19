@@ -1,5 +1,16 @@
 package com.gal.afiliaciones.application.service.ruaf.impl;
 
+import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.gal.afiliaciones.application.service.alfresco.AlfrescoService;
 import com.gal.afiliaciones.application.service.ruaf.RuafFilesHelper;
 import com.gal.afiliaciones.domain.model.ArlInformation;
@@ -8,17 +19,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationRepo
 import com.gal.afiliaciones.infrastructure.dao.repository.ruaf.RuafFilesRepository;
 import com.gal.afiliaciones.infrastructure.dto.alfresco.ResponseUploadOrReplaceFilesDTO;
 import com.gal.afiliaciones.infrastructure.dto.ruaf.RuafTypes;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -70,8 +72,7 @@ public class RuafFileHelperImpl implements RuafFilesHelper {
 
     @Override
     public ArlInformation findArlInformation() {
-        return arlInformationRepository.findAll()
-                .stream().findFirst().orElse(null);
+        return arlInformationRepository.findFirstByOrderById().orElse(null);
     }
 
     @Override

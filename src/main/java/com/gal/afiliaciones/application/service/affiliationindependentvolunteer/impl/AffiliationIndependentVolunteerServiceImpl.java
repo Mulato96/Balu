@@ -287,7 +287,7 @@ public class AffiliationIndependentVolunteerServiceImpl implements AffiliationIn
             }
             affiliationExists.setFiledNumber(filedNumber);
             affiliationExists.setIdFolderAlfresco(idFolderByEmployer);
-            affiliationExists.setStageManagement(Constant.STAGE_MANAGEMENT_DOCUMENTAL_REVIEW);
+            affiliationExists.setStageManagement(Constant.SING); // Skip documental review for independents - go directly to signature
 
             return repositoryAffiliation.save(affiliationExists);
         } catch (AffiliationError ex) {

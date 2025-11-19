@@ -1,10 +1,12 @@
 package com.gal.afiliaciones.application.service.officeremployerupdate.impl;
 
+import com.gal.afiliaciones.application.service.IUserRegisterService;
 import com.gal.afiliaciones.application.service.officeremployerupdate.EmployerLookupService;
 import com.gal.afiliaciones.infrastructure.dao.repository.updateEmployerData.OfficerAffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicProjection;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerUpdateDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepUpdateRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepViewDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,8 +20,11 @@ public class EmployerLookupServiceImpl implements EmployerLookupService {
 
     private final OfficerAffiliateMercantileRepository mercRepo;
 
-    public EmployerLookupServiceImpl(OfficerAffiliateMercantileRepository mercRepo) {
+    private final IUserRegisterService  userRegisterService;
+
+    public EmployerLookupServiceImpl(OfficerAffiliateMercantileRepository mercRepo,IUserRegisterService userRegisterService) {
         this.mercRepo = mercRepo;
+        this.userRegisterService = userRegisterService;
     }
 
     private static String nz(String s) { return s == null ? "" : s.trim(); }
@@ -54,8 +59,22 @@ public class EmployerLookupServiceImpl implements EmployerLookupService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<EmployerBasicProjection> findBasic(String docType, String docNumber) {
-        return mercRepo.findBasicByDoc(docType, docNumber);
+    public Optional<EmployerBasicDTO> findBasic(String docType, String docNumber) {
+
+        Optional<EmployerBasicProjection> result = mercRepo.findBasicByDoc(docType, docNumber);
+
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+
+        EmployerBasicDTO dto = new EmployerBasicDTO(result.get());
+
+        if (dto.getDv() == null || dto.getDv().isBlank()) {
+            int dv = userRegisterService.calculateModulo11DV(dto.getDocNumber());
+            dto.setDv(String.valueOf(dv));
+        }
+
+        return Optional.of(dto);
     }
 
     @Override

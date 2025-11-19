@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.gal.afiliaciones.config.ex.typeemployerdocumentrequested.TypeEmployerDocumentRequested;
-import com.gal.afiliaciones.domain.model.LegalStatus;
 import com.gal.afiliaciones.domain.model.affiliate.typeemployerdocument.DocumentRequested;
 import com.gal.afiliaciones.domain.model.affiliate.typeemployerdocument.SubTypeEmployer;
 import com.gal.afiliaciones.domain.model.affiliate.typeemployerdocument.TypeEmployer;
@@ -127,8 +126,8 @@ class TypeEmployerDocumentServiceImplTest {
 
     @Test
     void listLegalStatus_returnsMappedList() {
-        LegalStatus legalStatusEntity = new LegalStatus();
-        when(legalStatusRepository.findAll()).thenReturn(List.of(legalStatusEntity));
+        LegalStatusDTO legalStatusDTO = new LegalStatusDTO();
+        when(legalStatusRepository.findAllAsDTO()).thenReturn(List.of(legalStatusDTO));
 
         List<LegalStatusDTO> result = service.listLegalStatus();
 

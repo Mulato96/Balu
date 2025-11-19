@@ -1,5 +1,23 @@
 package com.gal.afiliaciones.application.service.impl.otp;
 
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.gal.afiliaciones.application.service.OtpService;
 import com.gal.afiliaciones.config.ex.AffiliationsExceptionBase;
 import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
@@ -15,33 +33,20 @@ import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.A
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
 import com.gal.afiliaciones.infrastructure.dao.repository.otp.OtpCodeRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.specifications.UserSpecifications;
-import com.gal.afiliaciones.infrastructure.dto.otp.*;
+import com.gal.afiliaciones.infrastructure.dto.otp.OTPDataDTO;
+import com.gal.afiliaciones.infrastructure.dto.otp.OTPDataResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.otp.OTPRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.otp.OTPRequestDependentDTO;
+import com.gal.afiliaciones.infrastructure.dto.otp.OtpDependentDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.otp.email.EmailDataDTO;
 import com.gal.afiliaciones.infrastructure.enums.TypeUser;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
 import com.gal.afiliaciones.infrastructure.utils.EmailService;
 import com.gal.afiliaciones.infrastructure.utils.Otp;
+
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.io.IOException;
-import java.security.SecureRandom;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Transactional(noRollbackFor = AffiliationsExceptionBase.class)
@@ -56,6 +61,14 @@ public class OtpImpl implements OtpService {
     private static final String VALIDITY = "vigencia";
     private static final String OK = "Ok";
     private static final Long TIME_GENERATE = 30l;
+    private static final String INVALID_EMAIL_MESSAGE = "El correo electronico no es correcto";
+    private static final String STRING_LITERAL = "string";
+    private static final String DIGIT_PREFIX = "digit";
+    private static final String KEY_SUCCESS = "success";
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_DOCUMENT_TYPE = "documentType";
+    private static final String KEY_DOCUMENT_NUMBER = "documentNumber";
+    private static final String KEY_HAS_OTP = "hasOtp";
     @Value("${pqrd.otp.longitud}")
     private int longitudOtp;
     @Value("${pqrd.otp.expiracion}")
@@ -65,7 +78,7 @@ public class OtpImpl implements OtpService {
     private final EmailService emailService;
     private final IUserPreRegisterRepository userPreRegisterRepository;
     private final ArlInformationDao arlInformationDao;
-    private final List<String> list = List.of("Recuperación de contraseña", "Pre-registro");
+    private final List<String> list = List.of("Recuperación de contraseña", "Registro");
     private final AffiliationDependentRepository dependentRepository;
 
     @Override
@@ -78,7 +91,7 @@ public class OtpImpl implements OtpService {
 
         //valida que el email del token, el email del request, y el email de bd sea el mismo
         if(!email.equals(user.getEmail()) || !user.getEmail().equals(requestDTO.getDestinatario()))
-            throw new AffiliationError("El correo electronico no es correcto");
+            throw new AffiliationError(INVALID_EMAIL_MESSAGE);
 
         OtpCodeEntity otpCodeEntity = findByNumberDocument(requestDTO.getCedula());
 
@@ -107,7 +120,7 @@ public class OtpImpl implements OtpService {
         datos.put(CODE, otp);
         datos.put(VALIDITY, expiracionOtp);
 
-        if(requestDTO.getNameScreen() == null || requestDTO.getNameScreen().isEmpty() || requestDTO.getNameScreen().equals("string"))
+        if(requestDTO.getNameScreen() == null || requestDTO.getNameScreen().isEmpty() || requestDTO.getNameScreen().equals(STRING_LITERAL))
             requestDTO.setNameScreen(Constant.PRE_REGISTER);
 
         datos.put("nameScreen", requestDTO.getNameScreen());
@@ -115,7 +128,7 @@ public class OtpImpl implements OtpService {
         emailDataDTO.setDatos(datos);
 
         for (int i = 0; i < otp.length(); i++) {
-            datos.put("digit" + (i + 1), String.valueOf(otp.charAt(i)));
+            datos.put(DIGIT_PREFIX + (i + 1), String.valueOf(otp.charAt(i)));
         }
 
         int generateAttemps = user.getGenerateAttempts()!=null ? user.getGenerateAttempts(): 0;
@@ -212,7 +225,7 @@ public class OtpImpl implements OtpService {
         //compara que el email del usuario pre registrado sea el mismo del request, no requiere token por eso no compara
         if(!otpDependentDataDTO.getRequestDTO().getDestinatario().equals(email))
 
-            throw new AffiliationError("El correo electronico no es correcto");
+            throw new AffiliationError(INVALID_EMAIL_MESSAGE);
 
         OtpCodeEntity verificarOtpDate = findByNumberDocument(otpDependentDataDTO.getRequestDTO().getCedula());
         if (verificarOtpDate != null) {
@@ -238,7 +251,7 @@ public class OtpImpl implements OtpService {
         datos.put(CODE, otp);
         datos.put(VALIDITY, expiracionOtp);
 
-        if(otpDependentDataDTO.getRequestDTO().getNameScreen() == null || otpDependentDataDTO.getRequestDTO().getNameScreen().isEmpty() || otpDependentDataDTO.getRequestDTO().getNameScreen().equals("string"))
+        if(otpDependentDataDTO.getRequestDTO().getNameScreen() == null || otpDependentDataDTO.getRequestDTO().getNameScreen().isEmpty() || otpDependentDataDTO.getRequestDTO().getNameScreen().equals(STRING_LITERAL))
             otpDependentDataDTO.getRequestDTO().setNameScreen(Constant.PRE_REGISTER);
 
         datos.put("nameScreen", otpDependentDataDTO.getRequestDTO().getNameScreen());
@@ -246,7 +259,7 @@ public class OtpImpl implements OtpService {
         emailDataDTO.setDatos(datos);
 
         for (int i = 0; i < otp.length(); i++) {
-            datos.put("digit" + (i + 1), String.valueOf(otp.charAt(i)));
+            datos.put(DIGIT_PREFIX + (i + 1), String.valueOf(otp.charAt(i)));
         }
 
         ArlInformation arlInformation = getArlInformation();
@@ -353,5 +366,74 @@ public class OtpImpl implements OtpService {
         OtpCodeEntity otpCodeEntity = new OtpCodeEntity();
         otpCodeEntity.setNumberDocument(numberDocument);
         return otpCodeEntity;
+    }
+
+    /**
+     * TEST ONLY - Retrieves OTP code for testing purposes.
+     * This method should only be called after host validation in controller.
+     * 
+     * @param documentType Document type (e.g., "CC")
+     * @param documentNumber Document number
+     * @param typeUser User type (can be null or "null")
+     * @return Map containing OTP code and user information
+     */
+    @Override
+    public Map<String, Object> getOtpForTesting(String documentType, String documentNumber, String typeUser) {
+        try {
+            // Normalize typeUser (convert "null" string to null)
+            String normalizedTypeUser = (typeUser == null || "null".equalsIgnoreCase(typeUser)) ? null : typeUser;
+            
+            // Build username in the same format as the application uses
+            String username = documentType + "-" + documentNumber + "-" + normalizedTypeUser;
+            
+            // Find user by username
+            UserMain user = userPreRegisterRepository.findOne(UserSpecifications.byUsername(username))
+                    .orElseThrow(() -> new UserNotFoundInDataBase("User not found with username: " + username));
+            
+            // Get OTP from user
+            String otpCode = user.getCodeOtp();
+            
+            if (otpCode == null || otpCode.isEmpty()) {
+                return Map.of(
+                    KEY_SUCCESS, false,
+                    KEY_MESSAGE, "No OTP code found for this user. Generate OTP first.",
+                    "username", username,
+                    KEY_DOCUMENT_TYPE, documentType,
+                    KEY_DOCUMENT_NUMBER, documentNumber,
+                    KEY_HAS_OTP, false
+                );
+            }
+            
+            return Map.of(
+                KEY_SUCCESS, true,
+                "otpCode", otpCode,
+                "username", username,
+                KEY_DOCUMENT_TYPE, documentType,
+                KEY_DOCUMENT_NUMBER, documentNumber,
+                "email", user.getEmail() != null ? user.getEmail() : "N/A",
+                "firstName", user.getFirstName() != null ? user.getFirstName() : "",
+                "surname", user.getSurname() != null ? user.getSurname() : "",
+                KEY_HAS_OTP, true,
+                KEY_MESSAGE, "OTP retrieved successfully"
+            );
+            
+        } catch (UserNotFoundInDataBase e) {
+            return Map.of(
+                KEY_SUCCESS, false,
+                KEY_MESSAGE, e.getMessage(),
+                KEY_DOCUMENT_TYPE, documentType,
+                KEY_DOCUMENT_NUMBER, documentNumber,
+                KEY_HAS_OTP, false
+            );
+        } catch (Exception e) {
+            log.error("Error retrieving OTP for testing: {}", e.getMessage(), e);
+            return Map.of(
+                KEY_SUCCESS, false,
+                KEY_MESSAGE, "Error retrieving OTP: " + e.getMessage(),
+                KEY_DOCUMENT_TYPE, documentType,
+                KEY_DOCUMENT_NUMBER, documentNumber,
+                KEY_HAS_OTP, false
+            );
+        }
     }
 }

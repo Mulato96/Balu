@@ -11,7 +11,6 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class RequestUpdateLegalRepresentativeDTO {
 
-    private String affiliationSubType;
     private String typeDocumentPersonResponsible;
     private String numberDocumentPersonResponsible;
     private String firstName;

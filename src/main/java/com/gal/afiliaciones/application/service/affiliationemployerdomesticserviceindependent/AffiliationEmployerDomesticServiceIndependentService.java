@@ -12,7 +12,7 @@ public interface AffiliationEmployerDomesticServiceIndependentService {
 
     VisualizationPendingPerformDTO visualizationPendingPerform();
     ResponseManagementDTO managementAffiliation(Integer page, Integer size, AffiliationsFilterDTO filter);
-    ManagementDTO management(String field);
+    ManagementDTO management(Long idAffiliate, Long idUser);
     Affiliation createAffiliationStep1(DomesticServiceAffiliationStep1DTO dto);
     Affiliation createAffiliationStep2(DomesticServiceAffiliationStep2DTO dto);
     Affiliation createAffiliationStep3(Long idAffiliation, MultipartFile document);
@@ -21,6 +21,6 @@ public interface AffiliationEmployerDomesticServiceIndependentService {
     void stateDocuments(List<DocumentsDTO> listDocumentsDTOS, Long idAffiliate);
     List<DataDocumentAffiliate> findDocuments(Long idAffiliate);
     String generateExcel(AffiliationsFilterDTO filter);
-    void assignTo(String filedNumber, Long usuarioId);
+    void assignTo(Long idAffiliate, Long usuarioId);
 
 }

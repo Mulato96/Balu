@@ -55,65 +55,9 @@ public record InfoBasicaDTO(
         @JsonProperty("cityId")
         Integer idCiudad,
 
-        @JsonProperty("mainStreetTypeId")
-        String idCallePrincipal,
-
-        @JsonProperty("mainStreetNumber")
-        String numeroCallePrincipal,
-
-        @JsonProperty("mainStreetLetter1")
-        String letra1CallePrincipal,
-
-        @JsonProperty("mainStreetLetter2")
-        String letra2CallePrincipal,
-
-        @JsonProperty("mainStreetCardinal")
-        String puntoCardinalCallePrincipal,
-
-        @JsonProperty("bis")
-        Boolean bis,
-
-        @JsonProperty("secondaryNumber1")
-        String numero1Secundaria,
-
-        @JsonProperty("secondaryNumber2")
-        String numero2Secundaria,
-
-        @JsonProperty("secondaryLetter")
-        String letraSecundaria,
-
-        @JsonProperty("secondaryCardinal")
-        String puntoCardinal2,
-
-        @JsonProperty("ph1")
-        String ph1,
-
-        @JsonProperty("ph1Number")
-        String numPh1,
-
-        @JsonProperty("ph2")
-        String ph2,
-
-        @JsonProperty("ph2Number")
-        String numPh2,
-
-        @JsonProperty("ph3")
-        String ph3,
-
-        @JsonProperty("ph3Number")
-        String numPh3,
-
-        @JsonProperty("ph4")
-        String ph4,
-
-        @JsonProperty("ph4Number")
-        String numPh4,
-
         @JsonProperty("fullAddress")
         String direccionTexto,
 
-        @JsonProperty("jobPositionId")
-        Integer idCargo,
 
         @JsonProperty("changeDate")
         LocalDate fechaNovedad,
@@ -121,18 +65,10 @@ public record InfoBasicaDTO(
         @JsonProperty("comments")
         String observaciones,
 
-        @JsonProperty("nationalityName")
-        String nacionalidadNombre,
 
-        @JsonProperty("pensionFundName")
-        String afpNombre,
+        @JsonProperty("codeWarning")
+        int codeWarning,
 
-        @JsonProperty("healthProviderName")
-        String epsNombre,
-
-        @JsonProperty("cityName")
-        String ciudadNombre,
-
-        @JsonProperty("departmentName")
-        String departamentoNombre
+        @JsonProperty("isRegistry")
+        Boolean isRegistry
 ) {}

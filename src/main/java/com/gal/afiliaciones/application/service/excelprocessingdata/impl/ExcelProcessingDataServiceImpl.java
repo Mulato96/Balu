@@ -1,5 +1,42 @@
 package com.gal.afiliaciones.application.service.excelprocessingdata.impl;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
+import java.util.stream.Collectors;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.BeanUtils;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.client.WebClient;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,43 +55,10 @@ import com.gal.afiliaciones.infrastructure.dto.wsconfecamaras.RequestExportDTO;
 import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadDependent;
 import com.gal.afiliaciones.infrastructure.enums.FieldsExcelLoadIndependent;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.BeanUtils;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.ToIntFunction;
-import java.util.stream.Collectors;
-import java.util.Base64;
 
 @Slf4j
 @Service
@@ -65,6 +69,7 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     private final CollectProperties properties;
     private final DetailRecordLoadBulkService recordLoadBulkService;
     private final DetailRecordMassiveUpdateWorkerService recordMassiveUpdateWorkerService;
+    private static final String DATE_FORMAT_STRING = "yyyy/MM/dd";
     private static final List<String> LIST_DATE = List.of(
             "FECHA DE NACIMIENTO",
             "FECHA DE INICIO CONTRATO",
@@ -352,18 +357,119 @@ public class ExcelProcessingDataServiceImpl implements ExcelProcessingServiceDat
     }
 
     private String getCellValue(Cell cell, String name) {
+        
+        if (cell == null) {
+            return "";
+        }
 
-        if (cell != null && ((cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) ||
-                (name != null && cell.getCellType() == CellType.NUMERIC && LIST_DATE.contains(name))))
+        // Manejo especial de fechas
+        if (name != null && LIST_DATE.contains(name)) {
+            return formatDateValue(cell);
+        }
+
+        // Manejo de fechas numéricas con formato de fecha
+        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
             return cell.getDateCellValue()
                     .toInstant()
                     .atZone(ZoneId.systemDefault())
                     .toLocalDate()
-                    .format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                    .format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING));
+        }
 
+        // Manejo flexible de todos los tipos de celdas
+        DataFormatter formatter = new DataFormatter();
+        String value = formatter.formatCellValue(cell);
+        
+        // Limpiar valores numéricos que pueden venir con notación científica
+        if (cell.getCellType() == CellType.NUMERIC && !DateUtil.isCellDateFormatted(cell)) {
+            // Para números grandes como números de documento, convertir a entero si es posible
+            double numericValue = cell.getNumericCellValue();
+            if (numericValue == Math.floor(numericValue) && !Double.isInfinite(numericValue)) {
+                return String.valueOf((long) numericValue);
+            }
+        }
+        
+        return value;
+    }
 
+    private String formatDateValue(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+
+        try {
+            // Si es una fecha numérica de Excel
+            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                return cell.getDateCellValue()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate()
+                        .format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING));
+            }
+            
+            // Si es una fecha como texto, intentar diferentes formatos
+            if (cell.getCellType() == CellType.STRING) {
+                String dateText = cell.getStringCellValue().trim();
+                return parseFlexibleDate(dateText);
+            }
+            
+            // Si es numérico pero no está formateado como fecha, podría ser una fecha serial
+            if (cell.getCellType() == CellType.NUMERIC) {
+                try {
+                    Date date = DateUtil.getJavaDate(cell.getNumericCellValue());
+                    return date.toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                            .format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING));
+                } catch (Exception e) {
+                    // Si falla, tratar como texto
+                    DataFormatter formatter = new DataFormatter();
+                    String dateText = formatter.formatCellValue(cell);
+                    return parseFlexibleDate(dateText);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.warn("Error parsing date from cell: {}", e.getMessage());
+        }
+        
+        // Fallback: devolver como texto
         DataFormatter formatter = new DataFormatter();
         return formatter.formatCellValue(cell);
+    }
+
+    private String parseFlexibleDate(String dateText) {
+        if (dateText == null || dateText.trim().isEmpty()) {
+            return "";
+        }
+
+        dateText = dateText.trim();
+        
+        // Lista de formatos de fecha a intentar
+        List<DateTimeFormatter> formatters = List.of(
+            DateTimeFormatter.ofPattern(DATE_FORMAT_STRING),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
+            DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+            DateTimeFormatter.ofPattern("dd/MM/yy"),
+            DateTimeFormatter.ofPattern("yy/MM/dd"),
+            DateTimeFormatter.ofPattern("MM/dd/yyyy"),
+            DateTimeFormatter.ofPattern("yyyy.MM.dd"),
+            DateTimeFormatter.ofPattern("dd.MM.yyyy")
+        );
+
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                LocalDate date = LocalDate.parse(dateText, formatter);
+                return date.format(DateTimeFormatter.ofPattern(DATE_FORMAT_STRING));
+            } catch (Exception e) {
+                // Continuar con el siguiente formato
+            }
+        }
+
+        // Si no se puede parsear, devolver el texto original
+        log.warn("Could not parse date: {}", dateText);
+        return dateText;
     }
 
     private boolean validColumns(List<String> listColumns, Row headerColumns){

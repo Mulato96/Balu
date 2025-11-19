@@ -1,38 +1,75 @@
 package com.gal.afiliaciones.infrastructure.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.LocalDate;
+
 public record UpdateInfoBasicaRequest(
+        @JsonProperty("documentType")
+        String tipoDocumento,
+
+        @JsonProperty("identificationNumber")
+        String numeroIdentificacion,
+
+        @JsonProperty("firstName")
         String primerNombre,
+
+        @JsonProperty("middleName")
         String segundoNombre,
+
+        @JsonProperty("lastName")
         String primerApellido,
+
+        @JsonProperty("secondLastName")
         String segundoApellido,
-        java.time.LocalDate fechaNacimiento,
+
+        @JsonProperty("dateOfBirth")
+        LocalDate fechaNacimiento,
+
+        @JsonProperty("age")
+        Integer edad,
+
+        @JsonProperty("nationalityId")
         String nacionalidad,
+
+        @JsonProperty("sex")
         String sexo,
+
+        @JsonProperty("pensionFundId")
         String afp,
+
+        @JsonProperty("healthProviderId")
         String eps,
+
+        @JsonProperty("email")
         String email,
-        String confirmarEmail,
+
+        @JsonProperty("phoneNumber1")
         String telefono1,
+
+        @JsonProperty("phoneNumber2")
         String telefono2,
+
+        @JsonProperty("departmentId")
         Integer idDepartamento,
+
+        @JsonProperty("cityId")
         Integer idCiudad,
-        String idCallePrincipal,
-        String numeroCallePrincipal,
-        String letra1CallePrincipal,
-        String letra2CallePrincipal,
-        String puntoCardinalCallePrincipal,
-        Boolean bis,
-        String numero1Secundaria,
-        String numero2Secundaria,
-        String letraSecundaria,
-        String puntoCardinal2,
-        String ph1, String numPh1,
-        String ph2, String numPh2,
-        String ph3, String numPh3,
-        String ph4, String numPh4,
+
+        @JsonProperty("fullAddress")
         String direccionTexto,
-        Integer idCargo,
-        java.time.LocalDate fechaNovedad,
+
+
+        @JsonProperty("changeDate")
+        LocalDate fechaNovedad,
+
+        @JsonProperty("comments")
         String observaciones,
-        Integer idCausalNovedad
+
+
+        @JsonProperty("codeWarning")
+        int codeWarning,
+
+        @JsonProperty("isRegistry")
+        Boolean isRegistry
 ) {}

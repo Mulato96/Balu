@@ -73,4 +73,9 @@ public class WorkCenterServiceImpl implements WorkCenterService {
         return repository.findByeconomicActivityCodeAndMainOffice(economicActivity, idMainOffice);
     }
 
+    @Override
+    public List<WorkCenter> getWorkCenterActiveByMainOffice(Long idMainOffice) {
+        return repository.findWorkCenterActiveByMainOffice(idMainOffice);
+    }
+
 }

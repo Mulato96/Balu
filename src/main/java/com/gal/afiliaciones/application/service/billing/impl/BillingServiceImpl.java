@@ -1,31 +1,6 @@
 package com.gal.afiliaciones.application.service.billing.impl;
 
-import com.gal.afiliaciones.application.service.billing.BillingService;
-import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
-import com.gal.afiliaciones.config.util.CollectProperties;
-import com.gal.afiliaciones.domain.model.*;
-import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
-import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.billing.BillDetailHistoryRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.billing.BillingHistoryRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillDetailRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillingRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
-import com.gal.afiliaciones.infrastructure.dto.billing.AffiliationBillingDataDTO;
-import com.gal.afiliaciones.infrastructure.enums.TypeCompanySettlement;
-import com.gal.afiliaciones.infrastructure.enums.TypeCutSettlement;
-import com.gal.afiliaciones.infrastructure.utils.Constant;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import static com.gal.afiliaciones.infrastructure.utils.Constant.AFFILIATION_STATUS_ACTIVE;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,7 +16,36 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static com.gal.afiliaciones.infrastructure.utils.Constant.AFFILIATION_STATUS_ACTIVE;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.gal.afiliaciones.application.service.billing.BillingService;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
+import com.gal.afiliaciones.config.util.CollectProperties;
+import com.gal.afiliaciones.domain.model.BillDetail;
+import com.gal.afiliaciones.domain.model.Billing;
+import com.gal.afiliaciones.domain.model.Policy;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.client.generic.GenericWebClient;
+import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDomesticServiceIndependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.billing.BillDetailHistoryRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.billing.BillingHistoryRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillDetailRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.BillingRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.policy.PolicyRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.specifications.AffiliationDependentSpecification;
+import com.gal.afiliaciones.infrastructure.dto.billing.AffiliationBillingDataDTO;
+import com.gal.afiliaciones.infrastructure.enums.TypeCompanySettlement;
+import com.gal.afiliaciones.infrastructure.enums.TypeCutSettlement;
+import com.gal.afiliaciones.infrastructure.utils.Constant;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -71,11 +75,6 @@ public class BillingServiceImpl implements BillingService {
     @Override
     @Transactional
     public void generateBilling() {
-        // Mover facturas actuales al historial antes de reemplazarlas
-        moveCurrentBillsToHistory();
-
-        // Mover detalles de facturas actuales al historial antes de reemplazarlas
-        moveCurrentBillDetailHistory();
 
         //asigna los consecutivos de la bd a las variables locales
         consecutive();
@@ -86,80 +85,6 @@ public class BillingServiceImpl implements BillingService {
         // Generar nueva facturación para cada afiliación activa
         List<Billing> billingList = activeAffiliations.stream().map(this::generateBill).filter(Objects::nonNull).toList();
         billingRepository.saveAll(billingList);
-    }
-
-    /**
-     * Mover las facturas actuales a la tabla de historial de facturación
-     * antes de eliminarlas de la tabla actual.
-     */
-    private void moveCurrentBillsToHistory() {
-        List<Billing> currentBills = billingRepository.findAll();
-
-        //cambiar por un saveAll mapiando de billin a history
-
-        List<BillingHistory> billingHistoryList = currentBills.stream().map(this::convertToBillingHistory).toList();
-
-        // Guardar en el historial de facturación
-        billingHistoryRepository.saveAll(billingHistoryList);
-        // Después de moverlas al historial, eliminar las facturas actuales
-        billingRepository.deleteAll();
-    }
-
-    /**
-     * Mapea un Billing a un BillingHistory
-     *
-     * @param billing entrada
-     * @return @BillingHistory
-     */
-    private BillingHistory convertToBillingHistory(Billing billing) {
-        return BillingHistory.builder()
-                .policy(billing.getPolicy().getId())
-                .branch(billing.getBranch())
-                .insuranceBranch(billing.getInsuranceBranch())
-                .billingEffectiveDateFrom(billing.getBillingEffectiveDateFrom())
-                .billingEffectiveDateTo(billing.getBillingEffectiveDateTo())
-                .contributorType(billing.getContributorType())
-                .contributorId(billing.getContributorId())
-                .salary(billing.getSalary())
-                .riskRate(billing.getRiskRate())
-                .billingDays(billing.getBillingDays())
-                .billingAmount(billing.getBillingAmount())
-                .paymentPeriod(billing.getPaymentPeriod())
-                .movedToHistoryDate(LocalDate.now()) // Registrar la fecha de movimiento al historial
-                .build();
-    }
-
-    /**
-     * Mover el detalle de las facturas actuales a la tabla de historial de detalle de facturación
-     * antes de eliminarlas de la tabla actual.
-     */
-    private void moveCurrentBillDetailHistory() {
-        List<BillDetail> currentBillDetail = billDetailRepository.findAll();
-
-        //cambiar por un saveAll mapiando de billin a history
-
-        List<BillDetailHistory> billingHistoryList = currentBillDetail.stream().map(this::convertToBillDetailHistory).toList();
-
-        // Guardar en el historial de facturación
-        billDetailHistoryRepository.saveAll(billingHistoryList);
-        // Después de moverlas al historial, eliminar las facturas actuales
-        billDetailRepository.deleteAll();
-    }
-
-    /**
-     * Mapea un BillDetail a un BillDetailHistory
-     *
-     * @param billDetail entrada
-     * @return @BillingHistory
-     */
-    private BillDetailHistory convertToBillDetailHistory(BillDetail billDetail) {
-        return BillDetailHistory.builder()
-                .policy(billDetail.getPolicy())
-                .identificationType(billDetail.getIdentificationType())
-                .identificationNumber(billDetail.getIdentificationNumber())
-                .billingAmount(billDetail.getBillingAmount())
-                .movedToHistoryDate(LocalDate.now()) // Registrar la fecha de movimiento al historial
-                .build();
     }
 
     /**

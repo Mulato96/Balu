@@ -1,10 +1,15 @@
 package com.gal.afiliaciones.config.ex;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.*;
-
 import java.io.Serializable;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -84,6 +89,7 @@ public class Error implements Serializable {
         AFFILIATION_NOT_FOUND,
         AFFILIATION_RETIRED,
         TEMPORAL_PASSWORD_EXPIRED,
+        BULKLOADING_IN_PROGRESS,
 
         //422
         MAX_ATTEMPTS,

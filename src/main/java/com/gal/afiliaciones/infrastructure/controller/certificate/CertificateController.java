@@ -27,12 +27,14 @@ import com.gal.afiliaciones.application.service.CertificateBulkService;
 
 import com.gal.afiliaciones.application.service.CertificateNoAffiliateService;
 import com.gal.afiliaciones.application.service.CertificateService;
+import com.gal.afiliaciones.application.service.CertificateWorkerARLIntegrationService;
 import com.gal.afiliaciones.config.ex.AffiliationsExceptionBase;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
 import com.gal.afiliaciones.config.ex.certificate.CertificateNotFoundException;
 import com.gal.afiliaciones.config.ex.validationpreregister.ErrorCodeValidationExpired;
 import com.gal.afiliaciones.domain.model.affiliate.Certificate;
 import com.gal.afiliaciones.domain.model.affiliate.FindAffiliateReqDTO;
+import com.gal.afiliaciones.infrastructure.dto.certificate.CertificateWorkerByEmployerResponse;
 import com.gal.afiliaciones.infrastructure.dto.certificate.QrDTO;
 import com.gal.afiliaciones.infrastructure.dto.certificate.ResponseBulkDTO;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
@@ -54,6 +56,7 @@ public class CertificateController {
     private final CertificateService certificateService;
     private final CertificateBulkService certificateBulkService;
     private final CertificateNoAffiliateService certificateNoAffiliateService;
+    private final CertificateWorkerARLIntegrationService certificateWorkerArlIntegrationService;
 
     @PostMapping("/generate-create")
     public ResponseEntity<String> createAndGenerateCertificate(
@@ -80,6 +83,13 @@ public class CertificateController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Error occurred while generating the report: " + ex.getMessage());
         }
+    }
+
+    @GetMapping("/certificateWorkerByEmployer")
+    public ResponseEntity<CertificateWorkerByEmployerResponse> certificateWorkerByEmployer(
+            @RequestParam String tipoDoc,
+            @RequestParam String idAfiliado) {
+        return ResponseEntity.ok().body(certificateWorkerArlIntegrationService.getCertificatesWorkerArlIntegration(tipoDoc, idAfiliado));
     }
 
     @Operation(summary = "Generate a new certificate for an affiliate")

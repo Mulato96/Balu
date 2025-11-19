@@ -5,8 +5,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO;
-import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
+import com.gal.afiliaciones.application.service.workermanagement.WorkerManagementProjection;
+import com.gal.afiliaciones.infrastructure.dto.contract.ContractEmployerResponse;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,7 +23,7 @@ import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffilia
 import com.gal.afiliaciones.infrastructure.dto.affiliate.IndividualWorkerAffiliationView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.SingleMembershipCertificateEmployeesView;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.SingleMembershipCertificateEmployerView;
-
+import com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO;
 
 @Repository
 public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , JpaSpecificationExecutor<Affiliate> {
@@ -342,85 +343,101 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
         String affiliationType
     );
 
-    @Query("""
-    SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO(
-        a.documentType as identificationDocumentType,
-        a.documentNumber as identificationDocumentNumber,
-        CONCAT(ad.firstName, ' ', COALESCE(ad.secondName, ''), ' ', ad.surname, ' ', COALESCE(ad.secondSurname, '')) as completeName,
-        oc.nameOccupation as occupation,
-        FUNCTION('TO_CHAR', ad.startDate, 'YYYY-MM-DD') as startContractDate,
-        FUNCTION('TO_CHAR', ad.endDate, 'YYYY-MM-DD') as endContractDate,
-        a.affiliationStatus as status,
-        a.filedNumber as filedNumber,
-        a.affiliationType as affiliationType,
-        a.affiliationSubType as affiliationSubType,
-        a.idAffiliate as idAffiliate,
-        ad.pendingCompleteFormPila as pendingCompleteFormPila,
-        FUNCTION('TO_CHAR', r.retirementDate, 'YYYY-MM-DD') as retiredWorker 
+    @Query(value = """
+    (
+        SELECT 
+            a.document_Type AS identificationDocumentType,
+            a.document_Number AS identificationDocumentNumber,
+            UPPER(CONCAT(ad.first_Name, ' ', COALESCE(ad.second_Name, ''), ' ', ad.surname, ' ', COALESCE(ad.second_Surname, ''))) AS completeName,
+            TO_CHAR(a.coverage_start_date, 'YYYY-MM-DD') AS startContractDate,
+            TO_CHAR(ad.end_date, 'YYYY-MM-DD') AS endContractDate,
+            a.affiliation_Status AS status,
+            a.filed_Number AS filedNumber,
+            a.affiliation_Type AS affiliationType,
+            a.affiliation_SubType AS affiliationSubType,
+            a.id_Affiliate AS idAffiliate,
+            COALESCE(ad.pending_Complete_Form_Pila, false) AS pendingCompleteFormPila,
+            TO_CHAR(r.retirement_Date, 'YYYY-MM-DD') AS retiredWorker
+        FROM affiliate a
+        JOIN affiliation_dependent ad ON a.filed_number = ad.filed_number
+        LEFT JOIN retirement r ON r.filed_Number = a.filed_Number
+        WHERE ad.id_affiliate_employer = :idAffiliateEmployer
+          AND a.affiliation_type = 'Trabajador Dependiente'
+          AND (:startContractDate IS NULL OR a.coverage_start_date >= :startContractDate)
+          AND (:endContractDate IS NULL OR ad.end_date <= :endContractDate)
+          AND (:status IS NULL OR a.affiliation_Status = :status)
+          AND (:identificationDocumentType IS NULL OR a.document_Type = :identificationDocumentType)
+          AND (:identificationDocumentNumber IS NULL OR a.document_Number = :identificationDocumentNumber)
+          AND (:updateRequired IS NULL OR ad.pending_Complete_Form_Pila = :updateRequired)
     )
-    FROM Affiliate a
-    LEFT JOIN AffiliationDependent ad ON ad.filedNumber = a.filedNumber
-    LEFT JOIN Occupation oc ON ad.idOccupation = oc.idOccupation
-    LEFT JOIN Retirement r ON r.filedNumber = ad.filedNumber
-    LEFT JOIN BondingTypeDependent tvd ON ad.idBondingType = tvd.id
-    WHERE 
-        (:idAffiliateEmployer IS NULL OR ad.idAffiliateEmployer = :idAffiliateEmployer)
-        AND (:startContractDate IS NULL OR ad.coverageDate >= :startContractDate)
-        AND (:endContractDate IS NULL OR ad.coverageDate <= :endContractDate)
-        AND (:status IS NULL OR a.affiliationStatus = :status)
-        AND (:identificationDocumentType IS NULL OR ad.identificationDocumentType = :identificationDocumentType)
-        AND (:identificationDocumentNumber IS NULL OR ad.identificationDocumentNumber = :identificationDocumentNumber)
-        AND (:idbondingType IS NULL OR tvd.id = :idbondingType)
-        AND (:updateRequired IS NULL OR ad.pendingCompleteFormPila = :updateRequired)
-    ORDER BY a.filedNumber DESC
-    """)
-    Page<WorkerManagementDTO> searchWorkersByFilters(
+    UNION ALL
+    (
+        SELECT 
+            a.document_Type AS identificationDocumentType,
+            a.document_Number AS identificationDocumentNumber,
+            UPPER(CONCAT(aind.first_Name, ' ', COALESCE(aind.second_Name, ''), ' ', aind.surname, ' ', COALESCE(aind.second_Surname, ''))) AS completeName,
+            TO_CHAR(a.coverage_start_date, 'YYYY-MM-DD') AS startContractDate,
+            TO_CHAR(aind.contract_end_date, 'YYYY-MM-DD') AS endContractDate,
+            a.affiliation_Status AS status,
+            a.filed_Number AS filedNumber,
+            a.affiliation_Type AS affiliationType,
+            'Independiente' AS affiliationSubType,
+            a.id_Affiliate AS idAffiliate,
+            false AS pendingCompleteFormPila,
+            TO_CHAR(r.retirement_Date, 'YYYY-MM-DD') AS retiredWorker
+        FROM affiliate a
+        JOIN affiliation_detail aind ON a.filed_number = aind.filed_number
+        LEFT JOIN retirement r ON r.filed_Number = a.filed_Number
+        WHERE aind.id_affiliate_employer = :idAffiliateEmployer
+          AND a.affiliation_type = 'Trabajador Independiente'
+          AND (:startContractDate IS NULL OR a.coverage_start_date >= :startContractDate)
+          AND (:endContractDate IS NULL OR aind.contract_end_date <= :endContractDate)
+          AND (:status IS NULL OR a.affiliation_Status = :status)
+          AND (:identificationDocumentType IS NULL OR a.document_Type = :identificationDocumentType)
+          AND (:identificationDocumentNumber IS NULL OR a.document_Number = :identificationDocumentNumber)
+    )
+    """,
+            countQuery = """
+        SELECT COUNT(*) FROM (
+            (
+                SELECT a.id_affiliate
+                FROM affiliate a
+                JOIN affiliation_dependent ad ON a.filed_number = ad.filed_number
+                WHERE ad.id_affiliate_employer = :idAffiliateEmployer
+                  AND a.affiliation_type = 'Trabajador Dependiente'
+                  AND (:startContractDate IS NULL OR a.coverage_start_date >= :startContractDate)
+                  AND (:endContractDate IS NULL OR ad.end_date <= :endContractDate)
+                  AND (:status IS NULL OR a.affiliation_Status = :status)
+                  AND (:identificationDocumentType IS NULL OR a.document_Type = :identificationDocumentType)
+                  AND (:identificationDocumentNumber IS NULL OR a.document_Number = :identificationDocumentNumber)
+                  AND (:updateRequired IS NULL OR ad.pending_Complete_Form_Pila = :updateRequired)
+            )
+            UNION ALL
+            (
+                SELECT a.id_affiliate
+                FROM affiliate a
+                JOIN affiliation_detail aind ON a.filed_number = aind.filed_number
+                WHERE aind.id_affiliate_employer = :idAffiliateEmployer
+                  AND a.affiliation_type = 'Trabajador Independiente'
+                  AND (:startContractDate IS NULL OR a.coverage_start_date >= :startContractDate)
+                  AND (:endContractDate IS NULL OR aind.contract_end_date <= :endContractDate)
+                  AND (:status IS NULL OR a.affiliation_Status = :status)
+                  AND (:identificationDocumentType IS NULL OR a.document_Type = :identificationDocumentType)
+                  AND (:identificationDocumentNumber IS NULL OR a.document_Number = :identificationDocumentNumber)
+            )
+        ) AS total
+    """,
+            nativeQuery = true)
+    Page<WorkerManagementProjection> searchWorkersByFilters(
             @Param("idAffiliateEmployer") Long idAffiliateEmployer,
             @Param("startContractDate") LocalDate startContractDate,
             @Param("endContractDate") LocalDate endContractDate,
             @Param("status") String status,
             @Param("identificationDocumentType") String identificationDocumentType,
             @Param("identificationDocumentNumber") String identificationDocumentNumber,
-            @Param("idbondingType") Long idbondingType,
             @Param("updateRequired") Boolean updateRequired,
             Pageable pageable
     );
-
-    @Query("""
-    SELECT new com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO(
-        a.documenTypeCompany,
-        a.nitCompany,
-        CASE 
-            WHEN a.affiliationSubType = 'Actividades mercantiles' 
-            THEN COALESCE(am.digitVerificationDV, 0) 
-            ELSE 0 
-        END,
-        a.company,
-        CASE 
-            WHEN a.affiliationSubType = 'Actividades mercantiles' 
-            THEN am.decentralizedConsecutive 
-            ELSE 0 
-        END,
-        a.affiliationSubType,
-        a.filedNumber,
-        a.idAffiliate,
-        false
-    )
-    FROM Affiliate a
-    LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber
-    WHERE a.documentType = :documentType
-      AND a.documentNumber = :documentNumber
-      AND a.affiliationType LIKE 'Empleador%'
-      AND a.affiliationStatus = 'Activa'
-    ORDER BY a.company ASC
-    """)
-    List<DataBasicEmployerMigratedDTO> findEmployerDataByDocument(
-            @Param("documentType") String documentType,
-            @Param("documentNumber") String documentNumber
-    );
-
-    @Query("SELECT MIN(ad.coverageDate) FROM AffiliationDependent ad WHERE ad.idAffiliateEmployer = :idAffiliateEmployer")
-    Optional<LocalDate> findMinCoverageDateOfDependents(@Param("idAffiliateEmployer") Long idAffiliateEmployer);
 
     @Query("""
             SELECT new com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO(
@@ -439,15 +456,72 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
                 END,
                 a.affiliationSubType,
                 a.filedNumber,
-                a.idAffiliate, 
-                false
+                a.idAffiliate,
+                false, 
+                '', 
+                CASE 
+                    WHEN am.legalStatus is null 
+                    THEN 2 
+                    ELSE cast(am.legalStatus as int) 
+                END as legalStatus 
             )
-            FROM UserAffiliateDelegate uad 
-            LEFT JOIN Affiliate a on uad.idAffiliateEmployer = a.idAffiliate 
-            LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber 
-            WHERE uad.userId = :userId 
+            FROM Affiliate a
+            LEFT JOIN AffiliateMercantile am 
+                ON a.filedNumber = am.filedNumber 
+                AND a.affiliationSubType = 'Actividades mercantiles' 
+                AND am.stageManagement = 'Afiliación completa' 
+            LEFT JOIN Affiliation ad 
+                ON a.filedNumber = ad.filedNumber 
+                AND a.affiliationSubType = 'Servicios Domésticos' 
+                AND ad.stageManagement = 'Afiliación completa' 
+            WHERE a.documentType = :documentType
+              AND a.documentNumber = :documentNumber
+              AND a.affiliationType LIKE 'Empleador%'
+              AND a.affiliationStatus = 'Activa' 
             ORDER BY a.company ASC
-    """)
+            """)
+    List<DataBasicEmployerMigratedDTO> findEmployerDataByDocument(
+            @Param("documentType") String documentType,
+            @Param("documentNumber") String documentNumber
+    );
+
+    @Query("SELECT MIN(ad.coverageDate) FROM AffiliationDependent ad WHERE ad.idAffiliateEmployer = :idAffiliateEmployer")
+    Optional<LocalDate> findMinCoverageDateOfDependents(@Param("idAffiliateEmployer") Long idAffiliateEmployer);
+
+    @Query("""
+                    SELECT new com.gal.afiliaciones.infrastructure.dto.employer.DataBasicEmployerMigratedDTO(
+                        a.documenTypeCompany,
+                        a.nitCompany,
+                        CASE 
+                            WHEN a.affiliationSubType = 'Actividades mercantiles' 
+                            THEN COALESCE(am.digitVerificationDV, 0) 
+                            ELSE 0 
+                        END,
+                        a.company,
+                        CASE 
+                            WHEN a.affiliationSubType = 'Actividades mercantiles' 
+                            THEN am.decentralizedConsecutive 
+                            ELSE 0 
+                        END,
+                        a.affiliationSubType,
+                        a.filedNumber,
+                        a.idAffiliate, 
+                        false, 
+                        '', 
+                        CASE 
+                            WHEN am.legalStatus is null 
+                            THEN 2 
+                            ELSE cast(am.legalStatus as int) 
+                        END as legalStatus
+                    )
+                    FROM UserAffiliateDelegate uad 
+                    LEFT JOIN Affiliate a on uad.idAffiliateEmployer = a.idAffiliate 
+                    LEFT JOIN AffiliateMercantile am ON a.filedNumber = am.filedNumber 
+                    WHERE uad.userId = :userId 
+                    AND a.affiliationStatus = 'Activa' 
+                    AND am.stageManagement = 'Afiliación completa' 
+                    ORDER BY a.company ASC
+            """)
     List<DataBasicEmployerMigratedDTO> findEmployerDataByDelegate(@Param("userId") Long userId);
 
     @Query("""
@@ -460,7 +534,13 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
             a.affiliationSubType, 
             a.filedNumber, 
             a.idAffiliate, 
-            true
+            true, 
+            ge.nameBusinessGroup, 
+            CASE 
+                WHEN am.legalStatus is null 
+                THEN 2 
+                ELSE cast(am.legalStatus as int) 
+            END as legalStatus 
         )
         FROM BusinessGroup ge
         JOIN Affiliate a ON ge.idAffiliate = a.idAffiliate
@@ -473,7 +553,8 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
               AND af.documentNumber = :documentNumber
               AND ge2.isMainCompany = true
         )
-        AND a.affiliationStatus = 'Activa'
+        AND a.affiliationStatus = 'Activa' 
+        AND am.stageManagement = 'Afiliación completa' 
         ORDER BY a.company ASC
     """)
     List<DataBasicEmployerMigratedDTO> findEmployerDataSuperUser(
@@ -481,7 +562,115 @@ public interface AffiliateRepository extends JpaRepository<Affiliate, Long> , Jp
             @Param("documentNumber") String documentNumber
     );
 
-    Optional<Affiliate> findByDocumentTypeAndDocumentNumber(String documentType, String documentNumber);
+    @Query("""
+    SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchResponseDTO(
+        a.documentType as identificationDocumentType,
+        a.documentNumber as identificationDocumentNumber,
+        CONCAT(ad.firstName, ' ', COALESCE(ad.secondName, ''), ' ', ad.surname, ' ', COALESCE(ad.secondSurname, '')) as completeName,
+        oc.nameOccupation as occupation,
+        FUNCTION('TO_CHAR', ad.startDate, 'YYYY-MM-DD') as startContractDate,
+        FUNCTION('TO_CHAR', ad.endDate, 'YYYY-MM-DD') as endContractDate,
+        a.affiliationStatus as status,
+        a.filedNumber as filedNumber,
+        a.affiliationType as affiliationType,
+        a.affiliationSubType as affiliationSubType,
+        a.idAffiliate as idAffiliate,
+        FUNCTION('TO_CHAR', r.retirementDate, 'YYYY-MM-DD') as retiredWorker,
+        a.company as company,
+        FUNCTION('TO_CHAR', a.coverageStartDate, 'YYYY-MM-DD') as coverageDate,
+        FUNCTION('TO_CHAR', ae.coverageStartDate, 'YYYY-MM-DD') as employerCoverageDate
+    )
+    FROM Affiliate a
+    LEFT JOIN AffiliationDependent ad ON ad.filedNumber = a.filedNumber
+    LEFT JOIN Occupation oc ON ad.idOccupation = oc.idOccupation
+    LEFT JOIN Retirement r ON r.filedNumber = ad.filedNumber
+    LEFT JOIN Affiliate ae ON ae.idAffiliate = ad.idAffiliateEmployer
+    WHERE 
+        a.affiliationStatus = 'Activa'
+        AND (:identificationDocumentType IS NULL OR ad.identificationDocumentType = :identificationDocumentType)
+        AND (:identificationDocumentNumber IS NULL OR ad.identificationDocumentNumber = :identificationDocumentNumber)
+    ORDER BY a.filedNumber DESC
+    """)
+    List<WorkerSearchResponseDTO> searchWorkersDependent(
+            @Param("identificationDocumentType") String identificationDocumentType,
+            @Param("identificationDocumentNumber") String identificationDocumentNumber
+    );
 
+    @Query("""
+    SELECT new com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchResponseDTO(
+        a.documentType as identificationDocumentType,
+        a.documentNumber as identificationDocumentNumber,
+        CONCAT(ad.firstName, ' ', COALESCE(ad.secondName, ''), ' ', ad.surname, ' ', COALESCE(ad.secondSurname, '')) as completeName,
+        ad.occupation as occupation,
+        FUNCTION('TO_CHAR', ad.startDate, 'YYYY-MM-DD') as startContractDate,
+        FUNCTION('TO_CHAR', ad.contractEndDate, 'YYYY-MM-DD') as endContractDate,
+        a.affiliationStatus as status,
+        a.filedNumber as filedNumber,
+        a.affiliationType as affiliationType,
+        a.affiliationSubType as affiliationSubType,
+        a.idAffiliate as idAffiliate,
+        FUNCTION('TO_CHAR', r.retirementDate, 'YYYY-MM-DD') as retiredWorker,
+        a.company as company,
+        FUNCTION('TO_CHAR', a.coverageStartDate, 'YYYY-MM-DD') as coverageDate,
+        CAST(NULL AS java.lang.String) as employerCoverageDate
+    )
+    FROM Affiliate a
+    LEFT JOIN Affiliation ad ON ad.filedNumber = a.filedNumber
+    LEFT JOIN Retirement r ON r.filedNumber = ad.filedNumber
+    WHERE 
+        a.affiliationStatus = 'Activa'
+        AND (:identificationDocumentType IS NULL OR ad.identificationDocumentType = :identificationDocumentType)
+        AND (:identificationDocumentNumber IS NULL OR ad.identificationDocumentNumber = :identificationDocumentNumber)
+    ORDER BY a.filedNumber DESC
+    """)
+    List<WorkerSearchResponseDTO> searchWorkersInDependent(
+            @Param("identificationDocumentType") String identificationDocumentType,
+            @Param("identificationDocumentNumber") String identificationDocumentNumber
+    );
+
+    @Query(value = """
+        (select 
+            a.company as company, 
+            to_char(ad.contract_start_date, 'YYYY-MM-DD') as startContractDate, 
+            to_char(ad.contract_end_date, 'YYYY-MM-DD') as endContractDate, 
+            ad.stage_management as stageManagement, 
+            a.affiliation_status as status, 
+            a.filed_number as filedNumber, 
+            a.affiliation_subtype as bondingType, 
+            a.id_affiliate as idAffiliate, 
+            a.affiliation_type as affiliationType 
+         from affiliate a 
+         join affiliation_detail ad on a.filed_number = ad.filed_number 
+         where a.affiliation_type = 'Trabajador Independiente' 
+           and ad.stage_management = 'Afiliación completa'
+           and a.document_type = :identificationType 
+           and a.document_number = :identificationNumber 
+           and unaccent(upper(replace(coalesce(a.company, ''),' ', ''))) 
+               like unaccent(upper(replace(concat('%', :employerName, '%'), ' ', '')))
+        )
+        union all 
+        (select 
+            a.company as company, 
+            to_char(ad.start_date, 'YYYY-MM-DD') as startContractDate, 
+            to_char(ad.end_date, 'YYYY-MM-DD') as endContractDate, 
+            'Afiliación completa' as stageManagement, 
+            a.affiliation_status as status, 
+            a.filed_number as filedNumber, 
+            a.affiliation_subtype as bondingType, 
+            a.id_affiliate as idAffiliate, 
+            a.affiliation_type as affiliationType 
+         from affiliate a 
+         join affiliation_dependent ad on a.filed_number = ad.filed_number 
+         where a.affiliation_type = 'Trabajador Dependiente' 
+           and a.document_type = :identificationType 
+           and a.document_number = :identificationNumber 
+           and unaccent(upper(replace(coalesce(a.company, ''),' ', ''))) 
+               like unaccent(upper(replace(concat('%', :employerName, '%'), ' ', '')))
+        )
+    """, nativeQuery = true)
+    List<ContractEmployerResponse> findContractsIndependent(
+            @Param("identificationType") String identificationType,
+            @Param("identificationNumber") String identificationNumber,
+            @Param("employerName") String employerName);
 
 }

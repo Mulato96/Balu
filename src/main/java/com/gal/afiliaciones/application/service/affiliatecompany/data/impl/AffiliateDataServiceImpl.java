@@ -1,32 +1,41 @@
 package com.gal.afiliaciones.application.service.affiliatecompany.data.impl;
 
-import com.gal.afiliaciones.application.service.affiliatecompany.data.AffiliateDataService;
-import com.gal.afiliaciones.domain.model.*;
-import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
-import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
-import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
-import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
-import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
-import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.*;
-import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
-import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import java.util.List;
+import java.util.Optional;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 // removed unused imports after simplifying main office lookup
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import com.gal.afiliaciones.application.service.affiliatecompany.data.AffiliateDataService;
+import com.gal.afiliaciones.domain.model.Arl;
+import com.gal.afiliaciones.domain.model.Department;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
+import com.gal.afiliaciones.domain.model.FundPension;
+import com.gal.afiliaciones.domain.model.Health;
+import com.gal.afiliaciones.domain.model.Municipality;
+import com.gal.afiliaciones.domain.model.Occupation;
+import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
+import com.gal.afiliaciones.domain.model.affiliate.MainOffice;
+import com.gal.afiliaciones.domain.model.affiliate.WorkCenter;
+import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
+import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
+import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
+import com.gal.afiliaciones.infrastructure.dao.repository.DepartmentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.MainOfficeRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.WorkCenterRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdetail.AffiliationDetailRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.afp.FundPensionRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.eps.HealthPromotingEntityRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -119,9 +128,7 @@ public class AffiliateDataServiceImpl implements AffiliateDataService {
     @Override
     public Optional<Occupation> findOccupationByName(String occupationName) {
         if (occupationName == null) return Optional.empty();
-        return occupationRepository.findAll().stream()
-            .filter(occ -> occupationName.equalsIgnoreCase(occ.getNameOccupation()))
-            .findFirst();
+        return occupationRepository.findByNameOccupationIgnoreCase(occupationName);
     }
 
     @Override

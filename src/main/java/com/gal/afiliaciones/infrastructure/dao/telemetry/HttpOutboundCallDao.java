@@ -1,11 +1,12 @@
 package com.gal.afiliaciones.infrastructure.dao.telemetry;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Data access object for HTTP outbound call tracking.
@@ -90,7 +91,7 @@ public class HttpOutboundCallDao {
             log.warn("   Exception: {} | Root cause: {}", e.getClass().getName(), root.getClass().getName());
             log.warn("   Root message: {}", root.getMessage());
             // Print compact SQL and parameter overview
-            log.debug("   SQL template: {}", INSERT_SQL.replaceAll("\n", " "));
+            log.debug("   SQL template: {}", INSERT_SQL.replace("\n", " "));
             log.debug("   Param keys: {}", params.keySet());
             log.debug("   Null params: {}", params.entrySet().stream().filter(en -> en.getValue() == null).map(java.util.Map.Entry::getKey).toList());
             if (log.isDebugEnabled()) log.debug("Insert failure details", e);

@@ -1,8 +1,8 @@
 package com.gal.afiliaciones.infrastructure.controller.updatedatesemployee.officeremployerupdate;
 
 import com.gal.afiliaciones.application.service.officeremployerupdate.EmployerLookupService;
-import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicProjection;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerUpdateDTO;
+import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.EmployerBasicDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepViewDTO;
 import com.gal.afiliaciones.infrastructure.dto.employer.updateDataEmployer.LegalRepUpdateRequestDTO;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +40,7 @@ public class EmployerLookupController {
             return ResponseEntity.status(403).body(jsonMsg(MSG_ACCESS_DENIED));
         }
 
-        Optional<EmployerBasicProjection> res = service.findBasic(docType, docNumber);
+        Optional<EmployerBasicDTO> res = service.findBasic(docType, docNumber);
         return res.<ResponseEntity<Object>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(404).body(jsonMsg(MSG_NOT_FOUND)));
     }

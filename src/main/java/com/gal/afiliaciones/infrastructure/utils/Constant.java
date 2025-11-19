@@ -114,6 +114,7 @@ public class Constant {
     public static final String MEMBERSHIP_DATE = "membershipDate";
     public static final String COVERAGE_DATE = "coverageDate";
     public static final String STATUS_FIELD = "status";
+    public static final String CONTRACT_STATUS_FIELD = "contractStatus";
     public static final String RETIREMENT_DATE = "retirementDate";
     public static final String VINCULATION_TYPE = "vinculationType";
     public static final String RISK = "risk";
@@ -133,9 +134,11 @@ public class Constant {
     public static final String INIT_CONTRACT_DATE = "initContractDate";
     public static final String END_CONTRACT_DATE = "endContractDate";
     public static final String POSITION = "position";
+    public static final String OCCUPATION_CODE = "occupationCode";
     public static final String INACTIVATION_DATE = "inactivationDate";
     public static final String CERT_PARAM_DEPENDENT_WORKERS_NUMBER = "dependedWorkersNumber";
     public static final String CERT_PARAM_INDEPENDENT_WORKERS_NUMBER = "independentWorkerNumber";
+    public static final String DECENTRALIZED_CONSECUTIVE = "decentralizedConsecutive";
     /*-----------------------LOGIN------------------------------*/
     public static final String PASSWORD_INCORRECT = "Por favor verifica la contraseña que ingresaste.";
     public static final String CLIENT_ID = "client_id";
@@ -180,6 +183,15 @@ public class Constant {
     public static final String ERROR_FIND_DOCUMENT_ALFRESCO = "No se encuentran los documentos en el repositorio";
     public static final String ERROR_DOCUMENTS_REJECT = "Se encontraron documentos que no se an revisado o fueron rechazados";
     public static final String AFFILIATION_SUBTYPE_TAXI_DRIVER = "Taxista";
+    public static final String AFFILIATION_SUBTYPE_ACTIVIDAD_MERCANTIL = "Actividades mercantiles";
+    public static final String AFFILIATION_SUBTYPE_APRENDIZ_SENA = "Aprendiz SENA";
+    public static final String AFFILIATION_SUBTYPE_CONSEJAL_EDIL = "Consejal edil";
+    public static final String AFFILIATION_SUBTYPE_DEPENDIENTE = "Dependiente";
+    public static final String AFFILIATION_SUBTYPE_ESTUDIANTE_EN_PRACTICA = "Estudiante en práctica";
+    public static final String AFFILIATION_SUBTYPE_INDEPENDIENTE = "Independiente";
+    public static final String AFFILIATION_SUBTYPE_SERVICIOS_DOMESTICOS = "Servicios Domesticos";
+    public static final String AFFILIATION_SUBTYPE_VOLUNTARIO = "Voluntario";
+    public static final String AFFILIATION_SUBTYPE_PRESTACION_DE_SERVICIOS = "Prestación de Servicios";
     public static final String TI_DOCUMENT_TYPE_RESTRICTED = "De acuerdo con la resolución 2389 del año 2019, no se permite la afiliación de empleadores con tipo de documento Tarjeta de identidad";
     public static final String INVALID_PERSON_TYPE_DOCUMENT = "El documento no corresponde a ningun tipo de persona";
     public static final String INVALID_VERIFICATION_DIGIT = "El Dígito de verificación no corresponde o no aplica para el tipo de documento seleccionado. Verifica, el tipo y número de documento del empleador, intenta nuevamente, tienes 2 intentos más";
@@ -210,6 +222,7 @@ public class Constant {
     public static final String AFFILIATION_SUBTYPE_DOMESTIC_SERVICES = "Servicios Domesticos";
     public static final String AFFILIATION_STATUS_ACTIVE = "Activa";
     public static final String AFFILIATION_STATUS_INACTIVE = "Inactiva";
+    public static final String AFFILIATION_STATUS_RETIRED = "Retirado";
     public static final String STAGE_MANAGEMENT_DOCUMENTAL_REVIEW = "Revisión documental";
     public static final String INTERVIEW_WEB = "entrevista web";
     public static final String SING = "firma";
@@ -220,6 +233,7 @@ public class Constant {
     public static final String PENDING_COMPLETE_FORM = "Pendiente completar formulario";
     public static final String NOT_FOUND_INTERVIEW_WEB = "No se encontro la entrevista web";
     public static final Long USER_STATUS_ACTIVE = 1L;
+    public static final Long INTERNAL_USER_TYPE = 1L;
     public static final Long EXTERNAL_USER_TYPE = 2L;
 
     /*-----------------------ADD OPTION------------------------------*/
@@ -481,4 +495,15 @@ public class Constant {
 
     /*------------------------Certificados masivo---------------------------*/
     public static final String TEMPLATE_CERTIFICATE_MASSIVE = "template-emails/massive_affiliation_notification.html";
+ 
+    /*----------------------- BULK LOADING STATUSES -----------------------------*/
+    public static final String BULKLOAD_STATUS_PROCESSING = "PROCESSING";
+    public static final String BULKLOAD_STATUS_ASYNC_RUNNING = "ASYNC_RUNNING";
+    public static final String BULKLOAD_STATUS_FAILED = "FAILED";
+    public static final String BULKLOAD_STATUS_COMPLETED = "COMPLETED";
+
+    // Certificate Template Names
+    public static final String CERTIFICATE_TEMPLATE_INDEPENDIENTE_NO_VOLUNTARIO = "certificado basico afiliacion trabajador independiente voluntario, ops y 723";
+    public static final String CERTIFICATE_TEMPLATE_DEPENDIENTE = "certificado basico afiliacion trabajador dependiente";
+    public static final String CERTIFICATE_TEMPLATE_INDEPENDIENTE_VOLUNTARIO = "certificado independiente voluntario";
 }

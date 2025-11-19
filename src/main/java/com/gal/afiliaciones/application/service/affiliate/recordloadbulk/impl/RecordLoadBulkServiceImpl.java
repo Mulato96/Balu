@@ -1,5 +1,14 @@
 package com.gal.afiliaciones.application.service.affiliate.recordloadbulk.impl;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gal.afiliaciones.application.service.affiliate.recordloadbulk.DetailRecordLoadBulkService;
@@ -13,15 +22,11 @@ import com.gal.afiliaciones.infrastructure.dao.repository.specifications.RecordL
 import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.DataExcelDependentDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ErrorFileExcelDTO;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RecordLoadBulkServiceImpl implements RecordLoadBulkService {
@@ -43,10 +48,22 @@ public class RecordLoadBulkServiceImpl implements RecordLoadBulkService {
 
     @Override
     public Optional<RecordLoadBulk> findById(Long id) {
-
+ 
         return recordLoadBulkRepository.findById(id);
     }
-
+ 
+    @Override
+    @Transactional
+    public void updateStatus(Long id, String status) {
+        log.info("Iniciando cambio de estado para RecordLoadBulk ID: {} - Nuevo estado: {}", id, status);
+        int updatedRows = recordLoadBulkRepository.updateStatusById(id, status);
+        if (updatedRows > 0) {
+            log.info("Cambio de estado exitoso para RecordLoadBulk ID: {} - Estado actualizado a: {}", id, status);
+        } else {
+            log.warn("No se pudo actualizar el estado para RecordLoadBulk ID: {} - Registro no encontrado", id);
+        }
+    }
+ 
     @Override
     public ExportDocumentsDTO createDocument(Long id) {
 

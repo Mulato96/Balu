@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliationindependentcouncillor.AffiliationCouncillorStep3Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -267,7 +268,7 @@ public class AffiliationIndependentCouncillorServiceImplTest {
         when(properties.getAffiliationProvisionServicesFolderId()).thenReturn("serviceFolder");
 
         // Act
-        AffiliationCouncillorStep3DTO result = service.createAffiliationStep3(step3DTO, documents);
+        AffiliationCouncillorStep3Response result = service.createAffiliationStep3(step3DTO, documents);
 
         // Assert
         assertNotNull(result);

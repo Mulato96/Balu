@@ -11,6 +11,8 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationI
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.HeadquarterDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.RequestSearchEconomicActivitiesDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.UpdateEconomicActivityRequest;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.UpdateEconomicActivityResponse;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityHeadquarterDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
@@ -22,9 +24,11 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -97,6 +101,13 @@ public class AffiliationDependentController {
     public ResponseEntity<List<EconomicActivityHeadquarterDTO>> consultEconomicActivities(@PathVariable Long idHeadquarter) {
         List<EconomicActivityHeadquarterDTO> economicActivities = service.findEconomicActivitiesByHeadquarter(idHeadquarter);
         return ResponseEntity.ok(economicActivities);
+    }
+
+    @PutMapping("/updateEconomicActivity")
+    public ResponseEntity<UpdateEconomicActivityResponse> updateEconomicActivity(
+            @RequestBody @Valid UpdateEconomicActivityRequest request) {
+        service.updateEconomicActivityCode(request);
+        return ResponseEntity.ok(new UpdateEconomicActivityResponse("Actividad económica actualizada exitosamente"));
     }
 
 }

@@ -8,7 +8,6 @@ import com.gal.afiliaciones.application.service.observationsaffiliation.Observat
 import com.gal.afiliaciones.domain.model.DateInterviewWeb;
 import com.gal.afiliaciones.domain.model.ObservationsAffiliation;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateMercantile;
-import com.gal.afiliaciones.infrastructure.dto.EmployerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.DateInterviewWebDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.AffiliateMercantileDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliate.affiliationemployeractivitiesmercantile.DataBasicCompanyDTO;
@@ -18,7 +17,6 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationemployerdomesticservic
 import com.gal.afiliaciones.infrastructure.dto.typeemployerdocument.DocumentRequestDTO;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,6 +53,11 @@ public class AffiliationEmployerActivitiesMercantileController {
         return ResponseEntity.ok().body(affiliationEmployerActivitiesMercantileService.stepOne(dataBasicCompanyDTO));
     }
 
+    @PostMapping("update-data-regularization-step-one")
+    public ResponseEntity<AffiliateMercantile> updateDataRegularization(@RequestBody DataBasicCompanyDTO dataBasicCompanyDTO){
+        return ResponseEntity.ok().body(affiliationEmployerActivitiesMercantileService.updateDataRegularizationStepOne(dataBasicCompanyDTO));
+    }
+
     @PostMapping("/findUser")
     public ResponseEntity<DataLegalRepresentativeDTO> findUser(@RequestBody AffiliateMercantile affiliateMercantile){
         return ResponseEntity.ok().body(affiliationEmployerActivitiesMercantileService.findUser(affiliateMercantile));
@@ -64,6 +67,12 @@ public class AffiliationEmployerActivitiesMercantileController {
     public ResponseEntity<AffiliateMercantile> stepTwo(@RequestBody DataLegalRepresentativeDTO dataLegalRepresentativeDTO){
         return ResponseEntity.ok().body(affiliationEmployerActivitiesMercantileService.stepTwo(dataLegalRepresentativeDTO, false));
     }
+
+    @PostMapping("/update-data-regularization-step-two")
+    public ResponseEntity<AffiliateMercantile> updateDataRegularizationStepTwo(@RequestBody DataLegalRepresentativeDTO dataLegalRepresentativeDTO){
+        return ResponseEntity.ok().body(affiliationEmployerActivitiesMercantileService.updateDataRegularizationStepTwo(dataLegalRepresentativeDTO));
+    }
+
 
     @PutMapping(value = "/stepthree/{idAffiliation}/{idTypeEmployer}/{idSubTypeEmployer}")
     public ResponseEntity<AffiliateMercantileDTO> stepThree(@PathVariable Long idAffiliation , @PathVariable Long idTypeEmployer , @PathVariable Long idSubTypeEmployer ,  @RequestBody List<DocumentRequestDTO> files){

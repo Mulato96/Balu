@@ -2,7 +2,9 @@ package com.gal.afiliaciones.infrastructure.controller.workermanagement;
 
 import com.gal.afiliaciones.application.service.workermanagement.WorkerManagementService;
 import com.gal.afiliaciones.config.BodyResponseConfig;
+import com.gal.afiliaciones.config.ex.affiliation.AffiliationError;
 import com.gal.afiliaciones.config.ex.certificate.AffiliateNotFoundException;
+import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.ex.workermanagement.NotFoundWorkersException;
 import com.gal.afiliaciones.domain.model.affiliate.RecordMassiveUpdateWorker;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
@@ -10,11 +12,21 @@ import com.gal.afiliaciones.infrastructure.dto.ExportDocumentsDTO;
 import com.gal.afiliaciones.infrastructure.dto.bulkloadingdependentindependent.ResponseServiceDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.EmployerCertificateRequestDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.FiltersWorkerManagementDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateContractDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateContractResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateWorkerCoverageDateDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.UpdateWorkerCoverageDateResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementDTO;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerManagementPaginatedResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchFilterDTO;
+import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerSearchResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -105,4 +117,88 @@ public class WorkerManagementController {
         return ResponseEntity.ok(service.generateEmloyerCertificate(dto));
     }
 
+    @PostMapping("/getworker")
+    @Operation(summary = "Obtener trabajador por tipo y número de documento (dependientes e independientes)")
+    public ResponseEntity<List<WorkerSearchResponseDTO>> getWorker(@RequestBody WorkerSearchFilterDTO filter) {
+        try {
+            List<WorkerSearchResponseDTO> workers = service.getWorkersByDocument(filter);
+            return ResponseEntity.ok(workers);
+        } catch (NotFoundWorkersException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ArrayList<>());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ArrayList<>());
+        }
+    }
+
+    @PostMapping("/updatecoveragedate")
+    @Operation(summary = "Actualizar fecha de cobertura de un trabajador (dependiente, independiente)")
+    public ResponseEntity<UpdateWorkerCoverageDateResponseDTO> updateCoverageDate(
+            @Valid @RequestBody UpdateWorkerCoverageDateDTO dto) {
+        try {
+            UpdateWorkerCoverageDateResponseDTO response = service.updateWorkerCoverageDate(dto);
+            return ResponseEntity.ok(response);
+        } catch (AffiliateNotFound | NotFoundWorkersException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(UpdateWorkerCoverageDateResponseDTO.builder()
+                            .success(false)
+                            .message(ex.getError().getMessage())
+                            .build());
+        } catch (AffiliationError ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(UpdateWorkerCoverageDateResponseDTO.builder()
+                            .success(false)
+                            .message(ex.getError().getMessage())
+                            .build());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(UpdateWorkerCoverageDateResponseDTO.builder()
+                            .success(false)
+                            .message("Error al actualizar la fecha de cobertura: " + ex.getMessage())
+                            .build());
+        }
+    }
+
+    @GetMapping("/worker/{idAffiliate}")
+    @Operation(summary = "Obtener detalle completo de un trabajador (dependiente o independiente) por ID")
+    public ResponseEntity<WorkerDetailDTO> getWorkerDetail(
+            @PathVariable Long idAffiliate) {
+        try {
+            WorkerDetailDTO detail = service.getWorkerDetail(idAffiliate);
+            return ResponseEntity.ok(detail);
+        } catch (AffiliateNotFound ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (AffiliationError ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/updatecontract")
+    @Operation(summary = "Actualizar contrato de un trabajador independiente")
+    public ResponseEntity<UpdateContractResponseDTO> updateContract(
+            @Valid @RequestBody UpdateContractDTO dto) {
+        try {
+            UpdateContractResponseDTO response = service.updateContract(dto);
+            return ResponseEntity.ok(response);
+        } catch (AffiliateNotFound ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(UpdateContractResponseDTO.builder()
+                            .success(false)
+                            .message(ex.getMessage())
+                            .build());
+        } catch (AffiliationError ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(UpdateContractResponseDTO.builder()
+                            .success(false)
+                            .message(ex.getError().getMessage())
+                            .build());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(UpdateContractResponseDTO.builder()
+                            .success(false)
+                            .message("Error al actualizar el contrato: " + ex.getMessage())
+                            .build());
+        }
+    }
 }

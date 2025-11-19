@@ -46,6 +46,7 @@ import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.Certificat
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.arl.ArlInformationDao;
+import com.gal.afiliaciones.infrastructure.dao.repository.decree1563.OccupationDecree1563Repository;
 import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dto.certificate.QrDTO;
 
@@ -106,6 +107,9 @@ class QrServiceTest {
 
     @MockBean
     private OccupationRepository occupationRepository;
+
+    @MockBean
+    private OccupationDecree1563Repository occupationDecree1563Repository;
 
     @MockBean
     private ICertificateAffiliateRepository certificateAffiliateRepository;

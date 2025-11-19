@@ -1,0 +1,13 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+  <changeSet id="2025-10-15_masivo_trabajadores_uno_a_la_vez" author="emmanuel.camacho">
+    <sql><![CDATA[
+	ALTER TABLE record_load_bulk ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED';
+	UPDATE record_load_bulk SET status = 'COMPLETED'; -- normaliza histórico
+	ALTER TABLE record_load_bulk ALTER COLUMN status SET DEFAULT 'PENDING';
+	CREATE UNIQUE INDEX ux_record_load_bulk_rl_active ON record_load_bulk(id_user_load) WHERE status IN ('PENDING','PROCESSING','ASYNC_RUNNING');
+	]]></sql>
+  </changeSet>
+</databaseChangeLog>

@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessRequestDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.AffiliationInProcessResponseDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliate.InfoAffiliateDTO;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
@@ -41,4 +44,6 @@ public interface AffiliateService {
     IndividualWorkerAffiliationView getIndividualWorkerAffiliation(String nitCompany, String documentType, String documentNumber);
     List<IndividualWorkerAffiliationHistoryView> getIndividualWorkerAffiliationHistory(String documentType, String documentNumber);
     Affiliate getAffiliateCompany(String documentType, String documentNumber);
+    AffiliationInProcessResponseDTO findAllAffiliationInProcess(AffiliationInProcessRequestDTO request);
+    InfoAffiliateDTO getInfoAffiliate(Long idAffiliate);
 }

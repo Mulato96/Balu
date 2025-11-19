@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/infobasica")
+@CrossOrigin("*")
 public class InfoBasicaController {
 
     private static final String ROL_FUNCIONARIO = "funcionario";

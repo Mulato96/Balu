@@ -39,3 +39,8 @@ CREATE SEQUENCE IF NOT EXISTS consecutive_worker_displacement_seq
   START WITH 1
   NO CYCLE
   CACHE 1;
+
+ -- v2__add_columns_archivos_to_historico_cargues_masivos.sql
+ ALTER TABLE public.historico_cargues_masivos
+ ADD COLUMN archivo_cargado BYTEA,
+ ADD COLUMN archivo_errores BYTEA;

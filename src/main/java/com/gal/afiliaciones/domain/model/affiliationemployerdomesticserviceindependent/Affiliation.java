@@ -1,14 +1,12 @@
 package com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent;
 
-import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
-import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.gal.afiliaciones.domain.model.affiliate.affiliationworkedemployeractivitiesmercantile.AffiliateActivityEconomic;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -562,11 +560,11 @@ public class Affiliation {
     @Column(name = "ibc_percentage")
     private BigDecimal ibcPercentage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assign_to")
-    private UserMain assignTo;
     // id del afiliado (NOT NULL en BD)
     @Column(name = "id_affiliate", nullable = false)
     private Long idAffiliate;
+    // Id affiliate del empleador pero puede ser null para voluntario y 723
+    @Column(name = "id_affiliate_employer")
+    private Long idAffiliateEmployer;
 
 }

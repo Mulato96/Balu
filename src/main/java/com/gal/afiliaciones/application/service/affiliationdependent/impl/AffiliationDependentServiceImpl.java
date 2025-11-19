@@ -42,10 +42,12 @@ import com.gal.afiliaciones.config.ex.validationpreregister.AffiliateNotFound;
 import com.gal.afiliaciones.config.util.CollectProperties;
 import com.gal.afiliaciones.config.util.MessageErrorAge;
 import com.gal.afiliaciones.domain.model.BondingTypeDependent;
+import com.gal.afiliaciones.domain.model.EconomicActivity;
 import com.gal.afiliaciones.domain.model.Health;
 import com.gal.afiliaciones.domain.model.Municipality;
 import com.gal.afiliaciones.domain.model.Occupation;
 import com.gal.afiliaciones.domain.model.Policy;
+import com.gal.afiliaciones.domain.model.Smlmv;
 import com.gal.afiliaciones.domain.model.UserMain;
 import com.gal.afiliaciones.domain.model.WorkModality;
 import com.gal.afiliaciones.domain.model.affiliate.Affiliate;
@@ -70,6 +72,8 @@ import com.gal.afiliaciones.infrastructure.dao.repository.IAffiliationEmployerDo
 import com.gal.afiliaciones.infrastructure.dao.repository.IUserPreRegisterRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.MunicipalityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.OccupationRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.SmlmvRepository;
+import com.gal.afiliaciones.infrastructure.dao.repository.economicactivity.IEconomicActivityRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.Certificate.AffiliateRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliate.AffiliateMercantileRepository;
 import com.gal.afiliaciones.infrastructure.dao.repository.affiliationdependent.AffiliationDependentRepository;
@@ -92,11 +96,11 @@ import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.AffiliationI
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.DependentWorkerDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.HeadquarterDataDTO;
 import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.MainOfficeDTO;
+import com.gal.afiliaciones.infrastructure.dto.affiliationdependent.UpdateEconomicActivityRequest;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityDTO;
 import com.gal.afiliaciones.infrastructure.dto.economicactivity.EconomicActivityHeadquarterDTO;
 import com.gal.afiliaciones.infrastructure.dto.generalNovelty.SaveGeneralNoveltyRequest;
 import com.gal.afiliaciones.infrastructure.dto.novelty.DataEmailApplyDTO;
-import com.gal.afiliaciones.infrastructure.dto.salary.SalaryDTO;
 import com.gal.afiliaciones.infrastructure.dto.validatecontributorelationship.ValidateContributorRequest;
 import com.gal.afiliaciones.infrastructure.service.RegistraduriaUnifiedService;
 import com.gal.afiliaciones.infrastructure.utils.Constant;
@@ -141,6 +145,8 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
     private final OccupationRepository occupationRepository;
     private final DependentRelationshipClient dependentRelationshipClient;
     private final IndependentContractRelationshipClient independentContractClient;
+    private final SmlmvRepository smlmvRepository;
+    private final IEconomicActivityRepository economicActivityRepository;
 
     private static final String DOCUMENT_TEXT = "El documento";
     private static final String AFFILIATE_EMPLOYER_NOT_FOUND = "Affiliate employer not found";
@@ -172,7 +178,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         }
 
         //trabajador independiente
-        Specification<UserMain> spUserMain = UserSpecifications.hasDocumentTypeAndNumber(
+        Specification<UserMain> spUserMain = UserSpecifications.findExternalUserByDocumentTypeAndNumber(
                 request.getEmployeeIdentificationType(), request.getEmployeeIdentificationNumber());
         Optional<UserMain> userPreregister = iUserPreRegisterRepository.findOne(spUserMain);
 
@@ -184,7 +190,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
 
         if (userPreregister.isEmpty() && userAffiliation.isEmpty()) {
             //Consultar registraduria
-            if (request.getEmployeeIdentificationNumber().equals(Constant.CC))
+            if (request.getEmployeeIdentificationType().equals(Constant.CC))
                 response = searchUserInNationalRegistry(request.getEmployeeIdentificationNumber());
 
             if (response.getIdentificationDocumentType() == null)
@@ -696,7 +702,10 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         // Busca la afiliación actual
         AffiliationDependent affiliation = dependentRepository.findById(dto.getIdAffiliation())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Afiliación no encontrada"));
- 
+
+        if (dto.getContractorData().getStartDate().isAfter(dto.getCoverageDate()))
+            throw new AffiliationError("La fecha de inicio del contrato no puede ser posterior a la fecha de cobertura.");
+
         // Completar datos de contrato y cotización
         BeanUtils.copyProperties(dto.getContractorData(), affiliation);
         BeanUtils.copyProperties(dto.getSignatoryData(), affiliation);
@@ -707,8 +716,17 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         affiliation.setRisk(riskInt);
         affiliation.setPriceRisk(dto.getDataContribution().getPrice());
         affiliation.setPendingCompleteFormPila(dto.getFromPila());
- 
+
         validateIbcDetails(dto);
+
+        // Cap IBC at 25×SMLMV if monthly contract value exceeds that limit
+        if (affiliation.getContractIbcValue() != null) {
+            BigDecimal smlmv = getCurrentSmlmv();
+            BigDecimal maxIbc = smlmv.multiply(new BigDecimal(25));
+            if (affiliation.getContractIbcValue().compareTo(maxIbc) > 0) {
+                affiliation.setContractIbcValue(maxIbc);
+            }
+        }
  
         // Radicado: debe provenir del Paso 1; si no existe, error
         String filedNumber = affiliation.getFiledNumber();
@@ -756,21 +774,30 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
     }
 
     private void validateIbcDetails(AffiliationIndependentStep2DTO dto) {
-        // Consultar el salario mínimo legal vigente (SMLMV) para el año actual
-        int currentYear = LocalDate.now().getYear();
-        SalaryDTO salaryDTO = webClient.getSmlmvByYear(currentYear);
+        // Obtener el salario mínimo legal vigente (SMLMV) desde la base de datos
+        BigDecimal smlmv = getCurrentSmlmv();
 
-        if (salaryDTO == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo obtener el salario mínimo para el año actual.");
-        }
+        // Calcular el valor máximo permitido (25 veces el salario mínimo)
+        BigDecimal maxValue = smlmv.multiply(BigDecimal.valueOf(25));
 
-        BigDecimal smlmv = new BigDecimal(salaryDTO.getValue());
-        BigDecimal maxValue = smlmv.multiply(new BigDecimal(25));  // 25 veces el salario mínimo
-
-        // Validar que el valor mensual del contrato (monthlyContractValue) esté dentro del rango permitido
-        if (dto.getContractorData().getContractMonthlyValue().compareTo(smlmv) < 0 || dto.getContractorData().getContractMonthlyValue().compareTo(maxValue) > 0) {
+        // Validar que el valor mensual del contrato no sea inferior al salario mínimo
+        BigDecimal ibcValue = dto.getContractorData().getContractIbcValue();
+        if (ibcValue.compareTo(smlmv) < 0 || ibcValue.compareTo(maxValue) > 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El valor mensual del contrato debe estar entre el salario mínimo y 25 veces el salario mínimo.");
         }
+    }
+
+    /**
+     * Get the current SMLMV value from the database.
+     * @return the current SMLMV as BigDecimal
+     */
+    private BigDecimal getCurrentSmlmv() {
+        LocalDateTime now = LocalDateTime.now();
+        Smlmv smlmv = smlmvRepository.findByValidDate(now)
+                .orElseGet(() -> smlmvRepository.findMostRecent()
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
+                                "No se pudo obtener el salario mínimo para el año actual.")));
+        return BigDecimal.valueOf(smlmv.getValor());
     }
 
     private Affiliate saveAffiliateIndependent(AffiliationIndependentStep2DTO dto, AffiliationDependent
@@ -846,7 +873,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
 
         // Asignar radicado y datos finales del contrato
         affiliate.setFiledNumber(filedNumber);
-        affiliate.setCoverageStartDate(dto.getContractorData().getStartDate());
+        affiliate.setCoverageStartDate(dto.getCoverageDate());
         affiliate.setRisk(dto.getDataContribution().getRisk());
         affiliate.setRetirementDate(dto.getContractorData().getEndDate());
         if (Boolean.TRUE.equals(dto.getFromPila())) {
@@ -1045,7 +1072,7 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
         List<EconomicActivityHeadquarterDTO> economicActivityList = new ArrayList<>();
 
         MainOffice mainOffice = mainOfficeService.findById(idHeadquarter);
-        List<WorkCenter> workCenterList = workCenterService.getWorkCenterByMainOffice(mainOffice);
+        List<WorkCenter> workCenterList = workCenterService.getWorkCenterActiveByMainOffice(idHeadquarter);
 
         if(!workCenterList.isEmpty()) {
             workCenterList.forEach(workCenter -> {
@@ -1131,7 +1158,9 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             request.setIdCentroTrabajo(1); //Centro de trabajo creado por defecto al crear el empleador
             request.setFechaInicioVinculacion(dependent.getCoverageDate()!=null ? dependent.getCoverageDate().toString() : LocalDate.now().format(formatter_date));
             request.setTeletrabajo(1);
-            request.setIdTipoVinculado(convertTipoVinculadoDependent(dependent.getIdBondingType(), dependent.getEconomicActivityCode()));
+            // Ensure idBondingType is always set for massive paths; default to regular dependent (1L)
+            Long bondingType = dependent.getIdBondingType() != null ? dependent.getIdBondingType() : 1L;
+            request.setIdTipoVinculado(convertTipoVinculadoDependent(bondingType, dependent.getEconomicActivityCode()));
             request.setSubEmpresa(dataEmployerDTO.getDecentralizedConsecutive()!=null ?
                     dataEmployerDTO.getDecentralizedConsecutive().intValue() : 0);
             Object response = dependentRelationshipClient.insert(request);
@@ -1157,8 +1186,8 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
                     Integer.parseInt(dependent.getEconomicActivityCode()) : null);
             request.setIdDepartamento(dependent.getIdDepartment()!=null ? dependent.getIdDepartment().intValue() : null);
             request.setIdMunicipio(convertIdMunicipality(dependent.getIdCity()));
-            request.setFechaInicioVinculacion(dependent.getStartDate()!=null ?
-                    dependent.getStartDate().format(formatter_date) : "");
+            request.setFechaInicioVinculacion(dependent.getCoverageDate()!=null ?
+                    dependent.getCoverageDate().format(formatter_date) : "");
             request.setTeletrabajo(1);
             request.setIdTipoVinculado(0);
             request.setSubEmpresa(dataEmployerDTO.getDecentralizedConsecutive()!=null ?
@@ -1452,6 +1481,94 @@ public class AffiliationDependentServiceImpl implements AffiliationDependentServ
             }
         }
         return 0;
+    }
+
+    @Override
+    @Transactional
+    public void updateEconomicActivityCode(UpdateEconomicActivityRequest request) {
+        log.info("Updating economic activity code for document: {}-{}, company: {}-{}, economic activity: {}", 
+                request.getDocumentType(), request.getDocumentNumber(),
+                request.getDocumentTypeCompany(), request.getNitCompany(),
+                request.getEconomicActivityCode());
+        
+        List<Affiliate> affiliates = affiliateRepository.findByCompanyAndAffiliateDocument(
+                request.getDocumentTypeCompany(),
+                request.getNitCompany(),
+                request.getDocumentType(),
+                request.getDocumentNumber()
+        );
+        
+        if (affiliates.isEmpty()) {
+            log.warn("No affiliate found for document: {}-{}, company: {}-{}", 
+                    request.getDocumentType(), request.getDocumentNumber(),
+                    request.getDocumentTypeCompany(), request.getNitCompany());
+            throw new AffiliateNotFound("No se encontró afiliación con los datos proporcionados");
+        }
+        
+        Affiliate affiliate = affiliates.get(0);
+        log.info("Found affiliate with id: {}", affiliate.getIdAffiliate());
+        
+        AffiliationDependent affiliationDependent = dependentRepository
+                .findByIdAffiliate(affiliate.getIdAffiliate())
+                .orElseThrow(() -> {
+                    log.warn("No dependent affiliation found for affiliate id: {}", affiliate.getIdAffiliate());
+                    return new AffiliationNotFoundError(Type.AFFILIATION_NOT_FOUND);
+                });
+        
+        log.info("Found dependent affiliation with id: {}", affiliationDependent.getId());
+        
+        if (request.getEconomicActivityCode() != null && !request.getEconomicActivityCode().isEmpty()) {
+            Optional<EconomicActivity> economicActivity = economicActivityRepository
+                    .findFirstByEconomicActivityCode(request.getEconomicActivityCode());
+            
+            if (economicActivity.isEmpty()) {
+                log.warn("Economic activity code {} does not exist", request.getEconomicActivityCode());
+                throw new AffiliationError("La actividad económica " + request.getEconomicActivityCode() + " no existe");
+            }
+            
+            log.info("Economic activity {} validated successfully", request.getEconomicActivityCode());
+            
+            String risk = request.getEconomicActivityCode().substring(0, 1);
+            
+            affiliationDependent.setEconomicActivityCode(request.getEconomicActivityCode());
+            
+            try {
+                Integer riskLevel = Integer.parseInt(risk);
+                affiliationDependent.setRisk(riskLevel);
+                
+                BigDecimal priceRisk = getPriceRiskByLevel(riskLevel);
+                affiliationDependent.setPriceRisk(priceRisk);
+                
+                log.info("Updated risk to level {} with price: {}", riskLevel, priceRisk);
+            } catch (Exception e) {
+                log.warn("Error updating risk from economic activity code: {}", e.getMessage());
+            }
+        }
+        
+        AffiliationDependent updatedAffiliation = dependentRepository.save(affiliationDependent);
+        log.info("Successfully updated economic activity code for dependent affiliation id: {}", updatedAffiliation.getId());
+        
+        if (updatedAffiliation.getRisk() != null) {
+            affiliate.setRisk(updatedAffiliation.getRisk().toString());
+            affiliateRepository.save(affiliate);
+            log.info("Updated affiliate risk to: {}", affiliate.getRisk());
+        }
+    }
+    
+    /**
+     * Obtiene el precio del riesgo según el nivel de riesgo
+     * @param riskLevel Nivel de riesgo (I=1, II=2, III=3, IV=4, V=5)
+     * @return Precio del riesgo correspondiente
+     */
+    private BigDecimal getPriceRiskByLevel(Integer riskLevel) {
+        return switch (riskLevel) {
+            case 1 -> new BigDecimal("0.5220");
+            case 2 -> new BigDecimal("1.0440");
+            case 3 -> new BigDecimal("2.4360");
+            case 4 -> new BigDecimal("4.3500");
+            case 5 -> new BigDecimal("6.9600");
+            default -> new BigDecimal("0.0000");
+        };
     }
 
 }
