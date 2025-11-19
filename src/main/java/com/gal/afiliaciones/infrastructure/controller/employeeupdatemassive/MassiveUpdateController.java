@@ -8,20 +8,21 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/employee-update-massive")
+@RequestMapping("/massive-update")
 @RequiredArgsConstructor
-public class EmployeeUpdateMassiveController {
+public class MassiveUpdateController {
 
     private final IMassiveUpdateService massiveUpdateService;
 
     @PostMapping("/upload")
     public ResponseEntity<ProcessSummaryDTO> uploadFile(
             @RequestParam("file") MultipartFile file,
+            @RequestParam("type") String type,
             @RequestHeader("X-User-Document") String loggedInUserDocument) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        ProcessSummaryDTO summary = massiveUpdateService.processMassiveUpdate(file, loggedInUserDocument);
+        ProcessSummaryDTO summary = massiveUpdateService.processMassiveUpdate(file, type, loggedInUserDocument);
         return ResponseEntity.ok(summary);
     }
 }

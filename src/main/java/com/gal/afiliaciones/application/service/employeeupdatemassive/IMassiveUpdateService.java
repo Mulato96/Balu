@@ -4,5 +4,5 @@ import com.gal.afiliaciones.infrastructure.dto.employeeupdatemassive.ProcessSumm
 import org.springframework.web.multipart.MultipartFile;
 
 public interface IMassiveUpdateService {
-    ProcessSummaryDTO processMassiveUpdate(MultipartFile file, String loggedInUserDocument);
+    ProcessSummaryDTO processMassiveUpdate(MultipartFile file, String type, String loggedInUserDocument);
 }
