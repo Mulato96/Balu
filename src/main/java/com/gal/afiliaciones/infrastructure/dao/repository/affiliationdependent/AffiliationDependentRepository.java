@@ -14,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 import com.gal.afiliaciones.domain.model.affiliationdependent.AffiliationDependent;
 import com.gal.afiliaciones.infrastructure.dto.certificate.AffiliationCertificate;
 import com.gal.afiliaciones.infrastructure.dto.workermanagement.WorkerDetailDTO;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface AffiliationDependentRepository extends JpaRepository<AffiliationDependent, Long>,
         JpaSpecificationExecutor<AffiliationDependent> {
@@ -322,4 +324,35 @@ public interface AffiliationDependentRepository extends JpaRepository<Affiliatio
         WHERE a.idAffiliate = :idAffiliate
         """)
     Optional<WorkerDetailDTO> findWorkerDetailByAffiliateId(@Param("idAffiliate") Long idAffiliate);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE AffiliationDependent ad SET " +
+            "ad.firstName = COALESCE(:primerNombre, ad.firstName), " +
+            "ad.secondName = COALESCE(:segundoNombre, ad.secondName), " +
+            "ad.surname = COALESCE(:primerApellido, ad.surname), " +
+            "ad.secondSurname = COALESCE(:segundoApellido, ad.secondSurname), " +
+            "ad.gender = COALESCE(:sexo, ad.gender), " +
+            "ad.dateOfBirth = COALESCE(:fechaNacimiento, ad.dateOfBirth), " +
+            "ad.email = COALESCE(:email, ad.email), " +
+            "ad.phone1 = COALESCE(:telefono1, ad.phone1), " +
+            "ad.phone2 = COALESCE(:telefono2, ad.phone2), " +
+            "ad.address = COALESCE(:direccionTexto, ad.address), " +
+            "ad.nationality = COALESCE(:nacionalidad, ad.nationality), " +
+            "ad.pensionFundAdministrator = COALESCE(:afp, ad.pensionFundAdministrator), " +
+            "ad.healthPromotingEntity = COALESCE(:eps, ad.healthPromotingEntity), " +
+            "ad.idDepartment = COALESCE(:idDepartamento, ad.idDepartment), " +
+            "ad.idCity = COALESCE(:idCiudad, ad.idCity) " +
+            "WHERE ad.identificationDocumentType = :tipoDocumento " +
+            "AND ad.identificationDocumentNumber = :documentoObjetivo")
+    int updateInfoBasicaForDependents(
+        @Param("primerNombre") String primerNombre, @Param("segundoNombre") String segundoNombre,
+        @Param("primerApellido") String primerApellido, @Param("segundoApellido") String segundoApellido,
+        @Param("sexo") String sexo, @Param("fechaNacimiento") java.time.LocalDate fechaNacimiento,
+        @Param("email") String email, @Param("telefono1") String telefono1, @Param("telefono2") String telefono2,
+        @Param("direccionTexto") String direccionTexto, @Param("nacionalidad") Long nacionalidad,
+        @Param("afp") Long afp, @Param("eps") Long eps,
+        @Param("idDepartamento") Long idDepartamento, @Param("idCiudad") Long idCiudad,
+        @Param("tipoDocumento") String tipoDocumento, @Param("documentoObjetivo") String documentoObjetivo
+    );
 }
