@@ -26,6 +26,9 @@ public class EmployerExcelReader {
             List<EmployerUpdateDTO> dtos = new ArrayList<>();
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
+                if (isRowEmpty(row)) {
+                    continue;
+                }
                 EmployerUpdateDTO dto = mapRowToDTO(row, headerMap);
                 dtos.add(dto);
             }
@@ -90,5 +93,21 @@ public class EmployerExcelReader {
         }
         cell.setCellType(CellType.STRING);
         return cell.getStringCellValue();
+    }
+
+    private boolean isRowEmpty(Row row) {
+        if (row == null) {
+            return true;
+        }
+        for (int c = row.getFirstCellNum(); c < row.getLastCellNum(); c++) {
+            Cell cell = row.getCell(c);
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                String value = cell.toString().trim();
+                if (!value.isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

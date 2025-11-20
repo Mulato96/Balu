@@ -27,6 +27,9 @@ public class WorkerExcelReader {
             List<WorkerUpdateDTO> dtos = new ArrayList<>();
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
+                if (isRowEmpty(row)) {
+                    continue;
+                }
                 WorkerUpdateDTO dto = mapRowToDTO(row, headerMap);
                 dtos.add(dto);
             }
@@ -98,5 +101,21 @@ public class WorkerExcelReader {
             }
         }
         return null;
+    }
+
+    private boolean isRowEmpty(Row row) {
+        if (row == null) {
+            return true;
+        }
+        for (int c = row.getFirstCellNum(); c < row.getLastCellNum(); c++) {
+            Cell cell = row.getCell(c);
+            if (cell != null && cell.getCellType() != CellType.BLANK) {
+                String value = cell.toString().trim();
+                if (!value.isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
