@@ -50,9 +50,12 @@ public class EmployerExcelReader {
 
     private void validateHeader(Map<String, Integer> headerMap) {
         String[] expectedHeaders = {
-            "TIPO DOCUMENTO", "NUMERO IDENTIFICACION", "RAZON SOCIAL",
-            "ID DEPARTAMENTO", "ID CIUDAD", "DIRECCION",
-            "TELEFONO 1", "TELEFONO 2", "EMAIL"
+                "TIPO_DOCUMENTO_EMPLEADOR", "DOCUMENTO_EMPLEADOR", "RAZON SOCIAL",
+                "CODIGO_SUBEMPRESA_(SOLO PARA EL NIT 899999061)", "CORREO_ELECTRONICO",
+                "DIRECCION", "TELEFONO", "CODIGO_DEPARTAMENTO", "CODIGO_MUNICIPIO",
+                "TIPO_DOCUMENTO_REPRESENTANTE_LEGAL", "DOCUMENTO_REPRESENTANTE_LEGAL",
+                "PRIMER_NOMBRE_REPRESENTANTE_LEGAL", "SEGUNDO_NOMBRE_REPRESENTANTE_LEGAL",
+                "PRIMER_APELLIDO_REPRESENTANTE_LEGAL", "SEGUNDO_APELLIDO_REPRESENTANTE_LEGAL"
         };
         for (String expectedHeader : expectedHeaders) {
             if (!headerMap.containsKey(expectedHeader)) {
@@ -63,15 +66,21 @@ public class EmployerExcelReader {
 
     private EmployerUpdateDTO mapRowToDTO(Row row, Map<String, Integer> headerMap) {
         return EmployerUpdateDTO.builder()
-                .docType(getStringCellValue(row.getCell(headerMap.get("TIPO DOCUMENTO"))))
-                .docNumber(getStringCellValue(row.getCell(headerMap.get("NUMERO IDENTIFICACION"))))
+                .docType(getStringCellValue(row.getCell(headerMap.get("TIPO_DOCUMENTO_EMPLEADOR"))))
+                .docNumber(getStringCellValue(row.getCell(headerMap.get("DOCUMENTO_EMPLEADOR"))))
                 .businessName(getStringCellValue(row.getCell(headerMap.get("RAZON SOCIAL"))))
-                .departmentId(getStringCellValue(row.getCell(headerMap.get("ID DEPARTAMENTO"))))
-                .cityId(getStringCellValue(row.getCell(headerMap.get("ID CIUDAD"))))
+                .subCompanyCode(getStringCellValue(row.getCell(headerMap.get("CODIGO_SUBEMPRESA_(SOLO PARA EL NIT 899999061)"))))
+                .email(getStringCellValue(row.getCell(headerMap.get("CORREO_ELECTRONICO"))))
                 .addressFull(getStringCellValue(row.getCell(headerMap.get("DIRECCION"))))
-                .phone1(getStringCellValue(row.getCell(headerMap.get("TELEFONO 1"))))
-                .phone2(getStringCellValue(row.getCell(headerMap.get("TELEFONO 2"))))
-                .email(getStringCellValue(row.getCell(headerMap.get("EMAIL"))))
+                .phone(getStringCellValue(row.getCell(headerMap.get("TELEFONO"))))
+                .departmentId(getStringCellValue(row.getCell(headerMap.get("CODIGO_DEPARTAMENTO"))))
+                .cityId(getStringCellValue(row.getCell(headerMap.get("CODIGO_MUNICIPIO"))))
+                .legalRepDocType(getStringCellValue(row.getCell(headerMap.get("TIPO_DOCUMENTO_REPRESENTANTE_LEGAL"))))
+                .legalRepDocNumber(getStringCellValue(row.getCell(headerMap.get("DOCUMENTO_REPRESENTANTE_LEGAL"))))
+                .legalRepFirstName(getStringCellValue(row.getCell(headerMap.get("PRIMER_NOMBRE_REPRESENTANTE_LEGAL"))))
+                .legalRepSecondName(getStringCellValue(row.getCell(headerMap.get("SEGUNDO_NOMBRE_REPRESENTANTE_LEGAL"))))
+                .legalRepLastName(getStringCellValue(row.getCell(headerMap.get("PRIMER_APELLIDO_REPRESENTANTE_LEGAL"))))
+                .legalRepSecondLastName(getStringCellValue(row.getCell(headerMap.get("SEGUNDO_APELLIDO_REPRESENTANTE_LEGAL"))))
                 .build();
     }
 

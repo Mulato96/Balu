@@ -8,11 +8,17 @@ import lombok.Data;
 public class EmployerUpdateDTO {
     private String docType;
     private String docNumber;
-    private String businessName;
+    private String subCompanyCode;
+    private String email;
+    private String addressFull;
+    private String phone;
     private String departmentId;
     private String cityId;
-    private String addressFull;
-    private String phone1;
-    private String phone2;
-    private String email;
+    private String legalRepDocType;
+    private String legalRepDocNumber;
+    private String legalRepFirstName;
+    private String legalRepSecondName;
+    private String legalRepLastName;
+    private String legalRepSecondLastName;
+    private String businessName;
 }

@@ -123,8 +123,7 @@ public class MassiveUpdateServiceImpl implements IMassiveUpdateService {
         request.setDepartmentId(dto.getDepartmentId());
         request.setCityId(dto.getCityId());
         request.setAddressFull(dto.getAddressFull());
-        request.setPhone1(dto.getPhone1());
-        request.setPhone2(dto.getPhone2());
+        request.setPhone1(dto.getPhone());
         request.setEmail(dto.getEmail());
         return request;
     }
