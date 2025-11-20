@@ -50,7 +50,7 @@ public class EmployerExcelReader {
 
     private void validateHeader(Map<String, Integer> headerMap) {
         String[] expectedHeaders = {
-                "TIPO_DOCUMENTO_EMPLEADOR", "DOCUMENTO_EMPLEADOR", "RAZON SOCIAL",
+                "TIPO_DOCUMENTO_EMPLEADOR", "DOCUMENTO_EMPLEADOR", "RAZON_SOCIAL",
                 "CODIGO_SUBEMPRESA_(SOLO PARA EL NIT 899999061)", "CORREO_ELECTRONICO",
                 "DIRECCION", "TELEFONO", "CODIGO_DEPARTAMENTO", "CODIGO_MUNICIPIO",
                 "TIPO_DOCUMENTO_REPRESENTANTE_LEGAL", "DOCUMENTO_REPRESENTANTE_LEGAL",
@@ -68,7 +68,7 @@ public class EmployerExcelReader {
         return EmployerUpdateDTO.builder()
                 .docType(getStringCellValue(row.getCell(headerMap.get("TIPO_DOCUMENTO_EMPLEADOR"))))
                 .docNumber(getStringCellValue(row.getCell(headerMap.get("DOCUMENTO_EMPLEADOR"))))
-                .businessName(getStringCellValue(row.getCell(headerMap.get("RAZON SOCIAL"))))
+                .businessName(getStringCellValue(row.getCell(headerMap.get("RAZON_SOCIAL"))))
                 .subCompanyCode(getStringCellValue(row.getCell(headerMap.get("CODIGO_SUBEMPRESA_(SOLO PARA EL NIT 899999061)"))))
                 .email(getStringCellValue(row.getCell(headerMap.get("CORREO_ELECTRONICO"))))
                 .addressFull(getStringCellValue(row.getCell(headerMap.get("DIRECCION"))))

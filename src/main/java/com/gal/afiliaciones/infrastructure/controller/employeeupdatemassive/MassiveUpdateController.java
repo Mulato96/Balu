@@ -1,7 +1,7 @@
 package com.gal.afiliaciones.infrastructure.controller.employeeupdatemassive;
 
 import com.gal.afiliaciones.application.service.employeeupdatemassive.IMassiveUpdateService;
-import com.gal.afiliaciones.infrastructure.dto.employeeupdatemassive.ProcessSummaryDTO;
+import com.gal.afiliaciones.infrastructure.dto.employeeupdatemassive.MassiveUpdateResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +15,14 @@ public class MassiveUpdateController {
     private final IMassiveUpdateService massiveUpdateService;
 
     @PostMapping("/upload")
-    public ResponseEntity<ProcessSummaryDTO> uploadFile(
+    public ResponseEntity<MassiveUpdateResponseDTO> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") String type,
             @RequestHeader("X-User-Document") String loggedInUserDocument) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        ProcessSummaryDTO summary = massiveUpdateService.processMassiveUpdate(file, type, loggedInUserDocument);
+        MassiveUpdateResponseDTO summary = massiveUpdateService.processMassiveUpdate(file, type, loggedInUserDocument);
         return ResponseEntity.ok(summary);
     }
 }
