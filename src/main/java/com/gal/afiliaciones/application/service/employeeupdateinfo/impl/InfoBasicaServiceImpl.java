@@ -152,6 +152,11 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
 
         validarRequestBasico(documentoObjetivo, r, documentoUsuarioLogueado);
 
+        Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
+        if (r.fechaNacimiento() != null) {
+            validarFechaNacimiento(r.fechaNacimiento(), ingresoOpt.orElse(null));
+        }
+
         List<Affiliate> affiliates = affiliateRepository
                 .findAllByDocumentTypeAndDocumentNumber(r.tipoDocumento(), documentoObjetivo);
 
@@ -180,14 +185,13 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
     }
 
     private void procesarDependiente(UpdateInfoBasicaRequest r, String documentoObjetivo) {
-        List<AffiliationDependent> dependents =
-                obtenerAffiliationsDepent(r.tipoDocumento(), documentoObjetivo);
-
-        for (AffiliationDependent dep : dependents) {
-            actualizarCamposPersonalesAffiliationsDepent(dep, r, documentoObjetivo);
-            actualizarCamposGeneralesAffiliationsDependt(dep, r);
-            affiliationDependentRepository.save(dep);
-        }
+        affiliationDependentRepository.updateInfoBasicaForDependents(
+                n(r.primerNombre()), n(r.segundoNombre()), n(r.primerApellido()), n(r.segundoApellido()),
+                r.sexo(), r.fechaNacimiento(), nullSafeTrim(r.email()), nullSafeTrim(r.telefono1()),
+                nullSafeTrim(r.telefono2()), nullSafeTrim(r.direccionTexto()), parseLongSafe(r.nacionalidad()),
+                parseLongSafe(r.afp()), parseLongSafe(r.eps()), asLong(r.idDepartamento()), asLong(r.idCiudad()),
+                r.tipoDocumento(), documentoObjetivo
+        );
     }
 
 
@@ -196,9 +200,7 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         UserMain usuario = obtenerUsuario(documentoObjetivo);
         validarUsuarioParaActualizacion(usuario);
 
-        boolean esCC = "CC".equalsIgnoreCase(n(usuario.getIdentificationType()));
-
-        actualizarCamposPersonales(usuario, r, esCC, documentoObjetivo);
+        actualizarCamposPersonales(usuario, r);
         actualizarCamposGenerales(usuario, r);
         actualizarObservaciones(documentoObjetivo, r);
 
@@ -211,14 +213,13 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
     private void procesarAfiliacionesIndependiente(UpdateInfoBasicaRequest r,
                                                    String documentoObjetivo) {
 
-        List<Affiliation> affiliations =
-                obtenerAffiliations(r.tipoDocumento(), documentoObjetivo);
-
-        for (Affiliation a : affiliations) {
-            actualizarCamposPersonalesAffiliations(a, r, documentoObjetivo);
-            actualizarCamposGeneralesAffiliations(a, r);
-            affiliationDetailRepository.save(a);
-        }
+        affiliationDetailRepository.updateInfoBasicaForAffiliates(
+                n(r.primerNombre()), n(r.segundoNombre()), n(r.primerApellido()), n(r.segundoApellido()),
+                r.sexo(), r.fechaNacimiento(), nullSafeTrim(r.email()), nullSafeTrim(r.telefono1()),
+                nullSafeTrim(r.telefono2()), nullSafeTrim(r.direccionTexto()), parseLongSafe(r.nacionalidad()),
+                parseLongSafe(r.afp()), parseLongSafe(r.eps()), asLong(r.idDepartamento()), asLong(r.idCiudad()),
+                r.tipoDocumento(), documentoObjetivo
+        );
     }
 
 
@@ -318,51 +319,14 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         }
     }
 
-    private void actualizarCamposPersonales(UserMain u, UpdateInfoBasicaRequest r, boolean esCC, String documentoObjetivo) {
+    private void actualizarCamposPersonales(UserMain u, UpdateInfoBasicaRequest r) {
         if (r.primerNombre() != null)    u.setFirstName(n(r.primerNombre()));
         if (r.segundoNombre() != null)   u.setSecondName(n(r.segundoNombre()));
         if (r.primerApellido() != null)  u.setSurname(n(r.primerApellido()));
         if (r.segundoApellido() != null) u.setSecondSurname(n(r.segundoApellido()));
         if (r.sexo() != null)            u.setSex(r.sexo());
-
-        if (r.fechaNacimiento() != null) {
-            LocalDate nueva = r.fechaNacimiento();
-            Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
-            validarFechaNacimiento(nueva, ingresoOpt.orElse(null));
-            u.setDateBirth(nueva);
-        }
+        if (r.fechaNacimiento() != null) u.setDateBirth(r.fechaNacimiento());
     }
-
-    private void actualizarCamposPersonalesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r, String documentoObjetivo) {
-        if (r.primerNombre() != null)    ad.setFirstName(n(r.primerNombre()));
-        if (r.segundoNombre() != null)   ad.setSecondName(n(r.segundoNombre()));
-        if (r.primerApellido() != null)  ad.setSurname(n(r.primerApellido()));
-        if (r.segundoApellido() != null) ad.setSecondSurname(n(r.segundoApellido()));
-        if (r.sexo() != null)            ad.setGender(r.sexo());
-
-        if (r.fechaNacimiento() != null) {
-            LocalDate nueva = r.fechaNacimiento();
-            Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
-            validarFechaNacimiento(nueva, ingresoOpt.orElse(null));
-            ad.setDateOfBirth(nueva);
-        }
-    }
-
-    private void actualizarCamposPersonalesAffiliationsDepent(AffiliationDependent ad, UpdateInfoBasicaRequest r, String documentoObjetivo) {
-        if (r.primerNombre() != null)    ad.setFirstName(n(r.primerNombre()));
-        if (r.segundoNombre() != null)   ad.setSecondName(n(r.segundoNombre()));
-        if (r.primerApellido() != null)  ad.setSurname(n(r.primerApellido()));
-        if (r.segundoApellido() != null) ad.setSecondSurname(n(r.segundoApellido()));
-        if (r.sexo() != null)            ad.setGender(r.sexo());
-
-        if (r.fechaNacimiento() != null) {
-            LocalDate nueva = r.fechaNacimiento();
-            Optional<LocalDate> ingresoOpt = infoRepo.findLatestAffiliationDateByDoc(documentoObjetivo);
-            validarFechaNacimiento(nueva, ingresoOpt.orElse(null));
-            ad.setDateOfBirth(nueva);
-        }
-    }
-
 
     private void actualizarCamposGenerales(UserMain u, UpdateInfoBasicaRequest r) {
         actualizarCamposContacto(u, r);
@@ -383,60 +347,9 @@ public class InfoBasicaServiceImpl implements InfoBasicaService {
         if (r.eps() != null)          u.setHealthPromotingEntity(parseLongSafe(r.eps()));
     }
 
-    private void actualizarCamposDireccionAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
-        if (r.idDepartamento() != null)     ad.setDepartment(asLong(r.idDepartamento()));
-        if (r.idCiudad() != null)           ad.setCityMunicipality(asLong(r.idCiudad()));
-    }
-
-
-
-    private void actualizarCamposGeneralesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
-        actualizarCamposContactoAffiliations(ad, r);
-        actualizarCamposEntidadesAffiliations(ad, r);
-        actualizarCamposDireccionAffiliations(ad, r);
-    }
-
-    private void actualizarCamposContactoAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
-        if (r.email() != null)          ad.setEmail(nullSafeTrim(r.email()));
-        if (r.telefono1() != null)      ad.setPhone1(nullSafeTrim(r.telefono1()));
-        if (r.telefono2() != null)      ad.setPhone2(nullSafeTrim(r.telefono2()));
-        if (r.direccionTexto() != null) ad.setAddress(nullSafeTrim(r.direccionTexto()));
-    }
-
-    private void actualizarCamposEntidadesAffiliations(Affiliation ad, UpdateInfoBasicaRequest r) {
-        if (r.nacionalidad() != null) ad.setNationality(parseLongSafe(r.nacionalidad()));
-        if (r.afp() != null)          ad.setPensionFundAdministrator(parseLongSafe(r.afp()));
-        if (r.eps() != null)          ad.setHealthPromotingEntity(parseLongSafe(r.eps()));
-    }
-
     private void actualizarCamposDireccion(UserMain u, UpdateInfoBasicaRequest r) {
         if (r.idDepartamento() != null)     u.setIdDepartment(asLong(r.idDepartamento()));
         if (r.idCiudad() != null)           u.setIdCity(asLong(r.idCiudad()));
-    }
-
-
-    private void actualizarCamposGeneralesAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
-        actualizarCamposContactoAffiliationsDependt(ad, r);
-        actualizarCamposEntidadesAffiliationsDependt(ad, r);
-        actualizarCamposDireccionAffiliationsDepent(ad, r);
-    }
-
-    private void actualizarCamposContactoAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
-        if (r.email() != null)          ad.setEmail(nullSafeTrim(r.email()));
-        if (r.telefono1() != null)      ad.setPhone1(nullSafeTrim(r.telefono1()));
-        if (r.telefono2() != null)      ad.setPhone2(nullSafeTrim(r.telefono2()));
-        if (r.direccionTexto() != null) ad.setAddress(nullSafeTrim(r.direccionTexto()));
-    }
-
-    private void actualizarCamposEntidadesAffiliationsDependt(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
-        if (r.nacionalidad() != null) ad.setNationality(parseLongSafe(r.nacionalidad()));
-        if (r.afp() != null)          ad.setPensionFundAdministrator(parseLongSafe(r.afp()));
-        if (r.eps() != null)          ad.setHealthPromotingEntity(parseLongSafe(r.eps()));
-    }
-
-    private void actualizarCamposDireccionAffiliationsDepent(AffiliationDependent ad, UpdateInfoBasicaRequest r) {
-        if (r.idDepartamento() != null)     ad.setIdDepartment(asLong(r.idDepartamento()));
-        if (r.idCiudad() != null)           ad.setIdCity(asLong(r.idCiudad()));
     }
 
 

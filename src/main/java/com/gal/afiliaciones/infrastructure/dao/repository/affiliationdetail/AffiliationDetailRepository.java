@@ -15,6 +15,8 @@ import org.springframework.stereotype.Repository;
 import com.gal.afiliaciones.domain.model.affiliationemployerdomesticserviceindependent.Affiliation;
 import com.gal.afiliaciones.infrastructure.dto.employerreport.EmployerReportDTO;
 import com.gal.afiliaciones.infrastructure.dto.officialreport.OfficialReportDTO;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface AffiliationDetailRepository extends JpaRepository<Affiliation, String>, JpaSpecificationExecutor<Affiliation> {
@@ -326,7 +328,7 @@ public interface AffiliationDetailRepository extends JpaRepository<Affiliation, 
     @Query("SELECT a FROM Affiliation a WHERE a.identificationDocumentType = :documentType AND a.identificationDocumentNumber = :documentNumber")
     List<Affiliation> findByDocumentTypeAndNumber(@Param("documentType") String documentType, @Param("documentNumber") String documentNumber);
     
-    @Query("SELECT a FROM Affiliation a JOIN Affiliate af ON a.filedNumber = af.filedNumber WHERE " +
+    @Query("SELECT a FROM Affiliation a JOIN Affiliate af ON a.filed_number = af.filed_number WHERE " +
            "(:idTipoDocEmp IS NULL OR af.documentType = :idTipoDocEmp) AND " +
            "(:idEmpresa IS NULL OR af.nitCompany = :idEmpresa) AND " +
            "(:idTipoDocPer IS NULL OR a.identificationDocumentType = :idTipoDocPer) AND " +
@@ -486,6 +488,34 @@ LIMIT 1
             @Param("documentType") String documentType,
             @Param("documentNumber") String documentNumber);
 
-
-
+    @Modifying
+    @Transactional
+    @Query("UPDATE Affiliation ad SET " +
+            "ad.firstName = COALESCE(:primerNombre, ad.firstName), " +
+            "ad.secondName = COALESCE(:segundoNombre, ad.secondName), " +
+            "ad.surname = COALESCE(:primerApellido, ad.surname), " +
+            "ad.secondSurname = COALESCE(:segundoApellido, ad.secondSurname), " +
+            "ad.gender = COALESCE(:sexo, ad.gender), " +
+            "ad.dateOfBirth = COALESCE(:fechaNacimiento, ad.dateOfBirth), " +
+            "ad.email = COALESCE(:email, ad.email), " +
+            "ad.phone1 = COALESCE(:telefono1, ad.phone1), " +
+            "ad.phone2 = COALESCE(:telefono2, ad.phone2), " +
+            "ad.address = COALESCE(:direccionTexto, ad.address), " +
+            "ad.nationality = COALESCE(:nacionalidad, ad.nationality), " +
+            "ad.pensionFundAdministrator = COALESCE(:afp, ad.pensionFundAdministrator), " +
+            "ad.healthPromotingEntity = COALESCE(:eps, ad.healthPromotingEntity), " +
+            "ad.department = COALESCE(:idDepartamento, ad.department), " +
+            "ad.cityMunicipality = COALESCE(:idCiudad, ad.cityMunicipality) " +
+            "WHERE ad.identificationDocumentType = :tipoDocumento " +
+            "AND ad.identificationDocumentNumber = :documentoObjetivo")
+    int updateInfoBasicaForAffiliates(
+        @Param("primerNombre") String primerNombre, @Param("segundoNombre") String segundoNombre,
+        @Param("primerApellido") String primerApellido, @Param("segundoApellido") String segundoApellido,
+        @Param("sexo") String sexo, @Param("fechaNacimiento") java.time.LocalDate fechaNacimiento,
+        @Param("email") String email, @Param("telefono1") String telefono1, @Param("telefono2") String telefono2,
+        @Param("direccionTexto") String direccionTexto, @Param("nacionalidad") Long nacionalidad,
+        @Param("afp") Long afp, @Param("eps") Long eps,
+        @Param("idDepartamento") Long idDepartamento, @Param("idCiudad") Long idCiudad,
+        @Param("tipoDocumento") String tipoDocumento, @Param("documentoObjetivo") String documentoObjetivo
+    );
 }
